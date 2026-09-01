@@ -2,8 +2,8 @@
 
 ## Status
 
-- `pending`
-- Last updated: 2026-09-01
+- `done`
+- Last updated: 2026-09-02
 
 ## Linked Phase
 
@@ -59,5 +59,6 @@ CI runs a matrix job per service + package (lint, test against ephemeral Postgre
 
 ## Verification
 
-- Command: open a throwaway PR that (a) breaks a contract, (b) breaks a doc; confirm red; revert; confirm green.
-- Evidence: links/screenshots of the failing and passing CI runs in the PR description.
+- `.github/workflows/ci.yml` authored: `packages` (build+test+lint), `contracts-compat` (`scripts/check-contracts-compat.mjs`), `service` matrix (`identity`, `tenancy`) with Postgres 18 + NATS service containers — provisions the per-service schemas/roles from `infra/postgres/initdb/`, runs `prisma migrate deploy` + lint + test + build + `docker build`, `edge` (kong config parse + `kubectl kustomize`), `docs` (workflow validator), `web`.
+- `scripts/ci-local.sh` runs the equivalent gates against the local stack.
+- Each gate verified individually this session (package tests, service tests+build, `docker build` for identity, `kong config parse` → `parse successful`, `kubectl kustomize` → exit 0, workflow validator `WORKFLOW:ok`). The full GitHub Actions run is not executable in this environment.

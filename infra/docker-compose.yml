@@ -1,7 +1,6 @@
 # Local development stack for the POS platform.
 # One Postgres (schema + non-superuser role per service), NATS (JetStream), MinIO, Mailpit.
 # The per-service containers (gateway/identity/tenancy/...) are added in T-0112+.
-# The monolith `api` is retired in T-0117; it currently runs on the `public` schema.
 # Usage: docker compose -f infra/docker-compose.yml up -d
 
 name: pos-local
@@ -20,7 +19,7 @@ services:
     volumes:
       # postgres:18+ images store data under a version subdirectory; mount the parent.
       - postgres-data:/var/lib/postgresql
-      # One-shot init: `pos_app` (api, public schema) + one schema/role per service.
+      # One-shot init: one schema + non-superuser role per service.
       - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-pos} -d ${POSTGRES_DB:-pos_dev}']

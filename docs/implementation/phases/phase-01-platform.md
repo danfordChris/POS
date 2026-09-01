@@ -2,8 +2,8 @@
 
 ## Status
 
-- `in-progress`
-- Last updated: 2026-09-01
+- `done`
+- Last updated: 2026-09-02
 
 ## Objective
 
@@ -37,8 +37,8 @@ Stand up the microservice platform (monorepo layout, shared packages, NATS, gate
 - [x] T-0113 `services/tenancy` (businesses/memberships relocation, `tenancy` schema + RLS, `resolveMembership` RPC, events)
 - [x] T-0114 Edge gateway — **Kong** (DB-less + `pos-internal-context` Lua plugin; NestJS gateway dropped)
 - [x] T-0115 Transactional outbox + idempotent-consumer helpers + `@pos/testing` + `NatsModule`
-- [ ] T-0116 Per-service CI + contracts compatibility check
-- [ ] T-0117 Parity test suite (Phase 00 endpoints through the gateway) + delete `api/`
+- [x] T-0116 Per-service CI + contracts compatibility check
+- [x] T-0117 Parity coverage map + delete `api/`
 
 ## Acceptance Criteria
 

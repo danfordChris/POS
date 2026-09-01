@@ -3,19 +3,19 @@
 ## Overview
 
 - Build the MVP of the multi-tenant stock management platform defined in `docs/design/`.
-- Architecture: microservices (decision 0002) — `gateway` + `identity`, `tenancy`, `catalog`, `inventory`, `sales`, `winger`, `notifications`; NATS; one shared PostgreSQL (schema + role per service); Kubernetes in prod.
+- Architecture: microservices (decision 0002) — Kong edge + `identity`, `tenancy`, `catalog`, `inventory`, `sales`, `winger`, `notifications`; NATS; one shared PostgreSQL (schema + role per service); Kubernetes in prod.
 - Frozen product scope: `docs/design/product/prd-mvp.md`. No net-new behavior added here.
 
 ## Current Priorities
 
-1. Phase 01 — Platform and Core Services (monorepo, `@pos/contracts` + `@pos/nest-common`, NATS, `gateway`, `identity`, `tenancy`; retire the monolith `api`).
-2. Phase 02 — Inventory core (`catalog` + `inventory` services: catalog, stock ledger, scan lookup).
-3. Phase 03 — Reorder alerts (`inventory` thresholds → `notifications` email).
+1. Phase 02 — Inventory core (`catalog` + `inventory` services).
+2. Phase 03 — Reorder alerts (`inventory` → `notifications`).
+3. Phase 04 — Sales + digital receipts.
 
 ## Active Phases
 
 - [x] Phase 00 — Foundations (monolith baseline: T-0001–T-0004 done; T-0005–T-0009 superseded by Phase 01)
-- [ ] Phase 01 — Platform and Core Services
+- [x] Phase 01 — Platform and Core Services
 - [ ] Phase 02 — Inventory core (`catalog`, `inventory`)
 - [ ] Phase 03 — Reorder alerts (`inventory` → `notifications`)
 - [ ] Phase 04 — Sales and digital receipts (`sales`; stock saga with `inventory`)

@@ -10,9 +10,9 @@
 Stand up the repo, app skeletons, authentication, and tenant scoping as a verified baseline.
 
 > Architecture pivot (2026-09-01, decision 0002): the project moves to microservices. The
-> monolith `api` built here (T-0002..T-0004) is a working baseline; **Phase 01 decomposes it**
-> into `gateway` / `identity` / `tenancy` and adds the platform. T-0005–T-0009 below are
-> superseded — see the mapping in Tasks.
+> monolith `api` built here (T-0002..T-0004) was the baseline. **Phase 01 decomposed it and
+> removed `api/` (T-0117)** — its behaviour now lives in `services/identity` + `services/tenancy`
+> behind Kong. T-0005–T-0009 were superseded — see the mapping in Tasks and `test/parity/README.md`.
 
 ## Scope
 

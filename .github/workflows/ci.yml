@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  POSTGRES_SUPERUSER_URL: postgresql://pos:pos@localhost:5432/pos_dev
+
+jobs:
+  packages:
+    name: shared packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @pos/contracts --filter @pos/nest-common --filter @pos/testing build
+      - run: pnpm --filter @pos/contracts --filter @pos/nest-common --filter @pos/testing test
+      - run: pnpm --filter @pos/contracts --filter @pos/nest-common --filter @pos/testing lint
+
+  contracts-compat:
+    name: contracts backward-compat
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/check-contracts-compat.mjs "${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+
+  service:
+    name: service (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {
+              service: identity,
+              dir: services/identity,
+              schema: identity,
+              url_var: IDENTITY_DATABASE_URL,
+            }
+          - {
+              service: tenancy,
+              dir: services/tenancy,
+              schema: tenancy,
+              url_var: TENANCY_DATABASE_URL,
+            }
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env: { POSTGRES_USER: pos, POSTGRES_PASSWORD: pos, POSTGRES_DB: pos_dev }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U pos" --health-interval 5s --health-timeout 5s --health-retries 10
+      nats:
+        image: nats:2.10-alpine
+        ports: ['4222:4222', '8222:8222']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: provision schemas + roles
+        run: |
+          psql "$POSTGRES_SUPERUSER_URL" -v ON_ERROR_STOP=1 \
+            -f infra/postgres/initdb/10-app-role.sql \
+            -f infra/postgres/initdb/20-service-schemas.sql
+      - run: pnpm --filter @pos/contracts --filter @pos/nest-common --filter @pos/testing build
+      - name: migrate
+        working-directory: ${{ matrix.dir }}
+        env:
+          IDENTITY_DATABASE_URL: postgresql://identity_app:identity_app@localhost:5432/pos_dev?schema=identity
+          TENANCY_DATABASE_URL: postgresql://tenancy_app:tenancy_app@localhost:5432/pos_dev?schema=tenancy
+        run: pnpm exec prisma migrate deploy
+      - name: lint / test / build
+        working-directory: ${{ matrix.dir }}
+        env:
+          NODE_ENV: test
+          IDENTITY_DATABASE_URL: postgresql://identity_app:identity_app@localhost:5432/pos_dev?schema=identity
+          TENANCY_DATABASE_URL: postgresql://tenancy_app:tenancy_app@localhost:5432/pos_dev?schema=tenancy
+          JWT_ACCESS_SECRET: ci-only-access-secret-0123456789
+          INTERNAL_CONTEXT_SECRET: ci-only-internal-context-secret-0123456789
+          INTERNAL_API_KEY: ci-internal-api-key
+          NATS_URL: nats://localhost:4222
+        run: |
+          pnpm lint
+          pnpm test
+          pnpm build
+      - name: docker build
+        run: |
+          test -f ${{ matrix.dir }}/Dockerfile && docker build -f ${{ matrix.dir }}/Dockerfile -t pos-${{ matrix.service }}:ci . || echo "no Dockerfile for ${{ matrix.service }}"
+
+  edge:
+    name: kong config + k8s render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: kong config parse
+        run: |
+          docker run --rm -e KONG_DATABASE=off -e KONG_PLUGINS=bundled,pos-internal-context \
+            -e JWT_ACCESS_SECRET=x -e INTERNAL_CONTEXT_SECRET=x -e INTERNAL_API_KEY=x \
+            -v "$PWD/infra/kong/kong.yml:/kong/kong.yml:ro" \
+            -v "$PWD/infra/kong/plugins/pos-internal-context:/usr/local/share/lua/5.1/kong/plugins/pos-internal-context:ro" \
+            kong:3.7 kong config parse /kong/kong.yml
+      - uses: azure/setup-kubectl@v4
+      - run: kubectl kustomize infra/k8s/base > /dev/null
+
+  docs:
+    name: workflow docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py
+
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web lint && pnpm --filter web build

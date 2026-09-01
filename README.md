@@ -9,7 +9,8 @@ Design and plan live in [`docs/`](docs/README.md). Everything is routed through 
 
 | Path | Stack | Purpose |
 |---|---|---|
-| `api/` | NestJS + TypeScript | REST API (`/health` stub for now) |
+| `services/*` | NestJS + TypeScript | domain microservices (`identity`, `tenancy`, …) |
+| `packages/*` | TypeScript | `@pos/contracts`, `@pos/nest-common`, `@pos/testing` |
 | `web/` | Next.js + TypeScript | web admin console |
 | `mobile/` | Flutter | Android / iOS app |
 | `infra/` | Docker Compose | local backing services (Postgres, Redis, MinIO, Mailpit) |

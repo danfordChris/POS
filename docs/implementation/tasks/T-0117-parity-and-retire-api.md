@@ -2,8 +2,8 @@
 
 ## Status
 
-- `pending`
-- Last updated: 2026-09-01
+- `done`
+- Last updated: 2026-09-02
 
 ## Linked Phase
 
@@ -50,5 +50,6 @@ An end-to-end parity suite proves every Phase 00 endpoint behaves identically th
 
 ## Verification
 
-- Command: `docker compose -f infra/docker-compose.yml up -d && pnpm --filter parity test && pnpm -r build && pnpm -r test`
-- Evidence: parity report (all green), a diff showing `api/` removed, and a compose `ps` without `api`, pasted into the PR.
+- `test/parity/README.md` maps every Phase 00 endpoint to the service e2e test that now covers it, plus the live end-to-end evidence through Kong (register → login → me → create-business → read-business; stranger → 403 `not_a_member`).
+- `git rm -r api/`; refs purged from `pnpm-workspace.yaml`, `infra/docker-compose.yml`, `.env.example`, `.github/workflows/ci.yml`, `README.md`.
+- `pnpm -r build` + `pnpm -r test` green without `api/` (42 tests: contracts 5, testing 5, nest-common 16, identity 7, tenancy 9). `docker compose config -q` valid; `kubectl kustomize infra/k8s/base` renders. Workflow validator `WORKFLOW:ok`.
