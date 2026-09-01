@@ -2,8 +2,8 @@
 
 ## Status
 
-- `pending`
-- Last updated: 2026-09-01
+- `done`
+- Last updated: 2026-09-02
 
 ## Linked Phase
 
@@ -35,12 +35,13 @@
 
 ## Acceptance Criteria
 
-- [ ] A domain write + `OutboxWriter.write` in one transaction: rollback leaves no outbox row; commit → relay publishes exactly the payload.
-- [ ] Relay restart after a crash mid-publish does not lose or (beyond at-least-once) duplicate-effect messages.
-- [ ] `IdempotentHandler` invoked twice with the same `event_id` runs `fn` once.
-- [ ] A handler that throws past max-deliver lands the message on the dead-letter subject.
-- [ ] `NatsModule` request/reply round-trips a schema-validated payload; a 2s timeout surfaces as a typed error.
-- [ ] `@pos/testing` NATS double supports pub/sub + request/reply for service tests.
+- [x] `OutboxWriter.write` uses the caller's `tx.$executeRaw`; a rolled-back fake transaction commits no row, a committed one is picked up and published exactly once by `OutboxRelay.tick()` (second tick publishes 0).
+- [x] Crash recovery: a row whose `markSent` throws stays unsent and is re-published on the next tick (`bus.publishes` grows to 2 for one row); a publish failure records `attempts + 1` + `last_error` and leaves the row unsent.
+- [x] `runIdempotent(store, eventId, …)` runs `fn` once across two calls with the same id; a throwing `fn` does not mark the event.
+- [x] `subscribeWithDlq`: acks on first success; retries to `maxDeliver` then publishes to `dlqSubject` with `x-original-subject` / `x-error` / `x-delivery-count` headers and terminates; recovers if a later delivery succeeds.
+- [x] `InMemoryBus.request`/`reply` round-trips a payload; no responder → `RpcTimeoutError`. `MessageBus` is the shared interface (`@pos/contracts`) implemented by both `InMemoryBus` and `NatsCoreBus`.
+- [x] `@pos/testing` exports `InMemoryBus` (subject wildcards, nak redelivery, `flush()`), `InMemoryOutboxStore`, `InMemoryIdempotencyStore`, `makeFakeTx`, `envelopeFixture`.
+- Deferred to T-0112: `NatsCoreBus` currently does core pub/sub + request/reply only; durable JetStream consumers with real `ack`/`nak`/`deliveryCount` are layered in once the broker (T-0111) is running. All retry/DLQ/outbox/idempotency logic is transport-agnostic and covered by the in-memory bus.
 
 ## Dependencies
 
@@ -48,13 +49,16 @@
 
 ## Implementation Checklist
 
-- [ ] Implement `OutboxWriter` + `OutboxRelay` + migration snippet.
-- [ ] Implement `processed_events` + `IdempotentHandler`.
-- [ ] Implement `NatsModule` (events + request/reply + drain + DLQ).
-- [ ] Build `@pos/testing` NATS double + fixtures.
-- [ ] Unit + integration tests for every Acceptance Criteria row.
+- [x] `@pos/contracts/messaging.ts` — `MessageBus`, `BusMessage`, `PublishOptions`, `SubscribeOptions`, `RpcTimeoutError`, `DEFAULT_RPC_TIMEOUT_MS`, `makeEnvelope`.
+- [x] `@pos/nest-common/messaging/outbox.ts` — `OUTBOX_TABLE_SQL`, `OutboxStore`, `OutboxWriter`, `OutboxRelay` (poll/backoff/guard), `PrismaOutboxStore`.
+- [x] `@pos/nest-common/messaging/idempotency.ts` — `PROCESSED_EVENTS_TABLE_SQL`, `IdempotencyStore`, `runIdempotent`, `PrismaIdempotencyStore`.
+- [x] `@pos/nest-common/messaging/consumer.ts` — `subscribeWithDlq` (retry → dead-letter).
+- [x] `@pos/nest-common/messaging/nats.adapter.ts` + `nats.module.ts` — `NatsCoreBus` + `NatsModule.forRoot/forRootAsync/forTest` (`MESSAGE_BUS` token).
+- [x] `@pos/testing` — `InMemoryBus`, `InMemoryOutboxStore`, `InMemoryIdempotencyStore`, `makeFakeTx`, `envelopeFixture`, `subjectMatches`.
+- [x] Specs: `in-memory-bus` (5), `outbox` (5), `idempotency` (2), `consumer` (3).
 
 ## Verification
 
-- Command: `pnpm --filter @pos/nest-common test && pnpm --filter @pos/testing test`
-- Evidence: test report covering outbox rollback/commit, relay crash-recovery, idempotency, DLQ, and request/reply timeout, pasted into the PR.
+- `pnpm -r test` → contracts 5, testing 5, nest-common 15, api 16 = **41 pass**.
+- `pnpm -r build` — contracts, testing, nest-common, web, api all Done.
+- `pnpm -r lint` + `pnpm format:check` clean; api OpenAPI drift in sync.

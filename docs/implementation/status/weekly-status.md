@@ -18,7 +18,7 @@
 
 ### In Progress
 
-- Phase 01 — Platform. **T-0110 done** (2026-09-02): monorepo restructured; `@pos/contracts` + `@pos/nest-common` built + tested (27 tests across contracts/nest-common/api); `api` rewired onto the shared packages and still green.
+- Phase 01 — Platform. **T-0110 + T-0115 done** (2026-09-02): monorepo restructured; `@pos/contracts`, `@pos/nest-common`, `@pos/testing` built + tested; `api` rewired. T-0115 adds the transactional outbox (`OutboxWriter`/`OutboxRelay`), `runIdempotent`, `subscribeWithDlq`, `MessageBus` + `NatsCoreBus` + `NatsModule`, and the `InMemoryBus` test double. 41 tests across the workspace.
 
 ### Blockers
 
@@ -26,6 +26,5 @@
 
 ### Next Focus
 
-- T-0115 outbox + idempotency helpers + `NatsModule` in `@pos/nest-common`.
 - T-0111 infra (NATS + shared Postgres, schema per service + k8s base).
 - Then T-0112 `identity`, T-0113 `tenancy`, T-0114 `gateway`; parity suite; delete `api/`.

@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@pos/contracts": "workspace:*",
+    "nats": "^2.29.3",
     "zod": "^4.5.4"
   },
   "peerDependencies": {
@@ -29,6 +30,7 @@
     "reflect-metadata": "^0.2.0"
   },
   "devDependencies": {
+    "@pos/testing": "workspace:*",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.1",

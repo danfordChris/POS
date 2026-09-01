@@ -36,7 +36,7 @@ Stand up the microservice platform (monorepo layout, shared packages, NATS, gate
 - [ ] T-0112 `services/identity` (auth relocation, `identity` schema, RPC, `UserRegistered`)
 - [ ] T-0113 `services/tenancy` (businesses/memberships relocation, `tenancy` schema + RLS, `resolveMembership` RPC, events)
 - [ ] T-0114 `services/gateway` (routing, JWT verify, membership cache, internal-context signing, OpenAPI compose)
-- [ ] T-0115 Transactional outbox + idempotent-consumer helpers in `@pos/nest-common` + tests
+- [x] T-0115 Transactional outbox + idempotent-consumer helpers + `@pos/testing` + `NatsModule`
 - [ ] T-0116 Per-service CI + contracts compatibility check
 - [ ] T-0117 Parity test suite (Phase 00 endpoints through the gateway) + delete `api/`
 

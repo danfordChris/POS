@@ -8,3 +8,4 @@ export * from './openapi/build-document.js';
 export * from './tenant/tenant-context.js';
 export * from './tenant/rls.js';
 export * from './config/env.js';
+export * from './messaging/index.js';
