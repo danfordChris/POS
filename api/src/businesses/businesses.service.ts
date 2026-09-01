@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Business, Prisma } from '@prisma/client';
+import { Business, Prisma } from '#prisma';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateBusinessDto } from './dto/create-business.dto.js';

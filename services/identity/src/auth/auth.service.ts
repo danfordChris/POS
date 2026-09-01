@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { Prisma, User } from '#prisma';
 import { randomUUID } from 'node:crypto';
+import { OutboxWriter } from '@pos/nest-common';
+import { SCHEMA_VERSION, SUBJECTS, makeEnvelope } from '@pos/contracts';
 import { hashPassword, verifyPassword } from './password.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -18,6 +20,8 @@ import { TokenService } from './token.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshDto } from './dto/refresh.dto.js';
+
+const outbox = new OutboxWriter();
 
 export interface PublicUser {
   id: string;
@@ -58,14 +62,30 @@ export class AuthService {
     const passwordHash = await hashPassword(dto.password);
 
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          name: dto.name,
-          email: dto.email ?? null,
-          phone: dto.phone ?? null,
-          passwordHash,
-          locale: dto.locale ?? 'en',
-        },
+      const user = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: {
+            name: dto.name,
+            email: dto.email ?? null,
+            phone: dto.phone ?? null,
+            passwordHash,
+            locale: dto.locale ?? 'en',
+          },
+        });
+        await outbox.write(tx, {
+          subject: SUBJECTS.identity.userRegistered,
+          payload: makeEnvelope({
+            producer: 'identity',
+            businessId: null,
+            schemaVersion: SCHEMA_VERSION,
+            payload: {
+              user_id: created.id,
+              email: created.email,
+              phone: created.phone,
+            },
+          }),
+        });
+        return created;
       });
       return this.toPublicUser(user);
     } catch (error) {
@@ -236,6 +256,21 @@ export class AuthService {
       email: operator.email,
       createdAt: operator.createdAt,
     };
+  }
+
+  /** Lookup for the `pos.rpc.identity.getUser` handler. */
+  async findUserForRpc(query: {
+    user_id?: string;
+    email?: string;
+    phone?: string;
+  }): Promise<User | null> {
+    if (query.user_id)
+      return this.prisma.user.findUnique({ where: { id: query.user_id } });
+    if (query.email)
+      return this.prisma.user.findUnique({ where: { email: query.email } });
+    if (query.phone)
+      return this.prisma.user.findUnique({ where: { phone: query.phone } });
+    return null;
   }
 
   private async issueSession(

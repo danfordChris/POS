@@ -1,0 +1,78 @@
+// identity service — owns user, operator, refresh_token in the `identity` schema.
+// Plus the transactional outbox + idempotency tables from @pos/nest-common.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("IDENTITY_DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name         String
+  email        String?      @unique
+  phone        String?      @unique
+  passwordHash String       @map("password_hash")
+  locale       String       @default("en")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  disabledAt   DateTime?    @map("disabled_at") @db.Timestamptz(6)
+
+  @@map("user")
+}
+
+model Operator {
+  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  disabledAt   DateTime? @map("disabled_at") @db.Timestamptz(6)
+
+  @@map("operator")
+}
+
+model RefreshToken {
+  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  subjectType  String    @map("subject_type")
+  subjectId    String    @map("subject_id") @db.Uuid
+  familyId     String    @map("family_id") @db.Uuid
+  issuedAt     DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
+  rotatedAt    DateTime? @map("rotated_at") @db.Timestamptz(6)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  userAgent    String?   @map("user_agent")
+
+  @@index([subjectType, subjectId])
+  @@index([familyId])
+  @@map("refresh_token")
+}
+
+/// Transactional outbox (see @pos/nest-common OutboxWriter / OutboxRelay).
+model OutboxMessage {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  subject   String
+  payload   Json
+  headers   Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  attempts  Int       @default(0)
+  lastError String?   @map("last_error")
+
+  @@index([createdAt], map: "outbox_unsent_idx")
+  @@map("outbox")
+}
+
+/// Idempotency ledger for inbound events (see @pos/nest-common runIdempotent).
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  subject     String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_events")
+}

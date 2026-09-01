@@ -45,7 +45,7 @@ export class PrismaIdempotencyStore implements IdempotencyStore {
 
   async wasProcessed(eventId: string): Promise<boolean> {
     const rows = await this.client.$queryRawUnsafe<{ one: number }[]>(
-      `SELECT 1 AS one FROM processed_events WHERE event_id = $1`,
+      `SELECT 1 AS one FROM processed_events WHERE event_id = $1::uuid`,
       eventId,
     );
     return rows.length > 0;
@@ -53,7 +53,7 @@ export class PrismaIdempotencyStore implements IdempotencyStore {
 
   async markProcessed(eventId: string, subject: string): Promise<void> {
     await this.client.$executeRawUnsafe(
-      `INSERT INTO processed_events (event_id, subject) VALUES ($1, $2)
+      `INSERT INTO processed_events (event_id, subject) VALUES ($1::uuid, $2)
        ON CONFLICT (event_id) DO NOTHING`,
       eventId,
       subject,

@@ -145,12 +145,15 @@ export class PrismaOutboxStore implements OutboxStore {
   }
 
   async markSent(id: string): Promise<void> {
-    await this.client.$executeRawUnsafe(`UPDATE outbox SET sent_at = now() WHERE id = $1`, id);
+    await this.client.$executeRawUnsafe(
+      `UPDATE outbox SET sent_at = now() WHERE id = $1::uuid`,
+      id,
+    );
   }
 
   async markFailed(id: string, error: string): Promise<void> {
     await this.client.$executeRawUnsafe(
-      `UPDATE outbox SET attempts = attempts + 1, last_error = $2 WHERE id = $1`,
+      `UPDATE outbox SET attempts = attempts + 1, last_error = $2 WHERE id = $1::uuid`,
       id,
       error,
     );

@@ -23,7 +23,7 @@ export class NatsModule {
   static forRootAsync(config: {
     imports?: DynamicModule['imports'];
     inject?: FactoryProvider['inject'];
-    useFactory: (...args: unknown[]) => NatsModuleOptions | Promise<NatsModuleOptions>;
+    useFactory: (...args: any[]) => NatsModuleOptions | Promise<NatsModuleOptions>;
   }): DynamicModule {
     const provider: FactoryProvider = {
       provide: MESSAGE_BUS,

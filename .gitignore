@@ -43,3 +43,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Prisma generated clients (per package)
+**/generated/prisma/

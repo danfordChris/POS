@@ -5,6 +5,8 @@ import { correlationId } from '../http/correlation-id.middleware.js';
 export interface ConfigureAppOptions {
   /** URL prefix for all routes. Default `v1`. Pass `''` to disable. */
   prefix?: string;
+  /** Paths kept off the prefix (k8s probes). Default `['healthz', 'readyz']`. */
+  excludePrefixPaths?: string[];
 }
 
 /**
@@ -14,10 +16,11 @@ export interface ConfigureAppOptions {
  */
 export function configureApp(app: INestApplication, options: ConfigureAppOptions = {}): void {
   const prefix = options.prefix ?? 'v1';
+  const exclude = options.excludePrefixPaths ?? ['healthz', 'readyz'];
 
   app.use(correlationId);
   if (prefix) {
-    app.setGlobalPrefix(prefix);
+    app.setGlobalPrefix(prefix, exclude.length ? { exclude } : undefined);
   }
   app.useGlobalPipes(
     new ValidationPipe({

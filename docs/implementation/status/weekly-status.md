@@ -18,7 +18,7 @@
 
 ### In Progress
 
-- Phase 01 — Platform. **T-0110 + T-0115 + T-0111 done** (2026-09-02): monorepo restructured; `@pos/contracts`, `@pos/nest-common`, `@pos/testing` built + tested; `api` rewired. T-0115 adds the transactional outbox (`OutboxWriter`/`OutboxRelay`), `runIdempotent`, `subscribeWithDlq`, `MessageBus` + `NatsCoreBus` + `NatsModule`, and the `InMemoryBus` test double. 41 tests across the workspace. T-0111 adds NATS (JetStream) + 7 service schemas/roles (isolation verified) + `infra/k8s/base` (renders clean).
+- Phase 01 — Platform. **T-0110, T-0115, T-0111, T-0112 done** (2026-09-02): monorepo restructured; `@pos/contracts`, `@pos/nest-common`, `@pos/testing` built + tested; `api` rewired. T-0115 adds the transactional outbox (`OutboxWriter`/`OutboxRelay`), `runIdempotent`, `subscribeWithDlq`, `MessageBus` + `NatsCoreBus` + `NatsModule`, and the `InMemoryBus` test double. 41 tests across the workspace. T-0111 adds NATS (JetStream) + 7 service schemas/roles (isolation verified) + `infra/k8s/base` (renders clean). **T-0112**: `services/identity` live — auth relocated to the `identity` schema, `getUser`/`verifyToken` RPC, `UserRegistered` via outbox, `HealthModule` added to `@pos/nest-common`, Dockerfile. Multi-Prisma-client isolation fixed via `generator.output` + `#prisma` subpath. 48 tests.
 
 ### Blockers
 
