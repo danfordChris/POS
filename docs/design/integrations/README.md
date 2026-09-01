@@ -8,9 +8,11 @@
 
 | Integration | MVP? | Interface | Candidates |
 |---|---|---|---|
+| Message broker (events + RPC) | Yes | NATS client in `@pos/nest-common` | NATS + JetStream (selected); RabbitMQ fallback |
 | Transactional email | Yes | `EmailSender.send(template, to, vars)` | Amazon SES, Resend, Postmark |
 | Object storage (product images) | Yes | `FileStore.put/get/url` | Amazon S3, Cloudflare R2, MinIO (local) |
-| Job queue / scheduler | Yes | `Queue.enqueue/process` | BullMQ + Redis |
+| Cache / retry queue (per service) | Yes | `Queue.enqueue/process` | Redis (gateway membership cache, notifications retries) |
+| Container orchestration | Yes | Helm charts / manifests in `infra/k8s` | Kubernetes (prod); docker-compose (local) |
 | Push notifications | No (post-MVP) | `Push.send` | Firebase Cloud Messaging |
 | SMS | No (post-MVP) | `SmsSender.send` | NextSMS (nextsms.co.tz) — selected; Beem / Africa's Talking as fallback |
 | Mobile money / payments | No (post-MVP) | `PaymentProvider` | M-Pesa (Vodacom), Tigo Pesa, Airtel Money |
@@ -18,9 +20,9 @@
 
 ## Decisions
 
-- Every integration has a `local` implementation (MinIO, in-memory email capture, local Redis) so the full stack runs offline for development.
+- Every integration has a `local` implementation (NATS container, MinIO, Mailpit, local Redis) so the full stack runs offline for development.
 - Provider selection is environment config, not code.
-- All services ship as Docker images; deployment target is any container platform + managed Postgres + managed Redis.
+- Every service ships as its own Docker image; production runs on Kubernetes with a managed Postgres instance per service.
 
 ## Contracts
 

@@ -2,8 +2,10 @@
 
 ## Status
 
-- `pending`
+- `blocked`
 - Last updated: 2026-09-01
+
+> **Superseded.** Superseded by decision 0002. Still needed, but targets the `gateway`. Re-scope under Phase 01 before starting.
 
 ## Linked Phase
 

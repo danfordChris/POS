@@ -4,34 +4,27 @@
 
 ### Summary
 
-- Design + implementation docs complete. Phase 00: T-0001 → T-0004 done (4 of 9 tasks; T-0005–T-0009 remain).
-- Local dev runs entirely on the `infra/docker-compose.yml` stack (OrbStack).
+- Phase 00 (monolith baseline): T-0001–T-0004 done and committed.
+- **Architecture pivot**: decision 0002 adopts microservices (Option B). Design layer rewritten; implementation re-planned around a new Phase 01 — Platform; feature phases renumbered 02–06.
 
 ### Completed
 
-- `docs/design/` + `docs/implementation/` authored; decision 0001 finalized.
-- Git on `main`; four feature commits (docs, scaffold, API base, auth, tenancy).
-- **T-0001** repo scaffold · **T-0002** API base (Prisma, `/v1/health`, error envelope, OpenAPI) · **T-0003** auth (register/login/refresh/logout/me + operator audiences, argon2id via hash-wasm, rotating refresh tokens).
-- **T-0004 — Tenancy + RLS**:
-  - `business` + `membership` models; migration `20260901201947_tenancy_business_membership` with the reusable `enable_tenant_rls()` SQL helper (`ENABLE` + `FORCE ROW LEVEL SECURITY` + `tenant_isolation` policy on `nullif(current_setting('app.business_id',true),'')::uuid`).
-  - Non-superuser DB role `pos_app` (via `infra/postgres/initdb/`) so RLS FORCE is enforced; `DATABASE_URL` uses it.
-  - `PrismaService.runInTenantContext()` (AsyncLocalStorage + `set_config` per transaction), `assertTenantContext()`.
-  - `TenantGuard` (path-scoped membership; operator → 403 `operator_data_access_denied`; non-member → 403 `not_a_member`), `Roles()`/`RolesGuard` (403 `role_forbidden`).
-  - `POST /v1/businesses`, `GET`/`PATCH /v1/businesses/{businessId}`.
-  - 19 tests pass; lint/build/openapi-drift green; RLS backstop and live flow verified.
-
-### Environment changes (this session)
-
-- `postgres:18-alpine`; compose volume at `/var/lib/postgresql`; `infra/postgres/initdb/` mounted to create `pos_app`.
-- Host `brew services postgresql@18` stopped; its `pos*` objects dropped.
-- `SHADOW_DATABASE_URL` removed from schema/.env (Prisma auto-shadow; `pos_app` has CREATEDB).
-- OpenAPI generator/drift moved from `tsx` to `node scripts/*.mjs` against `dist/`; `tsx` removed.
-- Prisma pinned to 6.19.3 (`$use` middleware removed in v6 — see T-0004 deviation note).
+- T-0001 scaffold · T-0002 API base · T-0003 auth · T-0004 tenancy + RLS — working monolith `api` on the compose stack (19 tests pass).
+- Design docs for microservices:
+  - `decisions/0002-microservices.md`; `architecture/system-overview.md` rewritten; `architecture/service-decomposition.md` (new — 8 services, context map, transport, data, deployment, code-relocation map).
+  - `architecture/multi-tenancy.md` updated (5 layers incl. gateway edge auth + signed internal context; per-service RLS).
+  - `interfaces/events-catalog.md` + `interfaces/internal-rpc.md` (new); `interfaces/api-contract.md` reframed as the gateway contract; `integrations/README.md` adds NATS + Kubernetes.
+- Implementation re-plan: `project.md`, `phases/phase-01-platform.md` (new, T-0110–T-0117), phases 02–06 renumbered, T-0005–T-0009 marked superseded/blocked with mapping to Phase 01.
 
 ### In Progress
 
-- None.
+- None — awaiting confirmation (or acceptance) of the decision-0002 defaults before Phase 01 execution.
+
+### Blockers
+
+- Decision-0002 defaults (broker, sync transport, DB topology, orchestration, auth trust boundary) listed in `docs/changes/proposed/0002-service-architecture.md` — confirm or accept as-is to unblock Phase 01.
 
 ### Next Focus
 
-- T-0005 — Invitations: `invitation` model + migration + RLS (`enable_tenant_rls`), `POST/GET/revoke` (Owner) + `POST /v1/invitations/accept`, invitation email via the notifications pipeline (local Mailpit capture).
+- Phase 01 T-0110: monorepo restructure (`services/*`, `packages/*`) + `@pos/contracts` + `@pos/nest-common`.
+- Then T-0112 `identity`, T-0113 `tenancy`, T-0114 `gateway`, relocating the Phase 00 code; parity suite; delete `api/`.

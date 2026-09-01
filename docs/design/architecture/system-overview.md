@@ -2,7 +2,8 @@
 
 ## Context
 
-- Two clients, one backend, one database. Control-plane logically separated from the tenant data-plane.
+- Microservices. Two clients, one public gateway, a set of domain services, one message broker, a database per service.
+- See `docs/design/decisions/0002-microservices.md` and `docs/design/architecture/service-decomposition.md`.
 
 ## Requirements
 
@@ -10,51 +11,66 @@
 
 | Component | Tech | Responsibility |
 |---|---|---|
-| Mobile app | Flutter (Android, iOS) | Floor work: catalog, scan, stock-in, sales, receipts, low-stock list |
-| Web admin | Next.js | Management: members, catalog, stock history, sales, winger admin, alerts, basic reports |
-| API | NestJS (TypeScript) | Auth, tenant resolution, business logic, REST endpoints (OpenAPI) |
-| Database | PostgreSQL (+ Prisma) | Persistent store; RLS as isolation backstop |
-| Object storage | S3-compatible | Product images |
-| Email sender | Transactional email provider | Invitations, winger authorization, low-stock alerts |
-| Job runner | In-process queue (e.g. BullMQ + Redis) | Async notification dispatch, alert dedupe |
+| Mobile app | Flutter (Android, iOS) | Floor work: catalog, scan, stock-in, sales, receipts, low-stock |
+| Web admin | Next.js | Management: members, catalog, stock history, sales, winger admin, alerts, reports |
+| `gateway` | NestJS | Public REST (`/v1/*`, OpenAPI); user-JWT verification; membership resolution + cache; routing; rate limiting; response shaping |
+| `identity` | NestJS | Users, operators, credentials, access/refresh tokens |
+| `tenancy` | NestJS | Businesses, memberships, invitations |
+| `catalog` | NestJS | Categories, products, pricing, image metadata |
+| `inventory` | NestJS | Stock items, movements, reorder thresholds, low-stock detection |
+| `sales` | NestJS | Sales, sale lines, receipts |
+| `winger` | NestJS | Reseller portal API; `winger_account`; catalog/price/in-stock read model |
+| `notifications` | NestJS (worker) | Email/SMS dispatch, templates, notification log |
+| Broker | NATS + JetStream | Domain events (pub/sub) and synchronous inter-service calls (request/reply) |
+| Databases | PostgreSQL per service (+ Prisma) | Each service owns its schema, migrations, and RLS |
+| Object storage | S3-compatible | Product images (`catalog` writes, `gateway`/clients read) |
+| Email/SMS | Transactional providers | Used by `notifications` only |
+| Cache/queue | Redis per service as needed | Membership cache (gateway), retry queues (notifications) |
 
 ### Control-plane vs data-plane
 
-- Data-plane: all `/v1/businesses/{businessId}/*` and `/v1/winger/*` routes. Requires a tenant membership.
-- Control-plane: `/v1/admin/*`. Operator identity. No access to data-plane tables except through a `SupportAccessGrant`.
-- Separate auth audiences: user tokens and operator tokens are not interchangeable.
+- Data-plane: `/v1/businesses/{businessId}/*` and `/v1/winger/*` at the gateway. Requires a tenant membership.
+- Control-plane: `/v1/admin/*` at the gateway. Operator identity. No route reaches data-plane services without a `SupportAccessGrant` (Phase 06).
+- User and operator token audiences are not interchangeable; enforced at the gateway.
 
 ### Request flow (tenant route)
 
-1. Client sends `Authorization: Bearer <user JWT>`.
-2. API validates token, loads user.
-3. API reads `businessId` from the path, loads the caller's `Membership`; rejects with 403 if none.
-4. Handler runs with a tenant-scoped DB context (`business_id` bound); Prisma middleware injects the filter; Postgres RLS enforces it independently.
-5. Response serialized through a role-aware DTO (winger DTO strips internal fields).
+1. Client → `gateway` with `Authorization: Bearer <user JWT>`.
+2. `gateway` verifies the token locally (JWKS/shared secret from `identity`), rejecting operator-audience tokens on data routes (403 `operator_data_access_denied`).
+3. `gateway` reads `businessId` from the path and resolves the caller's membership via `tenancy.resolveMembership` (NATS request/reply, short-TTL cache); no membership → 403 `not_a_member`.
+4. `gateway` forwards the call to the owning service with signed internal context: `request_id`, `user_id`, `business_id`, `role`.
+5. The service validates the internal context, runs inside `runInTenantContext(business_id)` against its own DB (RLS enforced), and returns a DTO. `winger` responses use a whitelisted DTO.
+6. `gateway` shapes the response and applies the canonical error envelope.
 
 ### Data flow examples
 
-- Sale: client → `POST .../sales` → transaction: insert `sale` + `sale_line` + `stock_movement(type=sale)` rows, recompute on-hand → enqueue receipt token → respond.
-- Low-stock: stock movement handler computes new on-hand → if `≤ threshold` and no open alert → insert `notification(low_stock)` → job runner sends email → mark alert open until on-hand rises above threshold.
+- **Sale** (saga): client → `gateway` → `sales.createSale`. `sales` reserves stock via `inventory.reserveStock` (request/reply); on success writes `sale` + `sale_line` + `receipt`, emits `SaleCompleted`; `inventory` consumes it to finalise `stock_movement(type=sale)`. On failure `sales` calls `inventory.releaseReservation` (compensation).
+- **Low-stock**: `inventory` records a movement, computes on-hand, and on the false→true threshold edge emits `StockFellBelowThreshold`. `notifications` consumes it, renders the localized email, sends via the provider, retries on failure, and logs to its `notification` table.
+- **Winger catalog**: `catalog` emits `ProductUpserted`/`PriceChanged`; `inventory` emits `StockLevelChanged`; `winger` folds both into a per-business read model that its API serves with no quantities.
 
 ### Environments
 
-- `local`, `staging`, `production`. Each with isolated database and storage bucket.
-- Provider-agnostic deploy: container images + managed Postgres + managed Redis. Target chosen in Phase 00.
+- `local` (docker-compose: all services + NATS + one Postgres with a DB per service + MinIO + Mailpit), `staging`, `production` (Kubernetes; per-service Deployment + Service + HPA; NATS cluster; managed Postgres instances; managed object storage).
 
 ## Decisions
 
-- One shared database with row-level tenant scoping, not database-per-tenant (revisit if a tenant needs physical isolation).
-- Synchronous business writes; only notification delivery is async.
-- No GraphQL; REST + OpenAPI.
+- Database-per-service; no cross-service SQL. See decision 0002.
+- NATS + JetStream is the only messaging substrate (events + request/reply).
+- Transactional outbox + idempotent consumers; sagas for multi-service writes.
+- Only the gateway is publicly reachable; services communicate on the private network and trust the gateway-issued internal context.
+- REST + OpenAPI at the edge; no GraphQL.
 
 ## Contracts
 
-- API is the only writer to the database.
-- Clients hold no business rules that the API does not also enforce.
+- Each service is the sole writer of its own database.
+- Event and RPC payloads are versioned schemas in `@pos/contracts` (`docs/design/interfaces/events-catalog.md`, `internal-rpc.md`).
+- Clients hold no business rules that the owning service does not also enforce.
+- Every inter-service message carries `request_id` and (for data-plane) `business_id`.
 
 ## Acceptance Criteria
 
-- A running stack in `local` serves the mobile app and web admin against the same API.
-- Removing the Prisma tenant filter still yields zero cross-tenant rows in tests (RLS backstop proven).
-- Operator token cannot reach any data-plane table without an active `SupportAccessGrant`.
+- `docker-compose up` in `local` brings up every service healthy, with NATS and a database per service, and the mobile app + web admin work end to end through the gateway.
+- Cross-tenant test: a member of business A gets 403 on every business-B route at the gateway, and each service's RLS returns zero rows when `business_id` is unset.
+- Operator token → 403 on every data-plane route at the gateway.
+- Killing any single non-gateway service degrades only its capability; the rest keep serving (verified for `notifications` and `winger`).
+- A sale that fails at stock reservation creates no `sale`/`sale_line` rows and no stock movement (saga compensation proven).

@@ -2,8 +2,10 @@
 
 ## Status
 
-- `pending`
+- `blocked`
 - Last updated: 2026-09-01
+
+> **Superseded.** Superseded by decision 0002 (microservices). Invitations move into `services/tenancy`; re-scope as a task under Phase 01/02 before starting.
 
 ## Linked Phase
 

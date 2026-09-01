@@ -2,8 +2,10 @@
 
 ## Status
 
-- `pending`
+- `blocked`
 - Last updated: 2026-09-01
+
+> **Superseded.** Superseded by Phase 01 T-0116 (per-service CI + contracts compatibility check).
 
 ## Linked Phase
 

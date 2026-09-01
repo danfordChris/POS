@@ -2,7 +2,8 @@
 
 ## Context
 
-- REST over HTTPS. Base path `/v1`. JSON only. Described by an OpenAPI 3.1 document generated from the NestJS app.
+- This is the **`gateway` service's** public contract — the only externally reachable API. Internal service subjects are in `events-catalog.md` / `internal-rpc.md`.
+- REST over HTTPS. Base path `/v1`. JSON only. OpenAPI document composed by the gateway from downstream service contributions.
 - Auth: `Authorization: Bearer <JWT>`. Access token ~15 min, refresh token ~30 days, rotating.
 - Two token audiences: `user` and `operator`. A token of the wrong audience on a route → 401.
 - Tenant routes are path-scoped: `/v1/businesses/{businessId}/...`. Membership is checked per request.

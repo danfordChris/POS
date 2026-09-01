@@ -18,14 +18,17 @@
 - `design/product/roles-and-permissions.md` — role matrix, winger + operator rules
 
 ### Architecture
-- `design/architecture/system-overview.md` — components, request/data flow
-- `design/architecture/multi-tenancy.md` — tenant model, isolation layers, break-glass policy
+- `design/architecture/system-overview.md` — services, request/data flow, environments
+- `design/architecture/service-decomposition.md` — context map, ownership, transport, data, deployment
+- `design/architecture/multi-tenancy.md` — tenant model, 5 isolation layers, break-glass policy
 
 ### Data
 - `design/data/data-model.md` — entities, invariants, indexes
 
 ### Interfaces
-- `design/interfaces/api-contract.md` — REST endpoints, auth, error model
+- `design/interfaces/api-contract.md` — the `gateway`'s public REST contract, auth, error model
+- `design/interfaces/events-catalog.md` — NATS domain events (subjects, payloads, consumers)
+- `design/interfaces/internal-rpc.md` — synchronous inter-service calls + internal context
 - `design/interfaces/mobile-app-spec.md` — Flutter app screens and behaviors
 - `design/interfaces/web-app-spec.md` — Next.js admin routes and behaviors
 
@@ -35,3 +38,4 @@
 
 ### Decisions
 - `design/decisions/0001-foundational-choices.md` — stack, tenancy, market, deferrals
+- `design/decisions/0002-microservices.md` — service split, NATS, database-per-service, Kubernetes

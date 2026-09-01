@@ -1,4 +1,4 @@
-# Phase 01 — Inventory Core
+# Phase 02 — Inventory Core
 
 ## Status
 
@@ -46,7 +46,8 @@ Deliver catalog management and a stock movement ledger with derived on-hand, plu
 
 ## Blockers
 
-- Phase 00 auth + tenancy must be `done`.
+- Phase 01 (Platform) must be `done`: `identity` + `tenancy` services live, gateway routing + membership resolution, NATS, `@pos/nest-common`, `@pos/contracts`.
+- This phase adds the `catalog` and `inventory` services.
 
 ## Linked Tasks
 

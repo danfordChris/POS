@@ -7,7 +7,12 @@
 
 ## Objective
 
-Stand up the repo, the three app skeletons, authentication, tenant scoping, and CI so feature phases can build on a verified base.
+Stand up the repo, app skeletons, authentication, and tenant scoping as a verified baseline.
+
+> Architecture pivot (2026-09-01, decision 0002): the project moves to microservices. The
+> monolith `api` built here (T-0002..T-0004) is a working baseline; **Phase 01 decomposes it**
+> into `gateway` / `identity` / `tenancy` and adds the platform. T-0005–T-0009 below are
+> superseded — see the mapping in Tasks.
 
 ## Scope
 
@@ -32,11 +37,11 @@ Stand up the repo, the three app skeletons, authentication, tenant scoping, and 
 - [x] T-0002 API base: NestJS + Prisma + Postgres + health
 - [x] T-0003 Auth module (register/login/refresh/logout/me, two audiences)
 - [x] T-0004 Tenancy: business/membership, route guard, RLS + `app.business_id`
-- [ ] T-0005 Invitations: create/revoke/accept + email (local capture)
-- [ ] T-0006 Web app shell + login + auth guard + business switcher
-- [ ] T-0007 Mobile app shell + login + session + business switcher
-- [ ] T-0008 CI pipeline + OpenAPI drift check
-- [ ] T-0009 Local docker-compose stack
+- [ ] ~~T-0005 Invitations~~ → moves into `services/tenancy` (Phase 01 T-0113 / early Phase 02)
+- [ ] ~~T-0006 Web app shell~~ → Phase 01 (targets the gateway); tracked in backlog
+- [ ] ~~T-0007 Mobile app shell~~ → Phase 01 (targets the gateway); tracked in backlog
+- [ ] ~~T-0008 CI pipeline~~ → superseded by Phase 01 T-0116 (per-service CI)
+- [ ] ~~T-0009 Local docker-compose stack~~ → superseded by Phase 01 T-0111 (NATS + per-service DBs)
 
 ## Acceptance Criteria
 

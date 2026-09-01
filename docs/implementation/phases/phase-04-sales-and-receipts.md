@@ -1,4 +1,4 @@
-# Phase 03 — Sales and Digital Receipts
+# Phase 04 — Sales and Digital Receipts
 
 ## Status
 
@@ -48,7 +48,7 @@ Record sales that decrement stock through the ledger, issue a public receipt lin
 
 ## Blockers
 
-- Phase 01 stock ledger must be `done`.
+- Phase 02 stock ledger must be `done`.
 
 ## Linked Tasks
 

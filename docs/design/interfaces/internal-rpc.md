@@ -1,0 +1,51 @@
+# Internal RPC
+
+## Context
+
+- Synchronous inter-service calls over NATS request/reply. Subject: `pos.rpc.<context>.<Method>`.
+- Used only where the caller cannot own an eventually-consistent copy of the data. Everything else is events.
+- Request/response schemas live in `@pos/contracts`. Timeout 2s default; caller handles `503 upstream_unavailable`.
+
+## Requirements
+
+### Call index (MVP)
+
+| Subject | Caller | Request | Response | Notes |
+|---|---|---|---|---|
+| `pos.rpc.identity.getUser` | tenancy, winger | `{ email? , phone? , user_id? }` | `{ user_id, name, email?, phone?, disabled }` or `not_found` | resolve/lookup a user identity |
+| `pos.rpc.identity.verifyToken` | gateway (fallback only) | `{ access_token }` | `{ valid, sub, aud, typ }` | gateway normally verifies locally with the shared key |
+| `pos.rpc.tenancy.resolveMembership` | gateway | `{ business_id, user_id }` | `{ found, role, status }` | per data-plane request; gateway caches 30–60s; busted by `MembershipSuspended` |
+| `pos.rpc.inventory.reserveStock` | sales | `{ business_id, reservation_id, lines: [{ product_id, quantity }] }` | `{ ok }` or `{ ok:false, shortfalls: [...] }` | idempotent on `reservation_id` |
+| `pos.rpc.inventory.commitReservation` | sales | `{ business_id, reservation_id, sale_id }` | `{ ok }` | also driven by `SaleCompleted` as backstop |
+| `pos.rpc.inventory.releaseReservation` | sales | `{ business_id, reservation_id }` | `{ ok }` | saga compensation; idempotent |
+
+### Internal context
+
+Every RPC request (and every gateway→service HTTP forward) carries a signed internal context header/metadata:
+
+```
+{ request_id, user_id, business_id | null, role | null, token_kind: "user" | "operator" | "system" }
+```
+
+- Signed by the gateway (HMAC with a rotating internal key, or a 60s internal JWT).
+- Services reject a missing/invalid/expired context. `identity` accepts `business_id: null`.
+- Service-to-service calls not originating from a user request (e.g. saga steps) use `token_kind: "system"` and set `business_id` explicitly.
+
+## Decisions
+
+- One messaging substrate (NATS) for both events and RPC; no separate gRPC stack in MVP.
+- RPC responses never include another tenant's data; every handler runs tenant-scoped.
+- If an RPC would need a join across two services, redesign toward an event-fed local copy instead.
+
+## Contracts
+
+- RPC is request/reply only — no fire-and-forget disguised as RPC (use events).
+- Callers treat RPC failure as retryable with backoff, except validation errors.
+- Adding a field is compatible; removing/renaming needs a new subject version.
+
+## Acceptance Criteria
+
+- Each subject has request + response zod schemas and a contract test.
+- `reserveStock` / `releaseReservation` proven idempotent under duplicate delivery.
+- A dropped `inventory` service makes `sales.createSale` fail cleanly with `503`, no partial sale.
+- A request with a tampered internal context is rejected by the receiving service.

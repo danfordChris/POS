@@ -1,4 +1,4 @@
-# Phase 05 — Hardening and MVP Acceptance
+# Phase 06 — Hardening and MVP Acceptance
 
 ## Status
 
@@ -48,7 +48,7 @@ Prove tenant isolation, operator restrictions, and the PRD acceptance criteria, 
 
 ## Blockers
 
-- Phases 00–04 must be `done`.
+- Phases 00–05 must be `done`.
 
 ## Linked Tasks
 

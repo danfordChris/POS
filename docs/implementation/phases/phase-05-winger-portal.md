@@ -1,4 +1,4 @@
-# Phase 04 — Winger Portal
+# Phase 05 — Winger Portal
 
 ## Status
 
@@ -45,7 +45,7 @@ Let an Owner authorize resellers who then see a whitelisted catalog view for tha
 
 ## Blockers
 
-- Phase 01 catalog must be `done`.
+- Phase 02 catalog must be `done`.
 
 ## Linked Tasks
 

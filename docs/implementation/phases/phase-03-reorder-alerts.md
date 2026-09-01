@@ -1,4 +1,4 @@
-# Phase 02 — Reorder Alerts
+# Phase 03 — Reorder Alerts
 
 ## Status
 
@@ -44,7 +44,7 @@ Send a low-stock email to business alert recipients on the transition into the l
 
 ## Blockers
 
-- Phase 01 stock ledger must be `done`.
+- Phase 02 stock ledger must be `done`.
 
 ## Linked Tasks
 
