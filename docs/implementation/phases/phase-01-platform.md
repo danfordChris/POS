@@ -32,7 +32,7 @@ Stand up the microservice platform (monorepo layout, shared packages, NATS, gate
 ## Tasks
 
 - [x] T-0110 Monorepo restructure + `@pos/contracts` + `@pos/nest-common`
-- [ ] T-0111 `infra`: NATS + shared Postgres (schema per service) in compose; k8s base manifests
+- [x] T-0111 `infra`: NATS + shared Postgres (schema per service) in compose; k8s base manifests
 - [ ] T-0112 `services/identity` (auth relocation, `identity` schema, RPC, `UserRegistered`)
 - [ ] T-0113 `services/tenancy` (businesses/memberships relocation, `tenancy` schema + RLS, `resolveMembership` RPC, events)
 - [ ] T-0114 `services/gateway` (routing, JWT verify, membership cache, internal-context signing, OpenAPI compose)

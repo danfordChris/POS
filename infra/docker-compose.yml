@@ -1,12 +1,14 @@
-# Local development backing services for the POS platform.
-# App containers (api, web) are added in task T-0009.
+# Local development stack for the POS platform.
+# One Postgres (schema + non-superuser role per service), NATS (JetStream), MinIO, Mailpit.
+# The per-service containers (gateway/identity/tenancy/...) are added in T-0112+.
+# The monolith `api` is retired in T-0117; it currently runs on the `public` schema.
 # Usage: docker compose -f infra/docker-compose.yml up -d
 
 name: pos-local
 
 services:
   postgres:
-    # 18 for the native uuidv7() function used by the Prisma schema.
+    # 18 for the native uuidv7() function used by the Prisma schemas.
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
@@ -18,12 +20,28 @@ services:
     volumes:
       # postgres:18+ images store data under a version subdirectory; mount the parent.
       - postgres-data:/var/lib/postgresql
-      # One-shot init: creates the non-superuser `pos_app` role the API connects as.
+      # One-shot init: `pos_app` (api, public schema) + one schema/role per service.
       - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-pos} -d ${POSTGRES_DB:-pos_dev}']
       interval: 5s
       timeout: 5s
+      retries: 10
+
+  nats:
+    image: nats:2.10-alpine
+    restart: unless-stopped
+    # -js: JetStream; -m 8222: HTTP monitoring (/healthz, /varz).
+    command: ['-js', '-sd', '/data', '-m', '8222']
+    ports:
+      - '${NATS_PORT:-4222}:4222'
+      - '${NATS_MONITOR_PORT:-8222}:8222'
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost:8222/healthz || exit 1']
+      interval: 5s
+      timeout: 3s
       retries: 10
 
   redis:
@@ -92,3 +110,4 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
+  nats-data:

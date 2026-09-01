@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pos
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: pos-platform
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.example.yaml
+  - network-policy.yaml
+  - nats.yaml
+  - gateway.yaml
+  - identity.yaml
+  - tenancy.yaml
+  # catalog / inventory / sales / winger / notifications are added by their phases
+  # using examples/service.template.yaml as the starting point.
