@@ -22,7 +22,7 @@
 
 - Every integration has a `local` implementation (NATS container, MinIO, Mailpit, local Redis) so the full stack runs offline for development.
 - Provider selection is environment config, not code.
-- Every service ships as its own Docker image; production runs on Kubernetes with a managed Postgres instance per service.
+- Every service ships as its own Docker image; production runs on Kubernetes with one managed Postgres instance (a schema + role per service).
 
 ## Contracts
 

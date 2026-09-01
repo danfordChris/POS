@@ -32,10 +32,12 @@
 
 ### Data ownership
 
-- Database-per-service: `identity_db`, `tenancy_db`, `catalog_db`, `inventory_db`, `sales_db`, `winger_db`, `notifications_db`.
-- Each service runs its own Prisma schema + migrations + `enable_tenant_rls()` on its tenant tables.
-- Denormalized copies are allowed and expected (e.g. `sales` caches product name + price; `winger` builds a projection). The copy's owner is the emitting service; the holder treats it as read-only cache rebuilt from events.
-- Reference-by-id only across services (`business_id`, `user_id`, `product_id`); no cross-DB foreign keys.
+- **One shared PostgreSQL instance**, one schema per service: `identity`, `tenancy`, `catalog`, `inventory`, `sales`, `winger`, `notifications`.
+- Each service connects as a non-superuser role (`<svc>_app`) that is granted usage/DDL **only on its own schema** and has `search_path` pinned to it. No `GRANT` across schemas → a service physically cannot read another's tables.
+- Each service runs its own Prisma schema + migrations against its schema, and calls `enable_tenant_rls()` on its tenant tables.
+- Denormalized copies are allowed and expected (e.g. `sales` caches product name + price; `winger` builds a projection). The copy's owner is the emitting service; the holder treats it as a read-only cache rebuilt from events.
+- Reference-by-id only across services (`business_id`, `user_id`, `product_id`); no cross-schema foreign keys.
+- A schema under load can be moved to its own PostgreSQL instance later by changing only that service's connection string.
 
 ### Consistency
 
@@ -60,8 +62,8 @@
 
 ### Deployment
 
-- **Local**: `infra/docker-compose.yml` — NATS (JetStream), one Postgres (a database per service), MinIO, Mailpit, and each service. Gateway on `:3000`.
-- **Production**: Kubernetes. Per service: `Deployment`, `Service` (ClusterIP), `HorizontalPodAutoscaler`, `PodDisruptionBudget`; config via `ConfigMap`/`Secret`; NATS as a StatefulSet cluster (Helm); managed Postgres per service; ingress → gateway only; `NetworkPolicy` denying ingress to non-gateway services from outside the namespace.
+- **Local**: `infra/docker-compose.yml` — NATS (JetStream), one Postgres (a schema + role per service), MinIO, Mailpit, and each service. Gateway on `:3000`.
+- **Production**: Kubernetes. Per service: `Deployment`, `Service` (ClusterIP), `HorizontalPodAutoscaler`, `PodDisruptionBudget`; config via `ConfigMap`/`Secret`; NATS as a StatefulSet cluster (Helm); one managed Postgres instance shared by all services (schema + role per service); ingress → gateway only; `NetworkPolicy` denying ingress to non-gateway services from outside the namespace.
 - Each service: multi-stage Dockerfile, `/healthz` (liveness) + `/readyz` (readiness incl. DB + NATS), graceful shutdown draining NATS subscriptions.
 
 ### Relocation of existing code (T-0001..T-0004 output)

@@ -41,7 +41,7 @@ Stand up the repo, app skeletons, authentication, and tenant scoping as a verifi
 - [ ] ~~T-0006 Web app shell~~ → Phase 01 (targets the gateway); tracked in backlog
 - [ ] ~~T-0007 Mobile app shell~~ → Phase 01 (targets the gateway); tracked in backlog
 - [ ] ~~T-0008 CI pipeline~~ → superseded by Phase 01 T-0116 (per-service CI)
-- [ ] ~~T-0009 Local docker-compose stack~~ → superseded by Phase 01 T-0111 (NATS + per-service DBs)
+- [ ] ~~T-0009 Local docker-compose stack~~ → superseded by Phase 01 T-0111 (NATS + shared Postgres, schema per service)
 
 ## Acceptance Criteria
 

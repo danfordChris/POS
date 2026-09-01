@@ -13,7 +13,7 @@
 
 - Skills: workflow-contract
 - Design docs: `docs/design/architecture/service-decomposition.md`, `docs/design/interfaces/internal-rpc.md`, `docs/design/interfaces/events-catalog.md`, `docs/design/interfaces/api-contract.md`, `docs/design/data/data-model.md`
-- Constraints: own DB only (`identity_db`); no `business_id`; argon2id via `hash-wasm`; token audiences `user` / `operator`; try/catch around hashing + token ops.
+- Constraints: own schema only (`identity` in the shared Postgres, role `identity_app`); no `business_id`; argon2id via `hash-wasm`; token audiences `user` / `operator`; try/catch around hashing + token ops.
 - Do not touch: `tenancy`, `gateway` code.
 
 ## Objective

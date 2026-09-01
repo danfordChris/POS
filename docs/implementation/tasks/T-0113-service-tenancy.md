@@ -13,7 +13,7 @@
 
 - Skills: workflow-contract
 - Design docs: `docs/design/architecture/service-decomposition.md`, `docs/design/architecture/multi-tenancy.md`, `docs/design/interfaces/internal-rpc.md`, `docs/design/interfaces/events-catalog.md`, `docs/design/data/data-model.md`
-- Constraints: own DB only (`tenancy_db`) with RLS + non-superuser role; `business_id` only from the internal context; try/catch around transaction setup.
+- Constraints: own schema only (`tenancy` in the shared Postgres, role `tenancy_app`) with RLS; `business_id` only from the internal context; try/catch around transaction setup.
 - Do not touch: `identity`, `gateway`, catalog/inventory code.
 
 ## Objective

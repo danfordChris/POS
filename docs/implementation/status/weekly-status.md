@@ -27,5 +27,5 @@
 ### Next Focus
 
 - T-0115 outbox + idempotency helpers + `NatsModule` in `@pos/nest-common`.
-- T-0111 infra (NATS + per-service DBs + k8s base).
+- T-0111 infra (NATS + shared Postgres, schema per service + k8s base).
 - Then T-0112 `identity`, T-0113 `tenancy`, T-0114 `gateway`; parity suite; delete `api/`.

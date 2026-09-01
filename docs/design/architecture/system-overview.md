@@ -2,7 +2,7 @@
 
 ## Context
 
-- Microservices. Two clients, one public gateway, a set of domain services, one message broker, a database per service.
+- Microservices. Two clients, one public gateway, a set of domain services, one message broker, one shared PostgreSQL instance with a schema per service.
 - See `docs/design/decisions/0002-microservices.md` and `docs/design/architecture/service-decomposition.md`.
 
 ## Requirements
@@ -22,7 +22,7 @@
 | `winger` | NestJS | Reseller portal API; `winger_account`; catalog/price/in-stock read model |
 | `notifications` | NestJS (worker) | Email/SMS dispatch, templates, notification log |
 | Broker | NATS + JetStream | Domain events (pub/sub) and synchronous inter-service calls (request/reply) |
-| Databases | PostgreSQL per service (+ Prisma) | Each service owns its schema, migrations, and RLS |
+| Database | One shared PostgreSQL (+ Prisma) | One schema + non-superuser role per service; each owns its migrations and RLS; no cross-schema grants |
 | Object storage | S3-compatible | Product images (`catalog` writes, `gateway`/clients read) |
 | Email/SMS | Transactional providers | Used by `notifications` only |
 | Cache/queue | Redis per service as needed | Membership cache (gateway), retry queues (notifications) |
@@ -39,7 +39,7 @@
 2. `gateway` verifies the token locally (JWKS/shared secret from `identity`), rejecting operator-audience tokens on data routes (403 `operator_data_access_denied`).
 3. `gateway` reads `businessId` from the path and resolves the caller's membership via `tenancy.resolveMembership` (NATS request/reply, short-TTL cache); no membership → 403 `not_a_member`.
 4. `gateway` forwards the call to the owning service with signed internal context: `request_id`, `user_id`, `business_id`, `role`.
-5. The service validates the internal context, runs inside `runInTenantContext(business_id)` against its own DB (RLS enforced), and returns a DTO. `winger` responses use a whitelisted DTO.
+5. The service validates the internal context, runs inside `runInTenantContext(business_id)` against its own schema (RLS enforced), and returns a DTO. `winger` responses use a whitelisted DTO.
 6. `gateway` shapes the response and applies the canonical error envelope.
 
 ### Data flow examples
@@ -50,11 +50,11 @@
 
 ### Environments
 
-- `local` (docker-compose: all services + NATS + one Postgres with a DB per service + MinIO + Mailpit), `staging`, `production` (Kubernetes; per-service Deployment + Service + HPA; NATS cluster; managed Postgres instances; managed object storage).
+- `local` (docker-compose: all services + NATS + one Postgres with a schema per service + MinIO + Mailpit), `staging`, `production` (Kubernetes; per-service Deployment + Service + HPA; NATS cluster; one managed Postgres instance; managed object storage).
 
 ## Decisions
 
-- Database-per-service; no cross-service SQL. See decision 0002.
+- One shared PostgreSQL instance, one schema + role per service; no cross-service SQL. See decision 0002.
 - NATS + JetStream is the only messaging substrate (events + request/reply).
 - Transactional outbox + idempotent consumers; sagas for multi-service writes.
 - Only the gateway is publicly reachable; services communicate on the private network and trust the gateway-issued internal context.
@@ -62,14 +62,14 @@
 
 ## Contracts
 
-- Each service is the sole writer of its own database.
+- Each service is the sole writer of its own schema.
 - Event and RPC payloads are versioned schemas in `@pos/contracts` (`docs/design/interfaces/events-catalog.md`, `internal-rpc.md`).
 - Clients hold no business rules that the owning service does not also enforce.
 - Every inter-service message carries `request_id` and (for data-plane) `business_id`.
 
 ## Acceptance Criteria
 
-- `docker-compose up` in `local` brings up every service healthy, with NATS and a database per service, and the mobile app + web admin work end to end through the gateway.
+- `docker-compose up` in `local` brings up every service healthy, with NATS and one Postgres holding a schema per service, and the mobile app + web admin work end to end through the gateway.
 - Cross-tenant test: a member of business A gets 403 on every business-B route at the gateway, and each service's RLS returns zero rows when `business_id` is unset.
 - Operator token → 403 on every data-plane route at the gateway.
 - Killing any single non-gateway service degrades only its capability; the rest keep serving (verified for `notifications` and `winger`).

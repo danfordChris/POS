@@ -8,7 +8,8 @@ on-hold
 
 - **Option B — microservices from day one** decided and adopted 2026-09-01.
 - All defaults confirmed 2026-09-01 and recorded in `docs/design/decisions/0002-microservices.md`:
-  NATS + JetStream, NATS request/reply for sync calls, database-per-service, Kubernetes,
+  NATS + JetStream, NATS request/reply for sync calls, one shared Postgres (schema per
+  service; revised 2026-09-02), Kubernetes,
   gateway-only edge auth with a signed internal context.
 - Design docs and the implementation plan (Phase 01 — Platform; features renumbered 02–06) are updated.
 

@@ -24,7 +24,7 @@ CI runs a matrix job per service + package (lint, test against ephemeral Postgre
 
 **In scope:**
 - CI workflow with a job matrix over `services/*` and `packages/*` (changed-path filter for speed) + always-run `contracts` and `docs` jobs.
-- Ephemeral service containers in CI: Postgres (one DB per service under test), NATS.
+- Ephemeral service containers in CI: one Postgres (a schema per service under test), NATS.
 - `contracts` job: assert no removed/renamed event or RPC field vs. the base branch (schema diff).
 - `docs` job: `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py`.
 - `docker build` per service on a clean checkout as a release-readiness job.

@@ -18,7 +18,7 @@
 1. **Edge auth**: only the `gateway` verifies the user JWT. It rejects operator-audience tokens on data routes and resolves the caller's membership via `tenancy.resolveMembership`. The token never identifies a business — `business_id` comes from the path + membership.
 2. **Internal context**: the gateway forwards a signed internal context (`request_id`, `user_id`, `business_id`, `role`, `token_kind`) on every downstream call. A service that receives a missing/invalid context fails the request (5xx, logged) and never falls back to client input.
 3. **Application scope**: inside each service, every tenant-table access goes through `runInTenantContext(business_id, fn)` (`@pos/nest-common`) — `AsyncLocalStorage` context + a transaction. `assertTenantContext()` throws for any path that skips it. (Prisma 6 removed `$use`; enforcement is this wrapper plus layer 4.)
-4. **Database RLS**: each service's PostgreSQL database has Row-Level Security on its tenant tables, keyed to the `app.business_id` GUC set per transaction via `set_config('app.business_id', <id>, true)`. Each service connects as a **non-superuser** role with `FORCE ROW LEVEL SECURITY`.
+4. **Database RLS**: each service's schema (in the shared PostgreSQL instance) has Row-Level Security on its tenant tables, keyed to the `app.business_id` GUC set per transaction via `set_config('app.business_id', <id>, true)`. Each service connects as a **non-superuser** role granted only on its own schema, with `FORCE ROW LEVEL SECURITY`.
 5. **Serialization**: role-aware DTOs. The `winger` service's DTO whitelists fields; internal fields cannot be added by accident.
 
 ### Platform operator policy
@@ -47,7 +47,7 @@
 
 ## Decisions
 
-- Database-per-service, each with RLS on its tenant tables (see decision 0002). Not DB-per-tenant.
+- One shared PostgreSQL instance; a schema + non-superuser role per service, each with RLS on its tenant tables (see decision 0002). Not DB-per-tenant, not DB-per-service.
 - `business_id` is resolved once at the gateway and propagated; services never derive it from client input.
 - Grant lifetime capped at 24h; no indefinite operator access.
 - Tenant context is per transaction, set from the propagated `business_id`.

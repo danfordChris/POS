@@ -38,4 +38,4 @@
 
 ### Decisions
 - `design/decisions/0001-foundational-choices.md` — stack, tenancy, market, deferrals
-- `design/decisions/0002-microservices.md` — service split, NATS, database-per-service, Kubernetes
+- `design/decisions/0002-microservices.md` — service split, NATS, shared Postgres (schema per service), Kubernetes

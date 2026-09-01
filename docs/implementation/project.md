@@ -3,7 +3,7 @@
 ## Overview
 
 - Build the MVP of the multi-tenant stock management platform defined in `docs/design/`.
-- Architecture: microservices (decision 0002) — `gateway` + `identity`, `tenancy`, `catalog`, `inventory`, `sales`, `winger`, `notifications`; NATS; database-per-service; Kubernetes in prod.
+- Architecture: microservices (decision 0002) — `gateway` + `identity`, `tenancy`, `catalog`, `inventory`, `sales`, `winger`, `notifications`; NATS; one shared PostgreSQL (schema + role per service); Kubernetes in prod.
 - Frozen product scope: `docs/design/product/prd-mvp.md`. No net-new behavior added here.
 
 ## Current Priorities
