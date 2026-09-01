@@ -6,7 +6,7 @@ Local development backing services.
 
 | Service | Port(s) | Purpose | UI |
 |---|---|---|---|
-| postgres | 5432 | primary database | — |
+| postgres | 5432 | primary database (PostgreSQL 18 — native `uuidv7()`) | — |
 | redis | 6379 | job queue / cache | — |
 | minio | 9000 (API), 9001 (console) | S3-compatible object storage | http://localhost:9001 |
 | minio-setup | — | one-shot: creates the media bucket | — |

@@ -13,7 +13,167 @@
             "description": "Database is unreachable."
           }
         },
-        "tags": ["health"]
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/operator/login": {
+      "post": {
+        "operationId": "OperatorAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/operator/me": {
+      "get": {
+        "operationId": "OperatorAuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "auth"
+        ]
       }
     }
   },
@@ -34,6 +194,72 @@
       }
     },
     "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Asha Mtwana"
+          },
+          "email": {
+            "type": "string",
+            "example": "asha@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+255700000000"
+          },
+          "password": {
+            "type": "string",
+            "example": "correct horse battery staple",
+            "minLength": 8
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "sw"
+            ],
+            "default": "en"
+          }
+        },
+        "required": [
+          "name",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "asha@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+255700000000"
+          },
+          "password": {
+            "type": "string",
+            "example": "correct horse battery staple"
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "RefreshDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "The opaque refresh token from the last login or refresh."
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
       "ErrorDetail": {
         "type": "object",
         "properties": {
@@ -46,7 +272,10 @@
             "example": "email must be an email"
           }
         },
-        "required": ["field", "issue"]
+        "required": [
+          "field",
+          "issue"
+        ]
       },
       "ErrorBody": {
         "type": "object",
@@ -66,7 +295,11 @@
             }
           }
         },
-        "required": ["code", "message", "details"]
+        "required": [
+          "code",
+          "message",
+          "details"
+        ]
       },
       "ErrorResponse": {
         "type": "object",
@@ -79,7 +312,10 @@
             "example": "018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5e"
           }
         },
-        "required": ["error", "requestId"]
+        "required": [
+          "error",
+          "requestId"
+        ]
       }
     }
   }

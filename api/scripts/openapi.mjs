@@ -1,15 +1,15 @@
-import { mkdirSync } from 'node:fs';
+// Builds the OpenAPI document from the COMPILED app in dist/. Run `nest build` first.
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NestFactory } from '@nestjs/core';
-import type { OpenAPIObject } from '@nestjs/swagger';
-import { AppModule } from '../src/app.module.js';
-import { buildOpenApiDocument, configureApp } from '../src/app.factory.js';
+import { AppModule } from '../dist/app.module.js';
+import { buildOpenApiDocument, configureApp } from '../dist/app.factory.js';
 
-// The OpenAPI document is derived from decorator metadata only. A real database is
-// not required; provide a placeholder URL so env validation passes in CI.
+// The document is derived from decorator metadata only; a real database is not
+// needed. Provide placeholders so env validation passes in CI.
 process.env.DATABASE_URL ??=
   'postgresql://placeholder:placeholder@localhost:5432/placeholder';
+process.env.JWT_ACCESS_SECRET ??= 'placeholder-openapi-secret-value';
 process.env.NODE_ENV ??= 'production';
 
 const OUTPUT_PATH = join(
@@ -18,7 +18,7 @@ const OUTPUT_PATH = join(
   'openapi.json',
 );
 
-export async function generateDocument(): Promise<OpenAPIObject> {
+export async function generateDocument() {
   const app = await NestFactory.create(AppModule, { logger: false });
   configureApp(app);
   await app.init();
@@ -27,11 +27,10 @@ export async function generateDocument(): Promise<OpenAPIObject> {
   return document;
 }
 
-export function serializeDocument(document: OpenAPIObject): string {
+export function serializeDocument(document) {
   return `${JSON.stringify(document, null, 2)}\n`;
 }
 
-export function outputPath(): string {
-  mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
+export function outputPath() {
   return OUTPUT_PATH;
 }

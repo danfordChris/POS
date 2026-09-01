@@ -5,6 +5,7 @@ node_modules
 **/build
 **/coverage
 pnpm-lock.yaml
+api/openapi.json
 mobile
 docs
 .agents

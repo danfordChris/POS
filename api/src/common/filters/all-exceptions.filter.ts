@@ -68,12 +68,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
         };
       }
 
+      // A handler may throw `new HttpException({ code, message, details }, status)`
+      // to set a specific machine code (e.g. 'wrong_token_audience').
+      const explicitCode = this.readString(res, 'code');
+      const explicitDetails = this.readDetails(res);
+
       return {
         status,
         body: {
-          code: STATUS_CODE_MAP[status] ?? INTERNAL_ERROR_CODE,
+          code: explicitCode ?? STATUS_CODE_MAP[status] ?? INTERNAL_ERROR_CODE,
           message: rawMessages[0] ?? exception.message,
-          details: [],
+          details: explicitDetails,
         },
       };
     }
@@ -94,6 +99,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const message = (res as { message: unknown }).message;
       if (Array.isArray(message)) return message.map(String);
       if (typeof message === 'string') return [message];
+    }
+    return [];
+  }
+
+  private readString(res: unknown, key: string): string | undefined {
+    if (res && typeof res === 'object' && key in res) {
+      const value = (res as Record<string, unknown>)[key];
+      if (typeof value === 'string') return value;
+    }
+    return undefined;
+  }
+
+  private readDetails(res: unknown): ErrorDetail[] {
+    if (
+      res &&
+      typeof res === 'object' &&
+      Array.isArray((res as { details?: unknown }).details)
+    ) {
+      return (res as { details: ErrorDetail[] }).details;
     }
     return [];
   }

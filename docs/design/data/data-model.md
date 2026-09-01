@@ -16,6 +16,9 @@
 |---|---|
 | `user` | id, name, email (unique, nullable), phone (unique, nullable), password_hash, locale, created_at, disabled_at |
 | `operator` | id, name, email (unique), password_hash, created_at, disabled_at |
+| `refresh_token` | id, token_hash (unique, sha-256 of the opaque token), subject_type (`user`\|`operator`), subject_id, family_id (rotation chain), issued_at, expires_at, rotated_at (nullable), revoked_at (nullable), replaced_by_id (nullable), user_agent (nullable) |
+
+`refresh_token` rotation: each `/auth/refresh` marks the presented row `rotated_at` and issues a new row in the same `family_id`. Presenting a token that is already `rotated_at` or `revoked_at` is treated as reuse: the whole `family_id` is revoked and the request is rejected. `/auth/logout` revokes the presented token's family. Access tokens are short-lived JWTs and are not stored.
 
 #### Tenant-owned
 

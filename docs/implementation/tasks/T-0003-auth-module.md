@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-01
 
 ## Linked Phase
@@ -13,7 +13,7 @@
 
 - Skills: workflow-contract
 - Design docs: `docs/design/interfaces/api-contract.md`, `docs/design/product/roles-and-permissions.md`, `docs/design/architecture/multi-tenancy.md`
-- Constraints: argon2id password hashing; access token ~15 min, rotating refresh ~30 days; token audiences `user` and `operator` are non-interchangeable; try/catch around token + hash operations.
+- Constraints: argon2id password hashing (via `hash-wasm`, pure JS — swapped from `@node-rs/argon2` which broke the OpenAPI generator and adds a native-build dependency); access token ~15 min, rotating refresh ~30 days; token audiences `user` and `operator` are non-interchangeable; try/catch around token + hash operations.
 - Do not touch: business/membership models and tenancy guard (T-0004).
 
 ## Objective
@@ -36,13 +36,13 @@ Users and operators can register (users), log in, refresh, and log out; `GET /v1
 
 ## Acceptance Criteria
 
-- [ ] `POST /auth/register` with valid body returns 201 and a user; duplicate email/phone returns 409 `conflict`.
-- [ ] `POST /auth/login` returns access + refresh tokens; wrong password returns 401 `unauthenticated`.
-- [ ] A `user`-audience token on an operator route returns 401 `wrong_token_audience`, and vice versa.
-- [ ] `POST /auth/refresh` rotates tokens; reusing a rotated refresh token revokes the chain and returns 401.
-- [ ] `GET /auth/me` with a valid token returns the identity, `memberships: []`, `winger_accounts: []`.
-- [ ] Passwords stored as argon2id; no plaintext or reversible encoding anywhere.
-- [ ] 6+ failed logins within a minute for one identity are rate limited (429 `rate_limited`).
+- [x] `POST /v1/auth/register` with a valid body returns 201 and the public user (no `passwordHash`); a duplicate email/phone returns 409 `conflict`; neither email nor phone returns 400 `validation_error`.
+- [x] `POST /v1/auth/login` returns `{ accessToken, tokenType, expiresIn, refreshToken }`; a wrong password returns 401 `unauthenticated`.
+- [x] An operator-audience token on `GET /v1/auth/me` and a user-audience token on `GET /v1/auth/operator/me` both return 401 `wrong_token_audience`; the matching token returns 200.
+- [x] `POST /v1/auth/refresh` rotates the token; reusing a rotated token returns 401 and revokes the whole family (the sibling token is then also rejected).
+- [x] `GET /v1/auth/me` with a valid token returns the identity plus `memberships: []` and `wingerAccounts: []`; no token returns 401.
+- [x] Passwords stored as argon2id encoded strings (`$argon2id$…`); no plaintext or reversible encoding.
+- [x] 6th failed login within 60s for one identity returns 429 `rate_limited` (limit 5/min, keyed on the submitted email/phone).
 
 ## Dependencies
 
@@ -50,15 +50,23 @@ Users and operators can register (users), log in, refresh, and log out; `GET /v1
 
 ## Implementation Checklist
 
-- [ ] Add argon2 hashing helper with try/catch and a constant-time compare path.
-- [ ] Implement register/login/refresh/logout controllers + services.
-- [ ] Implement JWT service with `aud`; add both auth guards.
-- [ ] Add hashed refresh-token table + rotation + reuse detection.
-- [ ] Add `GET /auth/me`.
-- [ ] Add throttler config for `/auth/*`.
-- [ ] Contract tests for every row in Acceptance Criteria.
+- [x] `src/auth/password.ts` — `hashPassword` / `verifyPassword` (argon2id via `hash-wasm`, OWASP params, `verify` never throws).
+- [x] `TokenService` — HS256 access JWT (`sub`, `aud`, `typ`), opaque refresh token (32 bytes, sha-256 stored).
+- [x] `AuthService` — register / loginUser / loginOperator / refresh (rotate + family reuse detection) / logout (family revoke) / meForUser / meForOperator.
+- [x] `AuthController` (`/v1/auth`) + `OperatorAuthController` (`/v1/auth/operator`).
+- [x] `UserAuthGuard` / `OperatorAuthGuard` (explicit constructors so Nest DI resolves inherited deps); `@CurrentUser` / `@CurrentOperator` param decorators.
+- [x] `refresh_token` Prisma model + migration `20260901192633_auth_refresh_tokens`; documented in `docs/design/data/data-model.md`.
+- [x] `LoginThrottlerGuard` (`@nestjs/throttler`, keyed on identifier) on register + both login routes; `ThrottlerModule` baseline in `AuthModule`.
+- [x] Env: `JWT_ACCESS_SECRET` (required), `ACCESS_TOKEN_TTL_SECONDS` (900), `REFRESH_TOKEN_TTL_DAYS` (30) added to `env.validation.ts` + `.env.example`.
+- [x] `AllExceptionsFilter` now honours an explicit `code` / `details` on a thrown `HttpException` (enables `wrong_token_audience`).
+- [x] `test/auth.e2e-spec.ts` — 8 cases covering every acceptance row.
 
 ## Verification
 
-- Command: `pnpm --filter api test auth`
-- Evidence: passing test report covering register/login/refresh-rotation/audience-rejection/rate-limit, pasted into the PR.
+- `pnpm --filter api test` → 3 files, **14 tests pass** (auth e2e ×8, health e2e ×3, filter unit ×3).
+- `pnpm --filter api lint` (oxlint) → exit 0. `pnpm --filter api build` → compiles + regenerates `openapi.json` (now 8 paths incl. all `/v1/auth/*`). `pnpm --filter api openapi:check` → "in sync".
+- Live (`node dist/main.js` against the compose Postgres):
+  - `POST /v1/auth/register` → 201; `POST /v1/auth/login` → `{accessToken,tokenType:"Bearer",expiresIn:900,refreshToken}`.
+  - `GET /v1/auth/me` with token → 200 `{id,name,email,…,memberships:[],wingerAccounts:[]}`; without token → 401.
+  - `POST /v1/auth/refresh` → new pair; replaying the old refresh token → 401.
+- OpenAPI generator/drift scripts moved off `tsx` to `node scripts/*.mjs` against `dist/` (tsx crashed silently on the auth dependency graph); `tsx` devDependency removed.

@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { generateDocument, outputPath, serializeDocument } from './openapi.js';
+import { generateDocument, outputPath, serializeDocument } from './openapi.mjs';
 
 const path = outputPath();
 
-let committed: string;
+let committed;
 try {
   committed = readFileSync(path, 'utf8');
 } catch {
