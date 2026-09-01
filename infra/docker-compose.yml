@@ -18,6 +18,8 @@ services:
     volumes:
       # postgres:18+ images store data under a version subdirectory; mount the parent.
       - postgres-data:/var/lib/postgresql
+      # One-shot init: creates the non-superuser `pos_app` role the API connects as.
+      - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-pos} -d ${POSTGRES_DB:-pos_dev}']
       interval: 5s

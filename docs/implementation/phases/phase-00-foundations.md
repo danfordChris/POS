@@ -31,7 +31,7 @@ Stand up the repo, the three app skeletons, authentication, tenant scoping, and 
 - [x] T-0001 Repo scaffold and tooling
 - [x] T-0002 API base: NestJS + Prisma + Postgres + health
 - [x] T-0003 Auth module (register/login/refresh/logout/me, two audiences)
-- [ ] T-0004 Tenancy: business/membership, route guard, RLS + `app.business_id`
+- [x] T-0004 Tenancy: business/membership, route guard, RLS + `app.business_id`
 - [ ] T-0005 Invitations: create/revoke/accept + email (local capture)
 - [ ] T-0006 Web app shell + login + auth guard + business switcher
 - [ ] T-0007 Mobile app shell + login + session + business switcher

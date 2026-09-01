@@ -16,8 +16,8 @@
 ### Isolation layers (defense in depth)
 
 1. **Auth**: user JWT identifies the user only, never a business. Tenant comes from the route + membership check.
-2. **Application scope**: Prisma middleware requires a bound `business_id` for every query on a tenant-owned model; unbound queries throw.
-3. **Database RLS**: PostgreSQL Row-Level Security policy on every tenant-owned table keyed to a `SET app.business_id` per transaction. Independent of application code.
+2. **Application scope**: every tenant-model access goes through `PrismaService.runInTenantContext(businessId, fn)`, which binds an `AsyncLocalStorage` context and opens a transaction. `assertTenantContext()` throws for any repository path that skips it. (Prisma 6 removed `$use` middleware; enforcement is this wrapper plus layer 3.)
+3. **Database RLS**: PostgreSQL Row-Level Security on every tenant-owned table, keyed to the `app.business_id` GUC set per transaction via `set_config('app.business_id', <id>, true)`. Independent of application code. The API connects as a **non-superuser** role (`pos_app`) with `FORCE ROW LEVEL SECURITY` so the policy also applies to the table owner.
 4. **Serialization**: role-aware DTOs. Winger DTO whitelists fields; internal fields cannot be added by accident.
 
 ### Platform operator policy
@@ -50,8 +50,8 @@
 
 ## Contracts
 
-- `SET app.business_id = <id>` wraps every data-plane transaction.
-- RLS policies deny by default when `app.business_id` is unset.
+- `set_config('app.business_id', <id>, true)` runs first inside every data-plane transaction.
+- RLS policy: `<tenant_col> = nullif(current_setting('app.business_id', true), '')::uuid` — added by the reusable `enable_tenant_rls('<table>')` SQL helper. Denies by default when the GUC is unset or empty.
 
 ## Acceptance Criteria
 

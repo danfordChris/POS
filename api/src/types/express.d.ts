@@ -10,6 +10,8 @@ declare global {
       user?: { id: string };
       /** Authenticated operator subject, set by OperatorAuthGuard. */
       operator?: { id: string };
+      /** Tenant membership resolved by TenantGuard. */
+      membership?: { businessId: string; role: string };
     }
   }
 }

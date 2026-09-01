@@ -175,6 +175,99 @@
           "auth"
         ]
       }
+    },
+    "/v1/businesses": {
+      "post": {
+        "operationId": "BusinessesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBusinessDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "businesses"
+        ]
+      }
+    },
+    "/v1/businesses/{businessId}": {
+      "get": {
+        "operationId": "BusinessesController_get",
+        "parameters": [
+          {
+            "name": "businessId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "businesses"
+        ]
+      },
+      "patch": {
+        "operationId": "BusinessesController_update",
+        "parameters": [
+          {
+            "name": "businessId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBusinessDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "businesses"
+        ]
+      }
     }
   },
   "info": {
@@ -259,6 +352,58 @@
         "required": [
           "refreshToken"
         ]
+      },
+      "CreateBusinessDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Duka la Asha"
+          },
+          "country": {
+            "type": "string",
+            "default": "TZ"
+          },
+          "currency": {
+            "type": "string",
+            "default": "TZS"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "sw"
+            ],
+            "default": "en"
+          },
+          "timezone": {
+            "type": "string",
+            "default": "Africa/Dar_es_Salaam"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateBusinessDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Duka la Asha"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "sw"
+            ]
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Africa/Dar_es_Salaam"
+          }
+        }
       },
       "ErrorDetail": {
         "type": "object",

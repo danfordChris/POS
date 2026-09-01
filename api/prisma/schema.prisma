@@ -1,7 +1,7 @@
 // POS Platform — data-plane schema.
-// Scope for T-0002: global identity tables only (`user`, `operator`).
-// Tenant-owned tables and RLS arrive in T-0004.
-// See docs/design/data/data-model.md.
+// Global identity: user, operator, refresh_token (no RLS).
+// Tenant-owned: business, membership (RLS enforced via enable_tenant_rls()).
+// See docs/design/data/data-model.md and docs/design/architecture/multi-tenancy.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -14,14 +14,15 @@ datasource db {
 
 /// Global user identity. Tenant access is granted separately (membership / winger account).
 model User {
-  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
   name         String
-  email        String?   @unique
-  phone        String?   @unique
-  passwordHash String    @map("password_hash")
-  locale       String    @default("en")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  disabledAt   DateTime? @map("disabled_at") @db.Timestamptz(6)
+  email        String?      @unique
+  phone        String?      @unique
+  passwordHash String       @map("password_hash")
+  locale       String       @default("en")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  disabledAt   DateTime?    @map("disabled_at") @db.Timestamptz(6)
+  memberships  Membership[]
 
   @@map("user")
 }
@@ -56,4 +57,37 @@ model RefreshToken {
   @@index([subjectType, subjectId])
   @@index([familyId])
   @@map("refresh_token")
+}
+
+/// Tenant root. RLS: `id = current_setting('app.business_id')`.
+model Business {
+  id                 String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name               String
+  country            String       @default("TZ")
+  currency           String       @default("TZS")
+  locale             String       @default("en")
+  timezone           String       @default("Africa/Dar_es_Salaam")
+  subscriptionStatus String       @default("trialing") @map("subscription_status")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  memberships        Membership[]
+
+  @@map("business")
+}
+
+/// Binds a user to a business with a role. RLS: `business_id = current_setting('app.business_id')`.
+model Membership {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  role       String // 'owner' | 'staff'
+  status     String   @default("active") // 'active' | 'suspended'
+  invitedBy  String?  @map("invited_by") @db.Uuid
+  joinedAt   DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@map("membership")
 }

@@ -24,8 +24,8 @@
 
 | Table | Key fields | Notes |
 |---|---|---|
-| `business` | id, name, country, currency, locale, timezone, subscription_status, created_at | tenant root |
-| `membership` | id, business_id, user_id, role (`owner`\|`staff`), status (`active`\|`suspended`), invited_by, joined_at | unique (business_id, user_id) |
+| `business` | id, name, country, currency, locale, timezone, subscription_status, created_at | tenant root; RLS on `id` |
+| `membership` | id, business_id, user_id, role (`owner`\|`staff`), status (`active`\|`suspended`), invited_by, joined_at | unique (business_id, user_id); FK to `user` |
 | `invitation` | id, business_id, role, email, token_hash, status (`pending`\|`accepted`\|`revoked`\|`expired`), expires_at, created_by, created_at | |
 | `category` | id, business_id, name | unique (business_id, name) |
 | `product` | id, business_id, sku, name, description, category_id, unit, image_url, cost_price, sell_price, winger_price (nullable), reorder_threshold (default 0), code (QR/barcode, nullable), is_active, created_at, updated_at | unique (business_id, sku); unique (business_id, code) |
@@ -73,7 +73,7 @@
 ## Contracts
 
 - Prisma schema mirrors this doc. Any change here precedes a migration.
-- All tenant tables get an RLS policy in the same migration that creates them.
+- All tenant tables get an RLS policy in the same migration that creates them, via the `enable_tenant_rls('<table>' [, '<tenant_col>'])` SQL helper (defined in migration `20260901201947_tenancy_business_membership`; defaults the column to `business_id`).
 
 ## Acceptance Criteria
 
