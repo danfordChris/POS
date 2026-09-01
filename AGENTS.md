@@ -44,3 +44,9 @@ is a fully isolated tenant; the platform vendor cannot see tenant business data.
 
 Reusable skills live in `.agents/skills/` and are shared across all agents.
 Workflow packages live in `.agents/workflows/`.
+
+- Docs / tasks / proposals → `.agents/skills/workflow-contract/SKILL.md` (first).
+- Backend (`services/*`, `packages/*`) → `.agents/skills/skills/backend/SKILL.md`.
+  Repeatable commands: `/scaffold-service`, `/add-prisma-model`, `/add-event`,
+  `/add-consumer`, `/add-rpc`, `/add-endpoint`, `/add-service-ci`.
+- Mobile (`mobile/`) → `.agents/skills/skills/mobile/SKILL.md`.
