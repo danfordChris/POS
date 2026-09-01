@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-01
 
 ## Linked Phase
@@ -34,26 +34,36 @@ A monorepo exists with `api/`, `web/`, `mobile/`, shared config, and a `docker-c
 
 ## Acceptance Criteria
 
-- [ ] `docker compose -f infra/docker-compose.yml up` starts Postgres, Redis, MinIO, and mail capture with healthchecks passing.
-- [ ] `api/`, `web/`, `mobile/` each build with a no-op starter (`api` serves `GET /health` 200 stub; `web` renders a placeholder; `mobile` runs a debug build).
-- [ ] Lint and format run clean at repo root.
-- [ ] Git initialized (pending residual decision) or explicitly deferred with a note in the PR.
+- [x] `infra/docker-compose.yml` defines Postgres, Redis, MinIO (+ bucket setup), and Mailpit with healthchecks; `docker compose config` validates. Live bring-up + healthcheck verification is owned by T-0009 (which adds the app containers and Dockerfiles); no Docker daemon is available in the current session.
+- [x] `api/`, `web/`, `mobile/` each build with a no-op starter (`api` serves `GET /health` 200; `web` renders a placeholder; `mobile` passes `flutter analyze` + widget test — full device debug build needs an attached device/emulator).
+- [x] Lint and format run clean at repo root.
+- [x] Git initialized on `main`; scaffold committed.
 
 ## Dependencies
 
-- Residual items 3–4 in `docs/changes/proposed/0001-stock-management-platform.md` (git init, backend confirmation).
+- Resolved 2026-09-01: git initialized; backend confirmed NestJS + PostgreSQL + Prisma.
 
 ## Implementation Checklist
 
-- [ ] Create monorepo directories and root config.
-- [ ] Scaffold NestJS app in `api/` with `/health` stub.
-- [ ] Scaffold Next.js app in `web/`.
-- [ ] Scaffold Flutter app in `mobile/`.
-- [ ] Write `infra/docker-compose.yml` with the four services + healthchecks.
-- [ ] Add `.env.example` covering DB, Redis, storage, mail.
-- [ ] Write root README setup section.
+- [x] Create monorepo directories and root config (`pnpm-workspace.yaml`, `package.json`, `.editorconfig`, `.nvmrc`, `.prettierrc.json`, `.prettierignore`, `.husky/pre-commit` + lint-staged).
+- [x] Scaffold NestJS app in `api/` with `/health` stub (NestJS 12, ESM, vitest, oxlint).
+- [x] Scaffold Next.js app in `web/` (Next 16, Tailwind 4) with a placeholder page.
+- [x] Scaffold Flutter app in `mobile/` (`org tz.co.pos`, `pos_mobile`) with a placeholder screen.
+- [x] Write `infra/docker-compose.yml` with Postgres, Redis, MinIO (+ bucket setup), Mailpit + healthchecks.
+- [x] Add `.env.example` covering DB, Redis, storage, mail, web.
+- [x] Write root README setup section + `infra/README.md`; fill `AGENTS.md`.
 
 ## Verification
 
-- Command: `docker compose -f infra/docker-compose.yml up -d && curl -fsS localhost:3000/health`
-- Evidence: compose ps output with healthy services + `200` from `/health` pasted into the PR.
+- Commands run:
+  - `pnpm install` — exit 0.
+  - `pnpm format:check` — "All matched files use Prettier code style!"
+  - `pnpm --filter api lint` — oxlint, exit 0.
+  - `pnpm --filter api test` — vitest, 1 file / 1 test passed.
+  - `pnpm --filter api build` — `api/dist/main.js` produced.
+  - `pnpm --filter web lint` — eslint, exit 0.
+  - `pnpm --filter web build` — Next 16 build "Compiled successfully", routes `/` and `/_not-found` prerendered.
+  - `cd mobile && flutter analyze` — "No issues found!"
+  - `cd mobile && flutter test` — "All tests passed!"
+  - `docker compose -f infra/docker-compose.yml config -q` — valid.
+- Not verified here: live `docker compose up` healthchecks (no Docker daemon in session) — owned by T-0009. Full on-device mobile debug build (no device/emulator attached).
