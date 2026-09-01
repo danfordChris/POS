@@ -1,0 +1,40 @@
+// POS Platform — data-plane schema.
+// Scope for T-0002: global identity tables only (`user`, `operator`).
+// Tenant-owned tables and RLS arrive in T-0004.
+// See docs/design/data/data-model.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+/// Global user identity. Tenant access is granted separately (membership / winger account).
+model User {
+  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name         String
+  email        String?   @unique
+  phone        String?   @unique
+  passwordHash String    @map("password_hash")
+  locale       String    @default("en")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  disabledAt   DateTime? @map("disabled_at") @db.Timestamptz(6)
+
+  @@map("user")
+}
+
+/// Platform operator identity (control-plane). No data-plane access without a support grant.
+model Operator {
+  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  disabledAt   DateTime? @map("disabled_at") @db.Timestamptz(6)
+
+  @@map("operator")
+}
