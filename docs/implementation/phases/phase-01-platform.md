@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `in-progress`
 - Last updated: 2026-09-01
 
 ## Objective
@@ -31,7 +31,7 @@ Stand up the microservice platform (monorepo layout, shared packages, NATS, gate
 
 ## Tasks
 
-- [ ] T-0110 Monorepo restructure + `@pos/contracts` + `@pos/nest-common`
+- [~] T-0110 Monorepo restructure + `@pos/contracts` + `@pos/nest-common` (in progress)
 - [ ] T-0111 `infra`: NATS + per-service DBs in compose; k8s base manifests
 - [ ] T-0112 `services/identity` (auth relocation, own DB, RPC, `UserRegistered`)
 - [ ] T-0113 `services/tenancy` (businesses/memberships relocation, own DB + RLS, `resolveMembership` RPC, events)

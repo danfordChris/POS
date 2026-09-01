@@ -42,7 +42,14 @@
 - `docs/design/integrations/README.md` (NATS added)
 - `docs/implementation/project.md`, `phases/*` (Phase 01 — Platform inserted; features renumbered 02–06)
 
+## Confirmed defaults (2026-09-01)
+
+- Broker: **NATS + JetStream** (events + request/reply).
+- Sync inter-service transport: **NATS request/reply** (no separate gRPC stack).
+- Data topology: **database-per-service**.
+- Production orchestration: **Kubernetes**.
+- Auth trust boundary: **only the gateway verifies the user JWT**; downstream services trust a signed internal context.
+
 ## Open (non-blocking)
 
-- Broker, sync-transport, DB topology, and orchestration defaults are listed in `docs/changes/proposed/0002-service-architecture.md` for override before Phase 01.
-- Service mesh (mTLS via Linkerd/Istio) vs. plain Kubernetes NetworkPolicies — decide during Phase 01.
+- Service mesh (mTLS via Linkerd/Istio) vs. plain Kubernetes NetworkPolicies — decide in Phase 06.
