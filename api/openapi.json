@@ -431,7 +431,13 @@
           },
           "message": {
             "type": "string",
-            "example": "Validation failed"
+            "description": "User-friendly message, safe to show end-users.",
+            "example": "Please check the information you entered."
+          },
+          "devMessage": {
+            "type": "string",
+            "description": "Technical detail for developers and logs. No stack traces or secrets.",
+            "example": "email must be an email; name should not be empty"
           },
           "details": {
             "type": "array",
@@ -443,6 +449,7 @@
         "required": [
           "code",
           "message",
+          "devMessage",
           "details"
         ]
       },

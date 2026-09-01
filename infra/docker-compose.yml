@@ -28,6 +28,77 @@ services:
       timeout: 5s
       retries: 10
 
+  identity:
+    build: { context: .., dockerfile: services/identity/Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      IDENTITY_PORT: '3000'
+      IDENTITY_DATABASE_URL: postgresql://identity_app:identity_app@postgres:5432/pos_dev?schema=identity
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-only-access-secret-change-me}
+      ACCESS_TOKEN_TTL_SECONDS: '900'
+      REFRESH_TOKEN_TTL_DAYS: '30'
+      NATS_URL: nats://nats:4222
+    depends_on:
+      postgres: { condition: service_healthy }
+      nats: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost:3000/readyz || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  tenancy:
+    build: { context: .., dockerfile: services/tenancy/Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      TENANCY_PORT: '3000'
+      TENANCY_DATABASE_URL: postgresql://tenancy_app:tenancy_app@postgres:5432/pos_dev?schema=tenancy
+      NATS_URL: nats://nats:4222
+      INTERNAL_CONTEXT_SECRET: ${INTERNAL_CONTEXT_SECRET:-dev-only-internal-context-secret-change-me}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+    depends_on:
+      postgres: { condition: service_healthy }
+      nats: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost:3000/readyz || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  kong:
+    image: kong:3.7
+    restart: unless-stopped
+    depends_on:
+      identity: { condition: service_started }
+      tenancy: { condition: service_started }
+    environment:
+      KONG_DATABASE: 'off'
+      KONG_VAULTS: env
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_LISTEN: '0.0.0.0:8000'
+      KONG_ADMIN_LISTEN: '0.0.0.0:8001'
+      KONG_PLUGINS: 'bundled,pos-internal-context'
+      KONG_NGINX_WORKER_PROCESSES: '1'
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-only-access-secret-change-me}
+      INTERNAL_CONTEXT_SECRET: ${INTERNAL_CONTEXT_SECRET:-dev-only-internal-context-secret-change-me}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      IDENTITY_URL: ${IDENTITY_URL:-http://identity:3000}
+      TENANCY_URL: ${TENANCY_URL:-http://tenancy:3000}
+      TENANCY_MEMBERSHIP_URL: ${TENANCY_MEMBERSHIP_URL:-http://tenancy:3000/v1/internal/membership}
+    ports:
+      - '${KONG_PROXY_PORT:-8000}:8000'
+      - '${KONG_ADMIN_PORT:-8001}:8001'
+    volumes:
+      - ./kong/kong.yml:/kong/kong.yml:ro
+      - ./kong/plugins/pos-internal-context:/usr/local/share/lua/5.1/kong/plugins/pos-internal-context:ro
+    healthcheck:
+      test: ['CMD', 'kong', 'health']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   nats:
     image: nats:2.10-alpine
     restart: unless-stopped

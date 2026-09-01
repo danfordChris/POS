@@ -29,7 +29,7 @@ Consumers are durable, per (service, event). Ack policy explicit; max-deliver wi
 | `UserRegistered` | identity | `user_id`, `email?`, `phone?` | tenancy (optional) |
 | `BusinessCreated` | tenancy | `business_id`, `name`, `currency`, `locale`, `owner_user_id` | catalog, inventory (bootstrap) |
 | `MembershipCreated` | tenancy | `business_id`, `user_id`, `role` | — |
-| `MembershipSuspended` | tenancy | `business_id`, `user_id` | gateway (cache bust) |
+| `MembershipSuspended` | tenancy | `business_id`, `user_id` | edge membership-cache bust |
 | `InvitationCreated` | tenancy | `business_id`, `invitation_id`, `email`, `role`, `accept_url`, `expires_at` | notifications |
 | `InvitationAccepted` | tenancy | `business_id`, `invitation_id`, `user_id` | — |
 | `CategoryUpserted` | catalog | `business_id`, `category_id`, `name` | — |
@@ -43,7 +43,7 @@ Consumers are durable, per (service, event). Ack policy explicit; max-deliver wi
 | `SaleCompleted` | sales | `business_id`, `sale_id`, `lines[]`, `total`, `currency` | inventory (commit reservation) |
 | `SaleVoided` | sales | `business_id`, `sale_id` | inventory (reverse) |
 | `WingerAuthorized` | winger | `business_id`, `winger_account_id`, `user_id`, `portal_url` | notifications |
-| `WingerSuspended` | winger | `business_id`, `winger_account_id` | gateway (cache bust) |
+| `WingerSuspended` | winger | `business_id`, `winger_account_id` | edge membership-cache bust |
 | `NotificationSent` / `NotificationFailed` | notifications | `business_id`, `notification_id`, `type`, `channel` | — |
 
 ## Decisions

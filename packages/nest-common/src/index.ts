@@ -9,4 +9,6 @@ export * from './tenant/tenant-context.js';
 export * from './tenant/rls.js';
 export * from './config/env.js';
 export * from './health/health.module.js';
+export * from './internal-context/internal-context.js';
+export * from './internal-context/internal-context.guard.js';
 export * from './messaging/index.js';

@@ -11,9 +11,9 @@
 
 | Service | Owns (tables) | Public API (via gateway) | Emits (events) | Consumes | Sync deps (request/reply) |
 |---|---|---|---|---|---|
-| `gateway` | — | all `/v1/*` | — | — | `identity.verifyToken` (fallback), `tenancy.resolveMembership` |
+| **Kong** (edge) | — | all `/v1/*` | — | — | `tenancy` internal membership HTTP (`pos-internal-context` plugin) |
 | `identity` | `user`, `operator`, `refresh_token` | `/v1/auth/*` | `UserRegistered` | — | — |
-| `tenancy` | `business`, `membership`, `invitation` | `/v1/businesses/*`, `/v1/invitations/*` | `BusinessCreated`, `MembershipCreated`, `MembershipSuspended`, `InvitationCreated`, `InvitationAccepted` | `UserRegistered` (optional link) | `identity.getUser` |
+| `tenancy` | `business`, `membership`, `invitation` | `/v1/businesses/*`, `/v1/invitations/*`; internal `GET /internal/membership` (Kong only, shared-secret) | `BusinessCreated`, `MembershipCreated`, `MembershipSuspended`, `InvitationCreated`, `InvitationAccepted` | `UserRegistered` (optional link) | `identity.getUser` |
 | `catalog` | `category`, `product` | `/v1/businesses/{id}/categories`, `/v1/businesses/{id}/products` | `ProductUpserted`, `ProductDeactivated`, `PriceChanged`, `CategoryUpserted` | `BusinessCreated` | — |
 | `inventory` | `stock_item`, `stock_movement`, `alert_config`, `low_stock_alert_state` | `/v1/businesses/{id}/stock/*`, `/v1/businesses/{id}/alert-config` | `StockLevelChanged`, `StockMovementRecorded`, `StockFellBelowThreshold`, `StockRecovered` | `ProductUpserted` (seed `stock_item`), `ProductDeactivated` | serves `reserveStock`, `commitReservation`, `releaseReservation` |
 | `sales` | `sale`, `sale_line`, `receipt` | `/v1/businesses/{id}/sales/*`, `/v1/r/{token}` | `SaleCompleted`, `SaleVoided` | `PriceChanged` (cache price), `ProductUpserted` (name cache) | `inventory.reserveStock` / `commitReservation` / `releaseReservation` |
@@ -24,7 +24,7 @@
 
 - **Async first**: cross-context state changes propagate as JetStream events. Consumers are idempotent (dedupe on `event_id`).
 - **Request/reply** only when a caller needs data it cannot own a copy of, and staleness is unacceptable:
-  - `gateway → tenancy.resolveMembership` (per data-plane request; cached 30–60s).
+  - Kong `pos-internal-context` → `tenancy` internal membership HTTP (per data-plane request; cached 30–60s in the plugin). `tenancy` also exposes `pos.rpc.tenancy.resolveMembership` for service-to-service use.
   - `sales → inventory.reserve/commit/release` (saga steps).
   - `tenancy/winger → identity.getUser` (resolve/create a user by email/phone).
 - **No** service calls another service's database. **No** shared ORM models across services.
@@ -47,8 +47,8 @@
 
 ### Tenant isolation across services
 
-- The gateway is the only component that verifies the user token and resolves membership.
-- It forwards a **signed internal context** (HMAC or short-lived internal JWT) on every downstream call: `request_id`, `user_id`, `business_id`, `role`, `token_kind`.
+- Kong (`jwt` plugin + `pos-internal-context`) is the only component that verifies the user token and resolves membership.
+- The plugin forwards a **signed internal context** (HMAC-SHA256, ≤60s TTL) on every downstream call via `X-Pos-Internal-Context` + `X-Pos-Internal-Signature`: `request_id`, `user_id`, `business_id`, `role`, `token_kind`.
 - Downstream services: reject a missing/invalid internal context (500-class, logged), then run `runInTenantContext(business_id)` so their DB's RLS scopes every statement.
 - `identity` holds no tenant tables and takes no `business_id`.
 
@@ -62,24 +62,24 @@
 
 ### Deployment
 
-- **Local**: `infra/docker-compose.yml` — NATS (JetStream), one Postgres (a schema + role per service), MinIO, Mailpit, and each service. Gateway on `:3000`.
-- **Production**: Kubernetes. Per service: `Deployment`, `Service` (ClusterIP), `HorizontalPodAutoscaler`, `PodDisruptionBudget`; config via `ConfigMap`/`Secret`; NATS as a StatefulSet cluster (Helm); one managed Postgres instance shared by all services (schema + role per service); ingress → gateway only; `NetworkPolicy` denying ingress to non-gateway services from outside the namespace.
+- **Local**: `infra/docker-compose.yml` — Kong (DB-less, `:8000` proxy) + NATS (JetStream) + one Postgres (schema + role per service) + MinIO + Mailpit + each service.
+- **Production**: Kubernetes. Kong via the official Helm chart (DB-less, declarative `kong.yml` + the `pos-internal-context` plugin mounted). Per service: `Deployment`, `Service` (ClusterIP), `HorizontalPodAutoscaler`, `PodDisruptionBudget`; config via `ConfigMap`/`Secret`; NATS as a StatefulSet cluster (Helm); one managed Postgres instance (schema + role per service); ingress → Kong only; `NetworkPolicy` denying ingress to non-Kong-reachable services from outside the namespace.
 - Each service: multi-stage Dockerfile, `/healthz` (liveness) + `/readyz` (readiness incl. DB + NATS), graceful shutdown draining NATS subscriptions.
 
 ### Relocation of existing code (T-0001..T-0004 output)
 
 | Built in | Moves to |
 |---|---|
-| `api/` NestJS app shell, error envelope, correlation id, config, health | `packages/nest-common` + `services/gateway` skeleton |
+| `api/` NestJS app shell, error envelope, correlation id, config, health | `packages/nest-common` (all services) |
 | `api/src/auth/*` (password, token, guards, refresh tokens) | `services/identity` (+ token-verify helper in `@pos/nest-common` for the gateway) |
 | `api/src/businesses/*`, `api/src/tenancy/*` | `services/tenancy` |
 | `api/prisma` (`user`, `operator`, `refresh_token`) | `services/identity/prisma` |
 | `api/prisma` (`business`, `membership`, `enable_tenant_rls`) | `services/tenancy/prisma`; helper also copied into `@pos/nest-common` migration snippets |
-| `api/` OpenAPI scripts | `services/gateway` (composes downstream contributions) |
+| `api/` OpenAPI scripts | each service serves its own `/v1/docs`; a merged edge doc is a follow-up |
 
 ## Decisions
 
-- Eight services at MVP (`gateway` + 7 domain). No further splitting until load data says otherwise.
+- Kong at the edge + 7 domain services at MVP. No further splitting until load data says otherwise.
 - `reporting` and `media` are future services, not MVP.
 - No service mesh in MVP; Kubernetes `NetworkPolicy` + internal-context signing. Mesh (mTLS) revisited in Phase 06.
 
@@ -87,7 +87,7 @@
 
 - A service may be deployed, scaled, and released independently of the others.
 - Breaking an event/RPC schema requires a new version subject and a deprecation window; `@pos/contracts` is the single source.
-- The gateway's OpenAPI is the only external contract; internal subjects are not public.
+- The edge (Kong) surface is the only external contract; internal subjects are not public.
 
 ## Acceptance Criteria
 

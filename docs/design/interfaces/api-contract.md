@@ -2,7 +2,7 @@
 
 ## Context
 
-- This is the **`gateway` service's** public contract — the only externally reachable API. Internal service subjects are in `events-catalog.md` / `internal-rpc.md`.
+- This is the **edge (Kong) public contract** — the only externally reachable API. Internal service subjects are in `events-catalog.md` / `internal-rpc.md`.
 - REST over HTTPS. Base path `/v1`. JSON only. OpenAPI document composed by the gateway from downstream service contributions.
 - Auth: `Authorization: Bearer <JWT>`. Access token ~15 min, refresh token ~30 days, rotating.
 - Two token audiences: `user` and `operator`. A token of the wrong audience on a route → 401.
@@ -20,7 +20,15 @@
 ### Error model
 
 ```json
-{ "error": { "code": "string", "message": "string", "details": [ { "field": "string", "issue": "string" } ] } }
+{
+  "error": {
+    "code": "string",
+    "message": "string",       // user-friendly, safe to show end-users
+    "devMessage": "string",    // technical detail for developers/logs (no stack, no secrets)
+    "details": [ { "field": "string", "issue": "string" } ]
+  },
+  "requestId": "string"
+}
 ```
 
 | HTTP | `code` examples |

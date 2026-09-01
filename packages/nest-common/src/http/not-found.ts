@@ -13,7 +13,8 @@ export function registerNotFoundFallback(app: INestApplication): void {
     res.status(404).json({
       error: {
         code: 'not_found',
-        message: `Cannot ${req.method} ${req.originalUrl}`,
+        message: 'We could not find what you were looking for.',
+        devMessage: `No route for ${req.method} ${req.originalUrl}`,
         details: [],
       },
       requestId: typeof req.requestId === 'string' ? req.requestId : 'unknown',

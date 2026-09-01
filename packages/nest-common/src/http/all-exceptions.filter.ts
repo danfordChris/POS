@@ -13,13 +13,20 @@ import {
   INTERNAL_ERROR_CODE,
   STATUS_CODE_MAP,
   VALIDATION_ERROR_CODE,
+  friendlyFor,
 } from './error-response.js';
 import type { RequestWithContext } from './request-context.js';
 
 /**
  * Converts every thrown error into the canonical envelope:
- * `{ error: { code, message, details }, requestId }`.
- * Registered globally by `configureApp()` so no handler leaks a raw error or stack.
+ * `{ error: { code, message, devMessage, details }, requestId }`.
+ * - `message` is user-friendly (safe to show end-users).
+ * - `devMessage` is the technical detail (no stack traces, no secrets).
+ * Registered globally by `configureApp()` so no handler leaks a raw error.
+ *
+ * Handlers throw `new HttpException({ code, message?, userMessage?, details? }, status)`:
+ * `message` (or the plain string) becomes `devMessage`; `userMessage` — or the
+ * friendly copy for `code` — becomes `message`.
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -31,11 +38,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<RequestWithContext>();
     const requestId = typeof request?.requestId === 'string' ? request.requestId : 'unknown';
 
-    const { status, body } = this.normalize(exception);
+    const { status, body } = this.normalize(exception, requestId);
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
-        `[${requestId}] ${request?.method} ${request?.originalUrl} -> ${status}`,
+        `[${requestId}] ${request?.method} ${request?.originalUrl} -> ${status}: ${body.devMessage}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
     }
@@ -44,15 +51,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
     response.status(status).json(payload);
   }
 
-  private normalize(exception: unknown): {
-    status: number;
-    body: ErrorResponse['error'];
-  } {
+  private normalize(
+    exception: unknown,
+    requestId: string,
+  ): { status: number; body: ErrorResponse['error'] } {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const res = exception.getResponse();
 
-      const rawMessages: string[] = this.extractMessages(res);
+      const rawMessages = this.extractMessages(res);
       const isValidation =
         status === HttpStatus.BAD_REQUEST && Array.isArray((res as { message?: unknown })?.message);
 
@@ -61,23 +68,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
           status,
           body: {
             code: VALIDATION_ERROR_CODE,
-            message: 'Validation failed',
+            message: friendlyFor(VALIDATION_ERROR_CODE, 'Validation failed.'),
+            devMessage: rawMessages.join('; ') || 'Validation failed',
             details: rawMessages.map(toDetail),
           },
         };
       }
 
-      // A handler may throw `new HttpException({ code, message, details }, status)`
-      // to set a specific machine code (e.g. 'wrong_token_audience').
-      const explicitCode = this.readString(res, 'code');
-      const explicitDetails = this.readDetails(res);
+      const code = this.readString(res, 'code') ?? STATUS_CODE_MAP[status] ?? INTERNAL_ERROR_CODE;
+      const devMessage = rawMessages[0] ?? exception.message;
+      const userMessage = this.readString(res, 'userMessage') ?? friendlyFor(code, devMessage);
 
       return {
         status,
         body: {
-          code: explicitCode ?? STATUS_CODE_MAP[status] ?? INTERNAL_ERROR_CODE,
-          message: rawMessages[0] ?? exception.message,
-          details: explicitDetails,
+          code,
+          message: userMessage,
+          devMessage,
+          details: this.readDetails(res),
         },
       };
     }
@@ -86,7 +94,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
       body: {
         code: INTERNAL_ERROR_CODE,
-        message: 'Internal server error',
+        message: friendlyFor(INTERNAL_ERROR_CODE, 'Something went wrong.'),
+        devMessage: `Unhandled server error. Reference: ${requestId}. See server logs.`,
         details: [],
       },
     };
@@ -119,7 +128,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
 }
 
 function toDetail(message: string): ErrorDetail {
-  // class-validator messages conventionally start with the offending property name.
   const field = message.split(' ')[0] ?? '';
   return { field, issue: message };
 }

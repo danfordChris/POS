@@ -37,6 +37,17 @@
 
 ## Acceptance Criteria
 
+_All met 2026-09-02._
+
+- [x] `prisma migrate deploy` on the `tenancy` schema (`TENANCY_DATABASE_URL`, role `tenancy_app`) creates `business`, `membership`, `outbox`, `processed_events` + `enable_tenant_rls()` (`relforcerowsecurity = t` on both tenant tables).
+- [x] `POST /v1/businesses` creates the business + owner membership and emits `BusinessCreated` + `MembershipCreated` via the outbox in one `$transaction`.
+- [x] `resolveMembership` RPC + `GET /v1/internal/membership` (shared-secret) return `{found, role, status}`.
+- [x] Missing / tampered internal context → 500 `internal_context_invalid`. Operator context → 403 `operator_data_access_denied`. Non-member → 403 `not_a_member`. Staff on owner-only `PATCH` → 403 `role_forbidden`.
+- [x] RLS backstop: raw reads → 0 rows, raw insert rejected, `assertTenantContext()` throws with no `app.business_id`.
+- [x] `PATCH /v1/businesses/:id/members/:userId` (owner) suspends a member and emits `MembershipSuspended`; the suspended member then gets 403.
+- [x] 9 e2e tests pass; Dockerfile builds; live end-to-end through Kong verified.
+
+
 - [ ] `prisma migrate deploy` on `tenancy_db` creates `business`, `membership`, RLS policies (`relforcerowsecurity = t`).
 - [ ] `POST /businesses` creates the business + an owner `membership` in one tenant-scoped transaction.
 - [ ] `resolveMembership(business_id, user_id)` returns the active membership or `found:false`.

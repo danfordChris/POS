@@ -1,0 +1,66 @@
+// tenancy service — owns business, membership (RLS) in the `tenancy` schema.
+// Plus the transactional outbox + idempotency tables from @pos/nest-common.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("TENANCY_DATABASE_URL")
+}
+
+/// Tenant root. RLS: `id = current_setting('app.business_id')`.
+model Business {
+  id                 String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name               String
+  country            String       @default("TZ")
+  currency           String       @default("TZS")
+  locale             String       @default("en")
+  timezone           String       @default("Africa/Dar_es_Salaam")
+  subscriptionStatus String       @default("trialing") @map("subscription_status")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  memberships        Membership[]
+
+  @@map("business")
+}
+
+/// Binds a user (owned by `identity`) to a business. RLS: `business_id = current_setting('app.business_id')`.
+model Membership {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  role       String // 'owner' | 'staff'
+  status     String   @default("active") // 'active' | 'suspended'
+  invitedBy  String?  @map("invited_by") @db.Uuid
+  joinedAt   DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@map("membership")
+}
+
+model OutboxMessage {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  subject   String
+  payload   Json
+  headers   Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  attempts  Int       @default(0)
+  lastError String?   @map("last_error")
+
+  @@index([createdAt], map: "outbox_unsent_idx")
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  subject     String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_events")
+}

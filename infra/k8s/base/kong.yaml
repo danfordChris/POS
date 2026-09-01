@@ -1,0 +1,101 @@
+# Kong DB-less edge. Production should use the official Kong Helm chart with the
+# `pos-internal-context` plugin baked into a custom image or mounted via a
+# ConfigMap; this base gives kustomize something concrete to render.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: pos-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kong
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kong
+    spec:
+      containers:
+        - name: kong
+          image: kong:3.7
+          env:
+            - { name: KONG_DATABASE, value: 'off' }
+            - { name: KONG_DECLARATIVE_CONFIG, value: /kong/kong.yml }
+            - { name: KONG_VAULTS, value: env }
+            - { name: KONG_PLUGINS, value: 'bundled,pos-internal-context' }
+            - { name: KONG_PROXY_LISTEN, value: '0.0.0.0:8000' }
+            - name: JWT_ACCESS_SECRET
+              valueFrom: { secretKeyRef: { name: pos-secrets, key: JWT_ACCESS_SECRET } }
+            - name: INTERNAL_CONTEXT_SECRET
+              valueFrom: { secretKeyRef: { name: pos-secrets, key: INTERNAL_CONTEXT_SECRET } }
+            - name: INTERNAL_API_KEY
+              valueFrom: { secretKeyRef: { name: pos-secrets, key: INTERNAL_API_KEY } }
+          ports:
+            - { name: proxy, containerPort: 8000 }
+          readinessProbe:
+            httpGet: { path: /status, port: 8100 }
+            initialDelaySeconds: 5
+          volumeMounts:
+            - { name: declarative, mountPath: /kong }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: '1', memory: 1Gi }
+      volumes:
+        - name: declarative
+          configMap: { name: kong-declarative }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong
+  labels:
+    app.kubernetes.io/name: kong
+spec:
+  selector:
+    app.kubernetes.io/name: kong
+  ports:
+    - { name: proxy, port: 80, targetPort: 8000 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: kong
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: kong }
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kong
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kong
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.pos.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kong
+                port: { number: 80 }

@@ -14,7 +14,8 @@ resources:
   - secret.example.yaml
   - network-policy.yaml
   - nats.yaml
-  - gateway.yaml
+  - kong-config.yaml
+  - kong.yaml
   - identity.yaml
   - tenancy.yaml
   # catalog / inventory / sales / winger / notifications are added by their phases

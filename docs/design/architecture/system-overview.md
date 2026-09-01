@@ -2,7 +2,7 @@
 
 ## Context
 
-- Microservices. Two clients, one public gateway, a set of domain services, one message broker, one shared PostgreSQL instance with a schema per service.
+- Microservices. Two clients, one edge gateway (Kong), a set of domain services, one message broker, one shared PostgreSQL instance with a schema per service.
 - See `docs/design/decisions/0002-microservices.md` and `docs/design/architecture/service-decomposition.md`.
 
 ## Requirements
@@ -13,7 +13,7 @@
 |---|---|---|
 | Mobile app | Flutter (Android, iOS) | Floor work: catalog, scan, stock-in, sales, receipts, low-stock |
 | Web admin | Next.js | Management: members, catalog, stock history, sales, winger admin, alerts, reports |
-| `gateway` | NestJS | Public REST (`/v1/*`, OpenAPI); user-JWT verification; membership resolution + cache; routing; rate limiting; response shaping |
+| **Kong** (edge) | Kong DB-less + `pos-internal-context` Lua plugin | Public entry for `/v1/*`: TLS, path routing, rate limiting, CORS, JWT signature/exp; the plugin does the audience gate, membership lookup, and internal-context signing |
 | `identity` | NestJS | Users, operators, credentials, access/refresh tokens |
 | `tenancy` | NestJS | Businesses, memberships, invitations |
 | `catalog` | NestJS | Categories, products, pricing, image metadata |
@@ -35,12 +35,11 @@
 
 ### Request flow (tenant route)
 
-1. Client → `gateway` with `Authorization: Bearer <user JWT>`.
-2. `gateway` verifies the token locally (JWKS/shared secret from `identity`), rejecting operator-audience tokens on data routes (403 `operator_data_access_denied`).
-3. `gateway` reads `businessId` from the path and resolves the caller's membership via `tenancy.resolveMembership` (NATS request/reply, short-TTL cache); no membership → 403 `not_a_member`.
-4. `gateway` forwards the call to the owning service with signed internal context: `request_id`, `user_id`, `business_id`, `role`.
-5. The service validates the internal context, runs inside `runInTenantContext(business_id)` against its own schema (RLS enforced), and returns a DTO. `winger` responses use a whitelisted DTO.
-6. `gateway` shapes the response and applies the canonical error envelope.
+1. Client → **Kong** with `Authorization: Bearer <user JWT>`.
+2. Kong `jwt` plugin verifies signature + expiry. `pos-internal-context` checks the `aud` claim (operator on a data route → 403 `operator_data_access_denied`), reads `businessId` from the path, and for `/v1/businesses/:id/*` calls `tenancy` (internal membership endpoint, short-TTL cache) — no membership → 403 `not_a_member`.
+3. The plugin signs `{ request_id, user_id, business_id, role, token_kind }` (HMAC) and sets `X-Pos-Internal-Context` + `X-Pos-Internal-Signature`, then Kong proxies to the owning service.
+4. The service validates the internal context, runs inside `runInTenantContext(business_id)` against its own schema (RLS enforced), and returns a DTO. `winger` responses use a whitelisted DTO.
+5. Every failure body is `{ error: { code, message, devMessage, details }, requestId }`.
 
 ### Data flow examples
 

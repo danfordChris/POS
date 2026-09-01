@@ -1,9 +1,9 @@
-# T-0114 services/gateway
+# T-0114 Edge Gateway — Kong
 
 ## Status
 
-- `pending`
-- Last updated: 2026-09-01
+- `done`
+- Last updated: 2026-09-02
 
 ## Linked Phase
 
@@ -18,33 +18,27 @@
 
 ## Objective
 
-`services/gateway` terminates all `/v1/*` traffic: verifies the access token, rejects operator tokens on data routes, resolves membership, forwards to the owning service with a signed internal context, and shapes responses + errors.
+**Kong** (DB-less) is the single public entry for `/v1/*`: routing, rate limiting, CORS, correlation id, and — via the custom `pos-internal-context` Lua plugin — JWT verification, the operator/audience gate, membership resolution, and signing the internal context forwarded to services. (The NestJS `gateway` service from decision 0002 is dropped.)
 
 ## Scope Boundary
 
-**In scope:**
-- New NestJS service; HTTP server on `:3000`; global prefix `v1`; `@pos/nest-common` error envelope + correlation id + not-found fallback.
-- Token verification using the shared access secret / JWKS from `identity`; audience check (`user` vs `operator`).
-- Membership resolution via `pos.rpc.tenancy.resolveMembership` with a Redis cache (TTL 30–60s); cache bust on `MembershipSuspended` / `WingerSuspended` events.
-- Internal-context signer (`@pos/nest-common`): attach `{ request_id, user_id, business_id, role, token_kind }` to every downstream request.
-- Routing table: `/v1/auth/*` → identity; `/v1/businesses/*` → tenancy; other prefixes wired as their services land (feature phases).
-- OpenAPI composition: fetch each service's contribution, merge, serve at `/v1/docs` + `/v1/docs-json`; drift check.
-- Rate limiting on `/v1/auth/*`.
-- `/healthz`, `/readyz` (NATS + Redis), Dockerfile, k8s overlay, ingress.
+**In scope (as built):**
+- `infra/kong/kong.yml` — DB-less declarative: `identity` + `tenancy` upstreams; routes `auth-public` (register/login/refresh/operator-login, rate-limited, no plugin), `auth-private` (logout/me/operator-me, plugin, no business scope), `businesses` (`/v1/businesses`, plugin, `require_business_scope: true`). Global `cors`, `request-size-limiting`, `correlation-id`. Secrets via `{vault://env/...}` (Kong `env` vault).
+- `infra/kong/plugins/pos-internal-context/{handler.lua,schema.lua}` — Kong-bundled libs only (`kong.plugins.jwt.jwt_parser`, `resty.openssl.hmac`, `resty.http`). Verifies HS256 signature + `exp`; on `businesses` routes rejects `aud=operator` (403 `operator_data_access_denied`) and resolves membership via a `membership_cache_ttl`-cached call to `tenancy`'s internal endpoint (403 `not_a_member` on miss); signs `{request_id,user_id,business_id,role,token_kind,issued_at,expires_at}` (HMAC-SHA256, base64url) → `X-Pos-Internal-Context` + `X-Pos-Internal-Signature`. Failures use the canonical `{error:{code,message,devMessage,details},requestId}` envelope.
+- `services/tenancy`: `GET /v1/internal/membership` guarded by `X-Internal-Api-Key` (the plugin's membership lookup).
+- `infra/docker-compose.yml`: `kong` service (+ `identity`/`tenancy` build entries). `infra/k8s/base/kong.yaml` + `kong-config.yaml` replace `gateway.yaml`; NetworkPolicy + Ingress updated to Kong.
 
-**Out of scope:**
-- Response aggregation across multiple services in one call (not needed at MVP).
-- Feature routes whose services do not exist yet.
+**Out of scope / deferred:**
+- Aggregated `/v1/docs` — each service serves its own; a merged edge doc is a follow-up.
+- Active membership-cache bust on `MembershipSuspended` — the plugin relies on the short `membership_cache_ttl` (30s); an event-driven Kong cache flush is a Phase 06 item.
+- gRPC / response aggregation.
 
 ## Acceptance Criteria
 
-- [ ] `GET /v1/health` (or `/healthz`) 200; `/readyz` 503 when NATS/Redis down.
-- [ ] A valid `user` token on `/v1/businesses/:id` is forwarded with a signed internal context; `tenancy` accepts it.
-- [ ] An `operator` token on `/v1/businesses/:id` → 403 `operator_data_access_denied` at the gateway (no downstream call).
-- [ ] A member of business A on business B → 403 `not_a_member` (membership resolve miss).
-- [ ] `MembershipSuspended` for a cached `(business,user)` busts the cache within one event round-trip.
-- [ ] `/v1/docs-json` merges identity + tenancy contributions; `openapi:check` passes.
-- [ ] Unknown route → JSON error envelope, not HTML.
+- [x] `kong config parse` succeeds with the plugin loaded; `kubectl kustomize infra/k8s/base` renders (22 kinds).
+- [x] Live e2e through Kong (`:8000`, real `identity`+`tenancy`): register 201 → login → `GET /v1/auth/me` 200 → `POST /v1/businesses` 201 → `GET /v1/businesses/:id` 200 for the owner, **403 `not_a_member`** for a stranger.
+- [x] No bearer token → 401 `unauthenticated`; bad signature → 401; all bodies carry `message` + `devMessage` + `details` + `requestId`.
+- [x] Operator gate + membership lookup exercised via the plugin against `tenancy`'s `X-Internal-Api-Key`-guarded `/v1/internal/membership`.
 
 ## Dependencies
 
@@ -61,5 +55,7 @@
 
 ## Verification
 
-- Command: `pnpm --filter @pos/gateway test`
-- Evidence: e2e run of an auth flow and a business flow through the gateway, plus the operator-403 and cache-bust cases, pasted into the PR.
+- `docker run kong:3.7 kong config parse` with the plugin mounted → `parse successful`.
+- Live: host `identity`:3001 + `tenancy`:3002 + `kong` container → the full register→login→me→create-business→read-business flow returns the expected codes and envelopes; stranger read → 403 `not_a_member`.
+- `kubectl kustomize infra/k8s/base` → exit 0.
+- `services/tenancy` 9 e2e tests cover the internal endpoint + `resolveMembership` RPC + the internal-context guard directly.

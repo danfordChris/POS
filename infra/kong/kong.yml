@@ -1,0 +1,68 @@
+_format_version: '3.0'
+
+# DB-less declarative config for the POS edge.
+# Secrets are pulled from the environment via Kong's built-in `env` vault:
+#   {vault://env/JWT_ACCESS_SECRET} etc. must be present in Kong's environment.
+# Upstream hostnames are the compose / k8s service names; override the whole file
+# for other environments.
+
+services:
+  - name: identity
+    url: http://identity:3000
+    routes:
+      - name: auth-public
+        # register / login / refresh / operator login — no auth context needed
+        paths:
+          - ~/v1/auth/(register|login|refresh)$
+          - /v1/auth/operator/login
+        strip_path: false
+        plugins:
+          - name: rate-limiting
+            config: { minute: 60, policy: local, limit_by: ip }
+      - name: auth-private
+        # logout / me / operator me — needs a valid token; no business scope
+        paths:
+          - /v1/auth/logout
+          - /v1/auth/me
+          - /v1/auth/operator/me
+        strip_path: false
+        plugins:
+          - name: pos-internal-context
+            config:
+              jwt_secret: '{vault://env/JWT_ACCESS_SECRET}'
+              internal_context_secret: '{vault://env/INTERNAL_CONTEXT_SECRET}'
+              internal_context_ttl: 60
+              require_business_scope: false
+              tenancy_membership_url: http://tenancy:3000/v1/internal/membership
+              internal_api_key: '{vault://env/INTERNAL_API_KEY}'
+              membership_cache_ttl: 30
+
+  - name: tenancy
+    url: http://tenancy:3000
+    routes:
+      - name: businesses
+        paths:
+          - /v1/businesses
+        strip_path: false
+        plugins:
+          - name: pos-internal-context
+            config:
+              jwt_secret: '{vault://env/JWT_ACCESS_SECRET}'
+              internal_context_secret: '{vault://env/INTERNAL_CONTEXT_SECRET}'
+              internal_context_ttl: 60
+              require_business_scope: true
+              tenancy_membership_url: http://tenancy:3000/v1/internal/membership
+              internal_api_key: '{vault://env/INTERNAL_API_KEY}'
+              membership_cache_ttl: 30
+
+plugins:
+  - name: cors
+    config:
+      origins: ['*']
+      methods: [GET, POST, PATCH, PUT, DELETE, OPTIONS]
+      headers: [Authorization, Content-Type, X-Request-Id]
+      credentials: false
+  - name: request-size-limiting
+    config: { allowed_payload_size: 10 }
+  - name: correlation-id
+    config: { header_name: X-Request-Id, generator: uuid, echo_downstream: true }
