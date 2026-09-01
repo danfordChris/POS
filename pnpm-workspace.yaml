@@ -1,3 +1,5 @@
 packages:
-  - api
+  - packages/*
+  - services/*
   - web
+  - api

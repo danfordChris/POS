@@ -2,8 +2,8 @@
 
 ## Status
 
-- `in-progress`
-- Last updated: 2026-09-01
+- `done`
+- Last updated: 2026-09-02
 
 ## Linked Phase
 
@@ -35,11 +35,12 @@ The pnpm workspace contains `services/` and `packages/` with `@pos/contracts` an
 
 ## Acceptance Criteria
 
-- [ ] `pnpm install` resolves the workspace with `packages/contracts` and `packages/nest-common`.
-- [ ] `pnpm -r build` builds both packages (ESM + `.d.ts`) with no type errors.
-- [ ] `pnpm --filter @pos/contracts test` and `pnpm --filter @pos/nest-common test` pass (schema round-trips; filter unit tests moved from `api`).
-- [ ] `api/` still builds and `pnpm --filter api test` still passes, importing the moved code from `@pos/nest-common`.
-- [ ] `pnpm --filter api lint` and root `pnpm format:check` clean.
+- [x] `pnpm install` resolves the workspace with `packages/contracts` and `packages/nest-common` (`workspace:*` linked into `api`).
+- [x] `pnpm -r build` builds both packages (ESM + `.d.ts`) with no type errors (exit 0).
+- [x] `@pos/contracts` (5) and `@pos/nest-common` (6) tests pass — schema round-trips; the 3 `AllExceptionsFilter` unit tests relocated from `api`; 3 new `TenantContext` tests.
+- [x] `api/` builds and `pnpm --filter api test` passes (16, down from 19 — the 3 filter tests moved out), importing envelope / correlation-id / configure-app / not-found / `TenantContext` / `makeEnvValidator` from `@pos/nest-common`.
+- [x] `pnpm -r lint` and root `pnpm format:check` clean; `api` OpenAPI drift check in sync.
+- Deferred to T-0112: `HealthModule` stays in `api` until the first real service needs `/healthz` + `/readyz` (needs a service-name + db-probe abstraction).
 
 ## Dependencies
 
@@ -47,14 +48,15 @@ The pnpm workspace contains `services/` and `packages/` with `@pos/contracts` an
 
 ## Implementation Checklist
 
-- [ ] Update `pnpm-workspace.yaml`; add `tsconfig.base.json`.
-- [ ] Create `packages/nest-common` package; move generic modules out of `api/src`; export a barrel.
-- [ ] Create `packages/contracts` package; add internal-context + error-code + subjects + stub payload schemas with tests.
-- [ ] Point `api/` imports at `@pos/nest-common`; keep `api` green.
-- [ ] Move the `AllExceptionsFilter` unit spec into `packages/nest-common`.
-- [ ] Verify all Acceptance Criteria.
+- [x] `pnpm-workspace.yaml` → `packages/*`, `services/*`, `web`, `api`; `tsconfig.base.json` added.
+- [x] `packages/nest-common` (`@pos/nest-common`): `error-response`, `AllExceptionsFilter` (+ spec), `correlationId`, `registerNotFoundFallback`, `RequestWithContext`, `configureApp`, `buildOpenApiDocument`, `TenantContext` + `TenantContextError` + `ENABLE_TENANT_RLS_SQL`, `makeEnvValidator` + `NestConfigModule`; barrel `index.ts`.
+- [x] `packages/contracts` (`@pos/contracts`): `subjects` + `SUBJECTS`, `ERROR_CODES`, `internalContextSchema` + headers, `messageEnvelopeSchema`, event payload stubs, RPC request/response stubs, `SCHEMA_VERSION`; round-trip spec.
+- [x] `api/` rewired: `app.factory.ts` re-exports from `@pos/nest-common` + keeps the api-titled `buildOpenApiDocument`; `PrismaService` composes `TenantContext`; `config.module` + `env.validation` use `makeEnvValidator` / `NestConfigModule`; `api/src/common` deleted.
+- [x] `AllExceptionsFilter` unit spec relocated to `packages/nest-common`.
 
 ## Verification
 
-- Command: `pnpm install && pnpm -r build && pnpm -r test && pnpm --filter api test`
-- Evidence: build + test output for both packages and `api`, pasted into the PR.
+- `pnpm install` — links `@pos/*` into `api` (exit 0).
+- `pnpm -r build` — contracts, nest-common, web, api all Done; `api/openapi.json` regenerated.
+- `pnpm -r test` — contracts 5, nest-common 6, api 16 = 27 pass.
+- `pnpm -r lint` clean; `pnpm format:check` clean; `pnpm --filter api openapi:check` "in sync".

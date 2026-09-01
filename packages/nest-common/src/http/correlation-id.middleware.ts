@@ -1,24 +1,20 @@
 import { Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Response } from 'express';
+import type { RequestWithContext } from './request-context.js';
 
 export const REQUEST_ID_HEADER = 'x-request-id';
 
 const logger = new Logger('HTTP');
 
 /**
- * Plain Express middleware (bound via `app.use` in app.factory.ts).
+ * Plain Express middleware (bound via `app.use` by `configureApp()`).
  * Assigns a correlation id to every request (honouring an inbound `x-request-id`),
  * echoes it on the response, and logs a one-line access record on completion.
  */
-export function correlationId(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
+export function correlationId(req: RequestWithContext, res: Response, next: NextFunction): void {
   const inbound = req.headers[REQUEST_ID_HEADER];
-  const requestId =
-    (Array.isArray(inbound) ? inbound[0] : inbound)?.trim() || randomUUID();
+  const requestId = (Array.isArray(inbound) ? inbound[0] : inbound)?.trim() || randomUUID();
 
   req.requestId = requestId;
   res.setHeader(REQUEST_ID_HEADER, requestId);

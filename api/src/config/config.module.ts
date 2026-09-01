@@ -1,10 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { NestConfigModule } from '@pos/nest-common';
 import { validateEnv } from './env.validation.js';
 
-/**
- * Loads `.env` from the repo root (api runs from `api/`) and validates it once at boot.
- */
+/** Loads `.env` from the repo root (api runs from `api/`) and validates it once at boot. */
 @Module({
   imports: [
     NestConfigModule.forRoot({

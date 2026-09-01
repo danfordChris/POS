@@ -6,19 +6,20 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import {
   ErrorDetail,
   ErrorResponse,
   INTERNAL_ERROR_CODE,
   STATUS_CODE_MAP,
   VALIDATION_ERROR_CODE,
-} from '../http/error-response.js';
+} from './error-response.js';
+import type { RequestWithContext } from './request-context.js';
 
 /**
  * Converts every thrown error into the canonical envelope:
  * `{ error: { code, message, details }, requestId }`.
- * Registered globally in app.factory.ts so no handler leaks a raw error or stack.
+ * Registered globally by `configureApp()` so no handler leaks a raw error or stack.
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -27,9 +28,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
-    const requestId =
-      typeof request?.requestId === 'string' ? request.requestId : 'unknown';
+    const request = ctx.getRequest<RequestWithContext>();
+    const requestId = typeof request?.requestId === 'string' ? request.requestId : 'unknown';
 
     const { status, body } = this.normalize(exception);
 
@@ -54,8 +54,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       const rawMessages: string[] = this.extractMessages(res);
       const isValidation =
-        status === HttpStatus.BAD_REQUEST &&
-        Array.isArray((res as { message?: unknown })?.message);
+        status === HttpStatus.BAD_REQUEST && Array.isArray((res as { message?: unknown })?.message);
 
       if (isValidation) {
         return {
@@ -112,11 +111,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 
   private readDetails(res: unknown): ErrorDetail[] {
-    if (
-      res &&
-      typeof res === 'object' &&
-      Array.isArray((res as { details?: unknown }).details)
-    ) {
+    if (res && typeof res === 'object' && Array.isArray((res as { details?: unknown }).details)) {
       return (res as { details: ErrorDetail[] }).details;
     }
     return [];

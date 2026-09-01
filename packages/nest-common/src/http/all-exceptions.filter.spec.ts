@@ -1,9 +1,4 @@
-import {
-  ArgumentsHost,
-  BadRequestException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { ArgumentsHost, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { AllExceptionsFilter } from './all-exceptions.filter.js';
 
 beforeAll(() => {
@@ -42,10 +37,7 @@ describe('AllExceptionsFilter', () => {
     const { host, res } = mockHost();
 
     filter.catch(
-      new BadRequestException([
-        'email must be an email',
-        'name should not be empty',
-      ]),
+      new BadRequestException(['email must be an email', 'name should not be empty']),
       host,
     );
 

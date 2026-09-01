@@ -18,13 +18,14 @@
 
 ### In Progress
 
-- None — awaiting confirmation (or acceptance) of the decision-0002 defaults before Phase 01 execution.
+- Phase 01 — Platform. **T-0110 done** (2026-09-02): monorepo restructured; `@pos/contracts` + `@pos/nest-common` built + tested (27 tests across contracts/nest-common/api); `api` rewired onto the shared packages and still green.
 
 ### Blockers
 
-- Decision-0002 defaults (broker, sync transport, DB topology, orchestration, auth trust boundary) listed in `docs/changes/proposed/0002-service-architecture.md` — confirm or accept as-is to unblock Phase 01.
+- None. Decision-0002 defaults confirmed 2026-09-01.
 
 ### Next Focus
 
-- Phase 01 T-0110: monorepo restructure (`services/*`, `packages/*`) + `@pos/contracts` + `@pos/nest-common`.
-- Then T-0112 `identity`, T-0113 `tenancy`, T-0114 `gateway`, relocating the Phase 00 code; parity suite; delete `api/`.
+- T-0115 outbox + idempotency helpers + `NatsModule` in `@pos/nest-common`.
+- T-0111 infra (NATS + per-service DBs + k8s base).
+- Then T-0112 `identity`, T-0113 `tenancy`, T-0114 `gateway`; parity suite; delete `api/`.
