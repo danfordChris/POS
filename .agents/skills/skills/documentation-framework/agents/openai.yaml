@@ -1,0 +1,4 @@
+agent:
+  name: documentation-framework
+  short_description: "Route docs work through workflow-contract"
+  default_prompt: "Use $documentation-framework to classify doc layer, bootstrap structure if missing, ensure adapter exists, and validate before completion."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Componentization Auditor"
+  short_description: "Audit and extract reusable UI safely"
+  default_prompt: "Use $project-componentization-auditor to analyze this app for duplicate UI, extract shared components, and migrate every affected screen without redesigning."
