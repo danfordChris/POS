@@ -51,10 +51,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final products = catalog.products;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => context.push(AppRoute.productNew.path),
-        icon: const Icon(Icons.add),
-        label: const Text('New product'),
+        child: const Icon(Icons.add),
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -76,6 +75,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 label: 'Search',
                 hint: 'Name or SKU',
                 controller: _search,
+                prefix: const Icon(Icons.search, size: 18),
+                suffix: GestureDetector(
+                  onTap: () => context.go(AppRoute.scan.path),
+                  child: Icon(Icons.qr_code_scanner, size: 20, color: t.accent),
+                ),
                 onChanged: _onSearchChanged,
               ),
               const SizedBox(height: DukaSpacing.s4),
@@ -150,6 +154,8 @@ class _SkeletonList extends StatelessWidget {
             padding: EdgeInsets.all(DukaSpacing.s4),
             child: Row(
               children: [
+                NeuSkeleton(width: 48, height: 48, radius: DukaRadius.control),
+                SizedBox(width: DukaSpacing.s3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

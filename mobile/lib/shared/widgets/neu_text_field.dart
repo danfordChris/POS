@@ -14,6 +14,7 @@ class NeuTextField extends StatelessWidget {
     this.keyboardType,
     this.obscureText = false,
     this.prefix,
+    this.suffix,
     this.onChanged,
   });
 
@@ -24,6 +25,7 @@ class NeuTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final bool obscureText;
   final Widget? prefix;
+  final Widget? suffix;
   final ValueChanged<String>? onChanged;
 
   @override
@@ -81,6 +83,10 @@ class NeuTextField extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (suffix != null) ...[
+                  const SizedBox(width: DukaSpacing.s2),
+                  suffix!,
+                ],
               ],
             ),
           ),

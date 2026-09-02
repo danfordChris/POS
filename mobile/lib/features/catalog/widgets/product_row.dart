@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pos_mobile/core/theme/duka_colors.dart';
 import 'package:pos_mobile/core/theme/duka_tokens.dart';
 import 'package:pos_mobile/core/theme/neu.dart';
+import 'package:pos_mobile/features/catalog/widgets/product_thumb.dart';
 import 'package:pos_mobile/models/catalog_models.dart';
 import 'package:pos_mobile/shared/widgets/neu_badge.dart';
 
@@ -26,6 +27,8 @@ class ProductRow extends StatelessWidget {
       padding: const EdgeInsets.all(DukaSpacing.s4),
       child: Row(
         children: [
+          ProductThumb(imageUrl: product.imageUrl),
+          const SizedBox(width: DukaSpacing.s3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
