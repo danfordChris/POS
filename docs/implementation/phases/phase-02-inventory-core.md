@@ -4,8 +4,9 @@
 
 - `in-progress`
 - Last updated: 2026-09-02
-- Progress: `catalog` service shipped (T-0101–T-0103). `inventory` service + mobile/web
-  screens (T-0104–T-0109) remain.
+- Progress: `catalog` (T-0101–T-0103) and `inventory` (T-0104–T-0105) services shipped;
+  neumorphic design system wired into both clients (T-0118–T-0119). Client app shells +
+  screens (T-0106–T-0109) remain.
 
 ## Objective
 
@@ -31,8 +32,8 @@ Deliver catalog management and a stock movement ledger with derived on-hand, plu
 - [x] T-0101 Category + product model, migration, RLS
 - [x] T-0102 Product endpoints + role-aware DTO (Staff hides cost)
 - [x] T-0103 Image upload adapter + endpoint
-- [ ] T-0104 Stock ledger model + movement endpoint (transactional on-hand)
-- [ ] T-0105 Stock read endpoints (on-hand, movements, low)
+- [x] T-0104 Stock ledger model + movement endpoint (transactional on-hand)
+- [x] T-0105 Stock read endpoints (on-hand, movements, low)
 - [ ] T-0106 Mobile catalog + product form
 - [ ] T-0107 Mobile scan screen + lookup/prefill
 - [ ] T-0108 Mobile stock-in + adjustment flows

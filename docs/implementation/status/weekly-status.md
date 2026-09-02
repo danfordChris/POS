@@ -1,5 +1,52 @@
 # Weekly Status
 
+## 2026-09-02 — inventory service (Phase 02 backend complete)
+
+### Summary
+
+- **`inventory` service is live** — the fourth domain service, behind Kong at
+  `/v1/businesses/{businessId}/stock`. Phase 02's backend (catalog + inventory) is
+  now complete; what remains in the phase is the client app shells + screens.
+
+### Completed
+
+- **T-0104** — `services/inventory` scaffold; `stock_item` (cache), append-only
+  `stock_movement` ledger, `stock_reservation`, all with forced tenant RLS in the
+  `inventory` schema. `POST /stock/movements` (`stock_in` | `adjustment`) records
+  the movement and moves `stock_item.quantity` by the same delta in one tenant
+  transaction, so `quantity == sum(quantity_delta)` holds by construction.
+  `Idempotency-Key` replay; 422 `insufficient_stock` when an adjustment would go
+  negative. Emits `StockMovementRecorded` / `StockLevelChanged` and the
+  `StockFellBelowThreshold` / `StockRecovered` edge events via the outbox.
+  `catalog.ProductUpserted` consumer seeds `stock_item` + tracks
+  `reorder_threshold`/active; `ProductDeactivated` clears active — idempotent on
+  `event_id`.
+- **T-0105** — `GET /stock`, `/stock/movements` (`?product_id=` `?type=`),
+  `/stock/low` (on-hand ≤ threshold). `reserveStock` / `commitReservation` /
+  `releaseReservation` NATS handlers — soft holds against on-hand, commit writes
+  `sale` movements, all idempotent on `reservation_id`.
+
+### Contracts
+
+- `@pos/contracts`: `SUBJECTS.inventory.stockMovementRecorded` + `stockRecovered`;
+  `stockMovementRecordedPayload` / `stockLevelChangedPayload` /
+  `stockRecoveredPayload`; `commitReservation` / `releaseReservation` request +
+  response pairs. **`ProductUpserted` payload gains `reorder_threshold`** (additive)
+  — `events-catalog.md` and the catalog emitter updated. `contracts-compat` green.
+
+### Tests
+
+- 66 workspace tests green (contracts 7, testing 5, nest-common 16, **inventory 11**,
+  catalog 11, tenancy 9, identity 7). `pnpm -r build` / `lint` / `format:check`
+  clean. `kong config parse` OK; `kubectl kustomize infra/k8s/base` renders;
+  `docker compose config` valid. Validator `WORKFLOW:ok`.
+
+### Next
+
+- Client app shells (nav / routing / auth / API client) on `web/` + `mobile/`, then
+  the Phase 02 screens (T-0106–T-0109) built from the neumorphic kit against the
+  live catalog + inventory APIs.
+
 ## 2026-09-02 — Neumorphic design system wired into both clients
 
 ### Summary
