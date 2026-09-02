@@ -23,6 +23,26 @@ language:
 `pnpm --filter web lint` + `build` pass; `flutter analyze` clean; `flutter test`
 (3) pass. Follow-on polish items tracked in `tasks/backlog.md`.
 
+### Second pass (same day)
+
+- **Mobile catalog list** — `ProductThumb` (image / box-icon), leading search
+  icon + trailing scan icon (→ Scan tab), circular FAB, thumb in the skeleton row.
+- **Mobile product detail** — restructured: hero (thumb + status badge + name +
+  big price), `NeuRing` stock-health ring in an Inventory `NeuSection` (large
+  AVAILABLE count, ring coloured green/amber, low-stock-threshold chip), Details
+  section, then the actions.
+- **Mobile `More`** — a real menu: business-identity header, Switch-business row,
+  grouped Manage / App tiles (settings, members, language EN/SW, support,
+  gallery), sign out.
+- **Mobile Home + web `/`** — hero card (stock value at retail + Products /
+  Low-on-stock / Today-sales sub-stats), quick-action row, and a
+  requires-attention low-stock list.
+- New shared widgets: `NeuRing`, `NeuSection`, `ProductThumb`; `NeuTextField`
+  gained a `suffix` slot.
+
+`flutter analyze` clean; `flutter test` (3) pass; `pnpm --filter web lint` +
+`build` pass.
+
 ## 2026-09-02 — Phase 02 feature screens code-complete
 
 ### Summary
