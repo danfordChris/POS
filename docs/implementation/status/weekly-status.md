@@ -1,5 +1,28 @@
 # Weekly Status
 
+## 2026-09-02 — UI polish slice (Figma-inspired, neumorphic)
+
+Read the `Danford-Jurvis's-team-library` Figma ("nexus" POS design, 238 frames) via
+the REST API and pulled the first improvement slice, kept in the neumorphic
+language:
+
+- **Web** (`a98faee`) — `Badge` (tinted semantic pills + sunken neutral chip),
+  `EmptyState` (Card + inset icon chip + CTA), `Skeleton` / `SkeletonTable`
+  (`@keyframes shimmer`, reduced-motion aware). Applied to `ProductTable` /
+  `StockTable` / `MovementsTable`; `catalog` / `stock` / `stock/movements` got
+  `loading.tsx` skeleton screens.
+- **Mobile** (`55d8141`, `84db14e`) — `NeuBadge`, `NeuEmptyState`, `NeuStepper`
+  (`− value +`, haptic), `NeuSkeleton` (hand-rolled shimmer — `skeletonizer`
+  trails the current Flutter `Canvas` API), `NeuSection` (icon-headed panel).
+  Catalog list now shows a skeleton + a search-aware empty state; `ProductRow`
+  uses `NeuBadge`. `product_form_screen` restructured into Item details / Pricing
+  (Owner-only) / Inventory control panels with leading field icons, a stepper for
+  the reorder threshold, and a sticky Save bar. `record_movement_screen` uses a
+  stepper for stock-in quantity.
+
+`pnpm --filter web lint` + `build` pass; `flutter analyze` clean; `flutter test`
+(3) pass. Follow-on polish items tracked in `tasks/backlog.md`.
+
 ## 2026-09-02 — Phase 02 feature screens code-complete
 
 ### Summary

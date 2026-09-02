@@ -28,5 +28,12 @@ Hold work not yet scheduled into a phase or written as a full task doc.
 - [ ] Mobile product image upload + a mobile stock/movements list screen.
 - [ ] Mobile provider unit tests (`CatalogProvider`/`StockProvider` load/error
       transitions) — needs an injectable `ApiClient` or `http_mock_adapter` on Dio.
+- [ ] Revisit `skeletonizer` once it catches up to the current Flutter `Canvas`
+      API — `NeuSkeleton` (hand-rolled shimmer) is the stand-in.
+- [ ] Apply the Figma-inspired polish further: product-detail Inventory panel
+      (big on-hand + inline thresholds + stock-health ring), catalog thumbnail
+      chips + scan-in-search, `More` menu drawer with the business switcher,
+      Home hero-metric card. (First slice — Badge/EmptyState/Skeleton/Stepper/
+      icon-headed panels — done 2026-09-02.)
 - [ ] CI coverage gates
 - [ ] Post-MVP: NextSMS adapter, PDF invoicing, payments/mobile money, multi-location, EFD/VFD, offline sync, push notifications, `reporting`/`media` services
