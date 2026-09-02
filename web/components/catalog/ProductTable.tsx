@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { Package } from 'lucide-react';
+import { Badge, EmptyState } from '@/components/ui';
 import { formatMoney, type Category, type Product, type StockItem } from '@/lib/models';
 
 export function ProductTable({
@@ -16,9 +18,12 @@ export function ProductTable({
 
   if (products.length === 0) {
     return (
-      <div className="rounded-card bg-surface-sunken px-6 py-10 text-center text-body text-text-secondary shadow-elev-inset">
-        No products match. Add one with “New product”.
-      </div>
+      <EmptyState
+        icon={<Package />}
+        title="No products match"
+        description="Adjust the filters, or add your first product to the catalog."
+        action={{ label: 'New product', href: '/catalog/new' }}
+      />
     );
   }
 
@@ -46,21 +51,19 @@ export function ProductTable({
                   >
                     {p.name}
                   </Link>
-                  <div className="text-caption text-text-secondary">
-                    {p.sku}
-                    {p.is_active ? '' : ' · inactive'}
+                  <div className="mt-0.5 flex items-center gap-2 text-caption text-text-secondary">
+                    <span>{p.sku}</span>
+                    {p.is_active ? null : <Badge tone="neutral">inactive</Badge>}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-text-secondary">
                   {p.category_id ? (catName.get(p.category_id) ?? '—') : '—'}
                 </td>
                 <td className="px-4 py-3 text-right tnum">
-                  {s ? s.on_hand : '—'}
-                  {s?.low_stock ? (
-                    <span className="ml-2 rounded-pill bg-warning/20 px-2 py-0.5 text-caption font-semibold text-warning">
-                      low
-                    </span>
-                  ) : null}
+                  <span className="inline-flex items-center gap-2">
+                    {s ? s.on_hand : '—'}
+                    {s?.low_stock ? <Badge tone="warning">low</Badge> : null}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-right tnum">
                   {formatMoney(p.sell_price, p.currency)}

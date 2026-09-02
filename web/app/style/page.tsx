@@ -1,12 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { Package } from 'lucide-react';
 import {
+  Badge,
   Button,
   Card,
+  EmptyState,
   ErrorCard,
   Panel,
   SegmentedControl,
+  SkeletonTable,
   TextField,
   ThemeToggle,
   Toggle,
@@ -92,6 +96,32 @@ export default function DesignSystemPage() {
             <Well className="text-body">Sunken well — inset</Well>
           </div>
         </Panel>
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-2">
+        <Panel title="Status badges">
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="neutral">inactive</Badge>
+            <Badge tone="success">in stock</Badge>
+            <Badge tone="warning">low</Badge>
+            <Badge tone="danger">out</Badge>
+            <Badge tone="info">adjustment</Badge>
+            <Badge tone="accent">new</Badge>
+          </div>
+        </Panel>
+        <Panel title="Skeleton loading">
+          <SkeletonTable rows={3} cols={3} />
+        </Panel>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-h3 font-semibold">Empty state</h2>
+        <EmptyState
+          icon={<Package />}
+          title="No products match"
+          description="Adjust the filters, or add your first product to the catalog."
+          action={{ label: 'New product', onClick: () => undefined }}
+        />
       </section>
 
       <section className="flex flex-col gap-3">

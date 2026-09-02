@@ -1,11 +1,13 @@
+import { History } from 'lucide-react';
+import { Badge, EmptyState, type BadgeTone } from '@/components/ui';
 import type { Product, StockMovement } from '@/lib/models';
 
-const TYPE_STYLE: Record<string, string> = {
-  stock_in: 'text-success',
-  adjustment: 'text-info',
-  sale: 'text-text-primary',
-  return: 'text-info',
-  void_reversal: 'text-warning',
+const TYPE_TONE: Record<string, BadgeTone> = {
+  stock_in: 'success',
+  adjustment: 'info',
+  sale: 'neutral',
+  return: 'info',
+  void_reversal: 'warning',
 };
 
 export function MovementsTable({
@@ -19,9 +21,11 @@ export function MovementsTable({
 
   if (movements.length === 0) {
     return (
-      <div className="rounded-card bg-surface-sunken px-6 py-10 text-center text-body text-text-secondary shadow-elev-inset">
-        No movements match these filters.
-      </div>
+      <EmptyState
+        icon={<History />}
+        title="No movements match these filters"
+        description="Clear the product or type filter, or record a movement from the Stock page."
+      />
     );
   }
 
@@ -44,12 +48,14 @@ export function MovementsTable({
                 {new Date(m.created_at).toLocaleString()}
               </td>
               <td className="px-4 py-3">{byId.get(m.product_id)?.name ?? m.product_id}</td>
-              <td
-                className={`px-4 py-3 font-semibold ${TYPE_STYLE[m.type] ?? 'text-text-primary'}`}
-              >
-                {m.type}
+              <td className="px-4 py-3">
+                <Badge tone={TYPE_TONE[m.type] ?? 'neutral'}>{m.type}</Badge>
               </td>
-              <td className="px-4 py-3 text-right tnum font-semibold">
+              <td
+                className={`px-4 py-3 text-right tnum font-semibold ${
+                  m.quantity_delta > 0 ? 'text-success' : 'text-text-primary'
+                }`}
+              >
                 {m.quantity_delta > 0 ? `+${m.quantity_delta}` : m.quantity_delta}
               </td>
               <td className="px-4 py-3 text-text-secondary">{m.reason ?? '—'}</td>
