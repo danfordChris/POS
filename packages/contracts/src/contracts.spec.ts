@@ -62,6 +62,7 @@ describe('@pos/contracts', () => {
       name: 'Sukari 1kg',
       unit: 'each',
       is_active: true,
+      reorder_threshold: 6,
     };
     expect(EVENT_PAYLOADS.ProductUpserted.parse(product)).toEqual(product);
 
@@ -73,5 +74,29 @@ describe('@pos/contracts', () => {
       currency: 'TZS',
     };
     expect(EVENT_PAYLOADS.PriceChanged.parse(price)).toEqual(price);
+  });
+
+  it('builds inventory subjects, event payloads, and reservation RPC pairs', () => {
+    expect(SUBJECTS.inventory.stockMovementRecorded).toBe(
+      'pos.evt.inventory.StockMovementRecorded',
+    );
+    expect(SUBJECTS.inventory.commitReservation).toBe('pos.rpc.inventory.commitReservation');
+
+    const moved = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      product_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d60',
+      movement_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d61',
+      type: 'stock_in' as const,
+      quantity_delta: 12,
+    };
+    expect(EVENT_PAYLOADS.StockMovementRecorded.parse(moved)).toEqual(moved);
+
+    const below = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      product_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d60',
+      on_hand: 2,
+      threshold: 6,
+    };
+    expect(EVENT_PAYLOADS.StockFellBelowThreshold.parse(below)).toEqual(below);
   });
 });

@@ -311,6 +311,7 @@ export class CatalogService {
         name: product.name,
         unit: product.unit,
         is_active: product.isActive,
+        reorder_threshold: product.reorderThreshold,
       }),
     });
   }

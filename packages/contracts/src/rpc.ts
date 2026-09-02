@@ -54,3 +54,16 @@ export const reserveStockResponse = z.union([
     shortfalls: z.array(z.object({ product_id: z.string().uuid(), available: z.number().int() })),
   }),
 ]);
+
+export const commitReservationRequest = z.object({
+  business_id: z.string().uuid(),
+  reservation_id: z.string().uuid(),
+  sale_id: z.string().uuid(),
+});
+export const commitReservationResponse = z.object({ ok: z.boolean() });
+
+export const releaseReservationRequest = z.object({
+  business_id: z.string().uuid(),
+  reservation_id: z.string().uuid(),
+});
+export const releaseReservationResponse = z.object({ ok: z.boolean() });

@@ -49,6 +49,7 @@ export const productUpsertedPayload = z.object({
   name: z.string(),
   unit: z.string(),
   is_active: z.boolean(),
+  reorder_threshold: z.number().int().nonnegative(),
 });
 
 export const priceChangedPayload = z.object({
@@ -64,11 +65,39 @@ export const productDeactivatedPayload = z.object({
   product_id: z.string().uuid(),
 });
 
+export const stockMovementType = z.enum([
+  'stock_in',
+  'adjustment',
+  'sale',
+  'return',
+  'void_reversal',
+]);
+
+export const stockMovementRecordedPayload = z.object({
+  business_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  movement_id: z.string().uuid(),
+  type: stockMovementType,
+  quantity_delta: z.number().int(),
+});
+
+export const stockLevelChangedPayload = z.object({
+  business_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  on_hand: z.number().int(),
+});
+
 export const stockFellBelowThresholdPayload = z.object({
   business_id: z.string().uuid(),
   product_id: z.string().uuid(),
   on_hand: z.number().int(),
   threshold: z.number().int(),
+});
+
+export const stockRecoveredPayload = z.object({
+  business_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  on_hand: z.number().int(),
 });
 
 export const EVENT_PAYLOADS = {
@@ -81,5 +110,8 @@ export const EVENT_PAYLOADS = {
   ProductUpserted: productUpsertedPayload,
   PriceChanged: priceChangedPayload,
   ProductDeactivated: productDeactivatedPayload,
+  StockMovementRecorded: stockMovementRecordedPayload,
+  StockLevelChanged: stockLevelChangedPayload,
   StockFellBelowThreshold: stockFellBelowThresholdPayload,
+  StockRecovered: stockRecoveredPayload,
 } as const;
