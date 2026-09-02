@@ -32,8 +32,11 @@ export class BusinessesController {
 
   @Get(':businessId')
   @UseGuards(InternalContextGuard, TenantGuard)
-  get(@Param('businessId') businessId: string) {
-    return this.businesses.get(businessId);
+  async get(@Param('businessId') businessId: string, @Req() req: Request) {
+    // `req.membership` is resolved by TenantGuard — echo the caller's role so a
+    // client can gate Owner-only UI without a separate members lookup.
+    const business = await this.businesses.get(businessId);
+    return { ...business, role: req.membership?.role ?? null };
   }
 
   @Patch(':businessId')

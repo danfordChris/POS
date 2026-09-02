@@ -143,10 +143,11 @@ describe('tenancy — GET/PATCH /v1/businesses/:id', () => {
   });
 
   it('owner reads and updates; staff cannot update (role_forbidden); stranger 403 not_a_member', async () => {
-    await http
+    const read = await http
       .get(`/v1/businesses/${bizId}`)
       .set(ctx({ userId: owner, businessId: bizId }))
       .expect(200);
+    expect(read.body.role).toBe('owner');
 
     const denied = await http
       .patch(`/v1/businesses/${bizId}`)
