@@ -114,8 +114,7 @@ class _InsetShadowPainter extends CustomPainter {
     final outer = Path()..addRect(rect.inflate(blur * 3));
 
     void innerShadow(Offset offset, Color color) {
-      final inner = Path()
-        ..addRRect(rrect.shift(offset).inflate(0.5));
+      final inner = Path()..addRRect(rrect.shift(offset).inflate(0.5));
       final shadowPath = Path.combine(PathOperation.difference, outer, inner);
       canvas.drawPath(
         shadowPath,

@@ -9,10 +9,9 @@ ThemeData buildDukaTheme(Brightness brightness) {
 
   final base = ThemeData(brightness: brightness, useMaterial3: true);
 
-  final textTheme = GoogleFonts.nunitoTextTheme(base.textTheme).apply(
-    bodyColor: c.textPrimary,
-    displayColor: c.textPrimary,
-  );
+  final textTheme = GoogleFonts.nunitoTextTheme(
+    base.textTheme,
+  ).apply(bodyColor: c.textPrimary, displayColor: c.textPrimary);
 
   return base.copyWith(
     scaffoldBackgroundColor: c.surface,

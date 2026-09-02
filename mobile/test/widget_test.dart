@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pos_mobile/main.dart';
@@ -6,35 +7,36 @@ import 'package:pos_mobile/theme/duka_colors.dart';
 import 'package:pos_mobile/theme/duka_theme.dart';
 import 'package:pos_mobile/theme/neu.dart';
 import 'package:pos_mobile/widgets/neu_button.dart';
-import 'package:pos_mobile/widgets/neu_toggle.dart';
 
 void main() {
-  testWidgets('gallery renders the neumorphic kit', (tester) async {
-    await tester.pumpWidget(const PosApp());
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    expect(find.text('Neumorphic design system'), findsOneWidget);
-    expect(find.byType(NeuButton), findsWidgets);
-    expect(find.text('Record sale'), findsOneWidget);
-
-    // Surfaces / error card live below the fold in the ListView.
-    await tester.dragUntilVisible(
-      find.text('Sunken well — inset'),
-      find.byType(Scrollable).first,
-      const Offset(0, -300),
-    );
-    expect(find.byType(NeuBox), findsWidgets);
-    expect(find.byType(NeuWell), findsWidgets);
+  setUp(() {
+    // No stored tokens -> the app should boot to the sign-in screen.
+    FlutterSecureStorage.setMockInitialValues({});
   });
 
-  testWidgets('toggle flips on tap', (tester) async {
+  testWidgets('unauthenticated boot lands on the sign-in screen', (
+    tester,
+  ) async {
     await tester.pumpWidget(const PosApp());
+    await tester.pumpAndSettle();
 
-    final toggle = find.byType(NeuToggle).first;
-    final before = tester.widget<NeuToggle>(toggle).value;
-    await tester.tap(toggle);
-    await tester.pump(const Duration(milliseconds: 200));
-    final after = tester.widget<NeuToggle>(find.byType(NeuToggle).first).value;
-    expect(after, isNot(before));
+    expect(find.text('Sign in to your account.'), findsOneWidget);
+    expect(find.byType(NeuButton), findsWidgets);
+    expect(find.widgetWithText(NeuButton, 'Sign in'), findsOneWidget);
+  });
+
+  testWidgets('login screen shows email + password fields, no bottom nav', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PosApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+    expect(find.byType(NeuWell), findsWidgets); // inset input wells
+    expect(find.text('Home'), findsNothing); // shell not mounted yet
   });
 
   test('both theme brightnesses build with the DukaColors extension', () {

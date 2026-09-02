@@ -38,6 +38,11 @@ dependencies:
   # Nunito for the neumorphic design system (loaded at runtime, no vendored binaries).
   google_fonts: ^6.2.1
 
+  # App shell: routing, HTTP, secure token storage.
+  go_router: ^14.6.2
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

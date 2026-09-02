@@ -48,9 +48,7 @@ class NeuTextField extends StatelessWidget {
         DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(DukaRadius.control),
-            border: hasError
-                ? Border.all(color: t.danger, width: 1)
-                : null,
+            border: hasError ? Border.all(color: t.danger, width: 1) : null,
           ),
           child: NeuWell(
             padding: const EdgeInsets.symmetric(
@@ -89,10 +87,7 @@ class NeuTextField extends StatelessWidget {
         ),
         if (hasError) ...[
           const SizedBox(height: DukaSpacing.s2),
-          Text(
-            errorText!,
-            style: TextStyle(color: t.danger, fontSize: 13),
-          ),
+          Text(errorText!, style: TextStyle(color: t.danger, fontSize: 13)),
         ],
       ],
     );

@@ -31,13 +31,9 @@ class DukaElevation {
   DukaElevation._();
 
   static List<BoxShadow> _raised(DukaColors t, double xy, double blur) => [
-        BoxShadow(color: t.shadowDark, offset: Offset(xy, xy), blurRadius: blur),
-        BoxShadow(
-          color: t.shadowLight,
-          offset: Offset(-xy, -xy),
-          blurRadius: blur,
-        ),
-      ];
+    BoxShadow(color: t.shadowDark, offset: Offset(xy, xy), blurRadius: blur),
+    BoxShadow(color: t.shadowLight, offset: Offset(-xy, -xy), blurRadius: blur),
+  ];
 
   static List<BoxShadow> sm(DukaColors t) => _raised(t, 3, 6);
   static List<BoxShadow> md(DukaColors t) => _raised(t, 6, 10);
