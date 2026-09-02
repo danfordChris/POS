@@ -16,12 +16,9 @@ export type ThemePreference = ThemeMode | 'system';
 const STORAGE_KEY = 'duka-theme';
 
 interface ThemeContextValue {
-  /** The user's stored choice. `system` follows the OS. */
   preference: ThemePreference;
-  /** The theme actually applied right now. */
   resolved: ThemeMode;
   setPreference: (next: ThemePreference) => void;
-  /** Cycle light → dark → system. */
   toggle: () => void;
 }
 
@@ -29,8 +26,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 /**
  * Blocking snippet injected in <head> so the stored theme is on <html data-theme>
- * before first paint — no flash of the wrong palette. Keep in sync with
- * `resolvePreference` / `systemMode` below.
+ * before first paint — no flash of the wrong palette.
  */
 export const themeInitScript = `(function () {
   try {
@@ -41,19 +37,17 @@ export const themeInitScript = `(function () {
   } catch (e) {}
 })();`;
 
-function resolvePreference(): ThemePreference {
-  if (typeof window === 'undefined') return 'system';
+function readStored(): ThemePreference {
   try {
     const p = localStorage.getItem(STORAGE_KEY);
     if (p === 'light' || p === 'dark' || p === 'system') return p;
   } catch {
-    /* private mode / storage disabled */
+    /* storage unavailable */
   }
   return 'system';
 }
 
 function systemMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
@@ -62,18 +56,23 @@ function persist(next: ThemePreference): void {
     if (next === 'system') localStorage.removeItem(STORAGE_KEY);
     else localStorage.setItem(STORAGE_KEY, next);
   } catch {
-    /* ignore persistence failure */
+    /* ignore */
   }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Lazy initialisers are SSR-safe (return the light/system defaults on the
-  // server) and read the real values on the client's first render.
-  const [preference, setPreferenceState] = useState<ThemePreference>(resolvePreference);
-  const [system, setSystem] = useState<ThemeMode>(systemMode);
+  // Deterministic defaults so SSR and the client's first render agree; the real
+  // values are read after mount (below), avoiding a hydration mismatch.
+  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [system, setSystem] = useState<ThemeMode>('light');
 
-  // Follow OS changes while the preference is `system`.
   useEffect(() => {
+    // One-shot hydration of the stored preference + OS setting after mount.
+    const hydrate = () => {
+      setPreferenceState(readStored());
+      setSystem(systemMode());
+    };
+    hydrate();
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = () => setSystem(mq.matches ? 'dark' : 'light');
     mq.addEventListener('change', onChange);
@@ -82,7 +81,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const resolved: ThemeMode = preference === 'system' ? system : preference;
 
-  // Reflect the resolved theme onto <html> (not React state — safe in an effect).
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolved);
   }, [resolved]);
