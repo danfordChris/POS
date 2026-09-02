@@ -36,6 +36,34 @@ export const invitationCreatedPayload = z.object({
   expires_at: z.string().datetime(),
 });
 
+export const categoryUpsertedPayload = z.object({
+  business_id: z.string().uuid(),
+  category_id: z.string().uuid(),
+  name: z.string(),
+});
+
+export const productUpsertedPayload = z.object({
+  business_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  sku: z.string(),
+  name: z.string(),
+  unit: z.string(),
+  is_active: z.boolean(),
+});
+
+export const priceChangedPayload = z.object({
+  business_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  sell_price: z.number().int(),
+  winger_price: z.number().int().nullable(),
+  currency: z.string(),
+});
+
+export const productDeactivatedPayload = z.object({
+  business_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+});
+
 export const stockFellBelowThresholdPayload = z.object({
   business_id: z.string().uuid(),
   product_id: z.string().uuid(),
@@ -49,5 +77,9 @@ export const EVENT_PAYLOADS = {
   MembershipCreated: membershipCreatedPayload,
   MembershipSuspended: membershipSuspendedPayload,
   InvitationCreated: invitationCreatedPayload,
+  CategoryUpserted: categoryUpsertedPayload,
+  ProductUpserted: productUpsertedPayload,
+  PriceChanged: priceChangedPayload,
+  ProductDeactivated: productDeactivatedPayload,
   StockFellBelowThreshold: stockFellBelowThresholdPayload,
 } as const;

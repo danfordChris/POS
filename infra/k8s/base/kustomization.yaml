@@ -18,5 +18,6 @@ resources:
   - kong.yaml
   - identity.yaml
   - tenancy.yaml
-  # catalog / inventory / sales / winger / notifications are added by their phases
+  - catalog.yaml
+  # inventory / sales / winger / notifications are added by their phases
   # using examples/service.template.yaml as the starting point.

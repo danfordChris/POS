@@ -26,6 +26,12 @@ export const SUBJECTS = {
     invitationAccepted: evtSubject('tenancy', 'InvitationAccepted'),
     resolveMembership: rpcSubject('tenancy', 'resolveMembership'),
   },
+  catalog: {
+    categoryUpserted: evtSubject('catalog', 'CategoryUpserted'),
+    productUpserted: evtSubject('catalog', 'ProductUpserted'),
+    priceChanged: evtSubject('catalog', 'PriceChanged'),
+    productDeactivated: evtSubject('catalog', 'ProductDeactivated'),
+  },
   inventory: {
     reserveStock: rpcSubject('inventory', 'reserveStock'),
     commitReservation: rpcSubject('inventory', 'commitReservation'),

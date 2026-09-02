@@ -1,0 +1,76 @@
+// catalog service — owns category, product (RLS) in the `catalog` schema.
+// Plus the transactional outbox + idempotency tables from @pos/nest-common.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CATALOG_DATABASE_URL")
+}
+
+/// Product grouping. RLS: `business_id = current_setting('app.business_id')`.
+model Category {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String    @map("business_id") @db.Uuid
+  name       String
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  products   Product[]
+
+  @@unique([businessId, name])
+  @@map("category")
+}
+
+/// Sellable item. Price fields are Owner-only on write (enforced in the service).
+/// RLS: `business_id = current_setting('app.business_id')`.
+model Product {
+  id                String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId        String   @map("business_id") @db.Uuid
+  sku               String
+  name              String
+  description       String?
+  categoryId        String?  @map("category_id") @db.Uuid
+  unit              String   @default("each")
+  imageUrl          String?  @map("image_url")
+  costPrice         Int      @default(0) @map("cost_price")
+  sellPrice         Int      @default(0) @map("sell_price")
+  wingerPrice       Int?     @map("winger_price")
+  currency          String   @default("TZS")
+  reorderThreshold  Int      @default(0) @map("reorder_threshold")
+  code              String?
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, sku])
+  @@unique([businessId, code])
+  @@index([businessId, isActive])
+  @@index([businessId, code])
+  @@map("product")
+}
+
+model OutboxMessage {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  subject   String
+  payload   Json
+  headers   Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  attempts  Int       @default(0)
+  lastError String?   @map("last_error")
+
+  @@index([createdAt], map: "outbox_unsent_idx")
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  subject     String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_events")
+}

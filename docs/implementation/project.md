@@ -8,7 +8,8 @@
 
 ## Current Priorities
 
-1. Phase 02 — Inventory core (`catalog` + `inventory` services).
+1. Phase 02 — Inventory core: `catalog` done (T-0101–T-0103); `inventory` service
+   (T-0104–T-0105) and mobile/web screens (T-0106–T-0109) next.
 2. Phase 03 — Reorder alerts (`inventory` → `notifications`).
 3. Phase 04 — Sales + digital receipts.
 
@@ -16,7 +17,7 @@
 
 - [x] Phase 00 — Foundations (monolith baseline: T-0001–T-0004 done; T-0005–T-0009 superseded by Phase 01)
 - [x] Phase 01 — Platform and Core Services
-- [ ] Phase 02 — Inventory core (`catalog`, `inventory`)
+- [~] Phase 02 — Inventory core (`catalog` done; `inventory` + clients pending)
 - [ ] Phase 03 — Reorder alerts (`inventory` → `notifications`)
 - [ ] Phase 04 — Sales and digital receipts (`sales`; stock saga with `inventory`)
 - [ ] Phase 05 — Winger portal (`winger` read model + portal API)

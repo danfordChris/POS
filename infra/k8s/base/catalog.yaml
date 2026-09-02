@@ -1,0 +1,77 @@
+# Starting point for a new domain service (catalog / inventory / sales / winger /
+# notifications). Copy to infra/k8s/base/<svc>.yaml, replace catalog, add it to
+# base/kustomization.yaml, and add catalog_DATABASE_URL to the secret.
+#
+# `notifications` is a worker: drop the Service + HPA-on-CPU (scale on NATS lag
+# instead) and keep only the Deployment + PDB.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  labels:
+    app.kubernetes.io/name: catalog
+    app.kubernetes.io/part-of: pos-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: catalog
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: catalog
+    spec:
+      containers:
+        - name: catalog
+          image: ghcr.io/pos/catalog:latest
+          ports:
+            - { name: http, containerPort: 3000 }
+          envFrom:
+            - configMapRef: { name: pos-shared }
+            - secretRef: { name: pos-secrets }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 3000 }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 3000 }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  labels:
+    app.kubernetes.io/name: catalog
+spec:
+  selector:
+    app.kubernetes.io/name: catalog
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: catalog
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: catalog
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: catalog
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: catalog

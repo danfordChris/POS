@@ -66,12 +66,39 @@ services:
       timeout: 5s
       retries: 12
 
+  catalog:
+    build: { context: .., dockerfile: services/catalog/Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      CATALOG_PORT: '3000'
+      CATALOG_DATABASE_URL: postgresql://catalog_app:catalog_app@postgres:5432/pos_dev?schema=catalog
+      NATS_URL: nats://nats:4222
+      INTERNAL_CONTEXT_SECRET: ${INTERNAL_CONTEXT_SECRET:-dev-only-internal-context-secret-change-me}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-pos-local}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-pos-local-secret}
+      S3_BUCKET: ${S3_BUCKET:-pos-media}
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000/pos-media}
+    depends_on:
+      postgres: { condition: service_healthy }
+      nats: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost:3000/readyz || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   kong:
     image: kong:3.7
     restart: unless-stopped
     depends_on:
       identity: { condition: service_started }
       tenancy: { condition: service_started }
+      catalog: { condition: service_started }
     environment:
       KONG_DATABASE: 'off'
       KONG_VAULTS: env
@@ -85,6 +112,7 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
       IDENTITY_URL: ${IDENTITY_URL:-http://identity:3000}
       TENANCY_URL: ${TENANCY_URL:-http://tenancy:3000}
+      CATALOG_URL: ${CATALOG_URL:-http://catalog:3000}
       TENANCY_MEMBERSHIP_URL: ${TENANCY_MEMBERSHIP_URL:-http://tenancy:3000/v1/internal/membership}
     ports:
       - '${KONG_PROXY_PORT:-8000}:8000'
