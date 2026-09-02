@@ -38,14 +38,11 @@ This guide provides:
 
 ## Canonical Architecture Docs
 
-For approved, current-state architecture truth (not how-to steps), read `docs/design/architecture/` first — it is the source these skill files must stay consistent with:
+For approved, current-state architecture truth (not how-to steps), read this first — it is the source these skill files must stay consistent with, adapted to what this repo actually uses (no `ipf_flutter_starter_pack`, neumorphic `Neu*` kit instead of `AppButton`, no l10n codegen yet):
 
-- `docs/design/architecture/README.md` — layer map and runtime entry sequence
-- `docs/design/architecture/routing.md` — `go_router` structure
-- `docs/design/architecture/state-management.md` — `provider` pattern
-- `docs/design/architecture/theming.md` — theme system
-- `docs/design/architecture/componentization.md` — feature module anatomy, shared vs feature-local widgets
-- `docs/implementation/status/architecture-audit-2026-07-31.md` — known gaps between docs/skills and code as of this pass
+- `docs/design/architecture/mobile-architecture.md` — layer map, `AppRoute` enum routing, `provider` + `BaseProvider` state, feature-first structure, absolute imports, theming pointer
+
+The generic skill templates below still reference starter-pack helpers (`APIManager.instance`, `StarterChangeNotifier`, `Strings.instance`, `NotifyLoader`, `make ipf_gen`) — treat those as the pattern to adapt, not verbatim. In this repo: services are static classes over `ApiClient.instance`; `BaseProvider` is local (`lib/shared/providers/base_provider.dart`); theme access is `DukaColors.of(context)`.
 
 # Flutter Development Skills Guide
 

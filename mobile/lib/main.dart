@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import 'app/router.dart';
-import 'app/session_scope.dart';
-import 'app/theme_mode.dart';
-import 'data/session.dart';
-import 'theme/duka_theme.dart';
+import 'package:pos_mobile/core/router/router.dart';
+import 'package:pos_mobile/core/theme/duka_theme.dart';
+import 'package:pos_mobile/features/auth/providers/session_provider.dart';
+import 'package:pos_mobile/shared/providers/app_provider.dart';
+import 'package:pos_mobile/shared/providers/providers.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const PosApp());
+  runApp(MultiProvider(providers: appProviders, child: const PosApp()));
 }
 
 class PosApp extends StatefulWidget {
@@ -20,40 +21,24 @@ class PosApp extends StatefulWidget {
 }
 
 class _PosAppState extends State<PosApp> {
-  late final SessionController _session;
   late final GoRouter _router;
 
   @override
   void initState() {
     super.initState();
-    _session = SessionController();
-    _router = createRouter(_session);
-    _session.bootstrap();
-  }
-
-  @override
-  void dispose() {
-    _session.dispose();
-    super.dispose();
+    _router = createRouter(context.read<SessionProvider>());
   }
 
   @override
   Widget build(BuildContext context) {
-    return SessionScope(
-      controller: _session,
-      child: ValueListenableBuilder<ThemeMode>(
-        valueListenable: themeMode,
-        builder: (context, mode, _) {
-          return MaterialApp.router(
-            title: 'Duka Stock',
-            debugShowCheckedModeBanner: false,
-            theme: buildDukaTheme(Brightness.light),
-            darkTheme: buildDukaTheme(Brightness.dark),
-            themeMode: mode,
-            routerConfig: _router,
-          );
-        },
-      ),
+    final mode = context.select<AppProvider, ThemeMode>((p) => p.themeMode);
+    return MaterialApp.router(
+      title: 'Duka Stock',
+      debugShowCheckedModeBanner: false,
+      theme: buildDukaTheme(Brightness.light),
+      darkTheme: buildDukaTheme(Brightness.dark),
+      themeMode: mode,
+      routerConfig: _router,
     );
   }
 }

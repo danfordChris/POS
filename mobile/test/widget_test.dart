@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
+import 'package:pos_mobile/core/theme/duka_colors.dart';
+import 'package:pos_mobile/core/theme/duka_theme.dart';
+import 'package:pos_mobile/core/theme/neu.dart';
 import 'package:pos_mobile/main.dart';
-import 'package:pos_mobile/theme/duka_colors.dart';
-import 'package:pos_mobile/theme/duka_theme.dart';
-import 'package:pos_mobile/theme/neu.dart';
-import 'package:pos_mobile/widgets/neu_button.dart';
+import 'package:pos_mobile/shared/providers/providers.dart';
+import 'package:pos_mobile/shared/widgets/neu_button.dart';
+
+Widget _app() => MultiProvider(providers: appProviders, child: const PosApp());
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -19,18 +23,17 @@ void main() {
   testWidgets('unauthenticated boot lands on the sign-in screen', (
     tester,
   ) async {
-    await tester.pumpWidget(const PosApp());
+    await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     expect(find.text('Sign in to your account.'), findsOneWidget);
-    expect(find.byType(NeuButton), findsWidgets);
     expect(find.widgetWithText(NeuButton, 'Sign in'), findsOneWidget);
   });
 
   testWidgets('login screen shows email + password fields, no bottom nav', (
     tester,
   ) async {
-    await tester.pumpWidget(const PosApp());
+    await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     expect(find.text('Email'), findsOneWidget);
