@@ -10,6 +10,7 @@ import 'package:pos_mobile/features/stock/providers/stock_provider.dart';
 import 'package:pos_mobile/models/catalog_models.dart';
 import 'package:pos_mobile/shared/widgets/error_by_code_card.dart';
 import 'package:pos_mobile/shared/widgets/neu_button.dart';
+import 'package:pos_mobile/shared/widgets/neu_stepper.dart';
 import 'package:pos_mobile/shared/widgets/neu_text_field.dart';
 import 'package:pos_mobile/shared/widgets/segmented_neu.dart';
 
@@ -38,6 +39,7 @@ class RecordMovementScreen extends StatefulWidget {
 class _RecordMovementScreenState extends State<RecordMovementScreen> {
   late String _type = widget.args.type;
   late String? _productId = widget.args.productId;
+  int _stockInQty = 1;
   final _qty = TextEditingController();
   final _reason = TextEditingController();
   bool _submitted = false;
@@ -50,9 +52,10 @@ class _RecordMovementScreenState extends State<RecordMovementScreen> {
   }
 
   int? get _delta {
+    if (_type == 'stock_in') return _stockInQty > 0 ? _stockInQty : null;
     final raw = int.tryParse(_qty.text.trim());
     if (raw == null || raw == 0) return null;
-    return _type == 'stock_in' ? raw.abs() : raw;
+    return raw;
   }
 
   Future<void> _submit() async {
@@ -117,16 +120,37 @@ class _RecordMovementScreenState extends State<RecordMovementScreen> {
                 onChanged: (v) => setState(() => _productId = v),
               ),
             const SizedBox(height: DukaSpacing.s4),
-            NeuTextField(
-              label: _type == 'stock_in'
-                  ? 'Quantity in'
-                  : 'Quantity change (±)',
-              controller: _qty,
-              keyboardType: const TextInputType.numberWithOptions(signed: true),
-              errorText: _submitted && _delta == null
-                  ? 'Enter a non-zero quantity'
-                  : null,
-            ),
+            if (_type == 'stock_in')
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Quantity in',
+                      style: TextStyle(
+                        color: t.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  NeuStepper(
+                    value: _stockInQty,
+                    min: 1,
+                    onChanged: (v) => setState(() => _stockInQty = v),
+                  ),
+                ],
+              )
+            else
+              NeuTextField(
+                label: 'Quantity change (±)',
+                controller: _qty,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: true,
+                ),
+                errorText: _submitted && _delta == null
+                    ? 'Enter a non-zero quantity'
+                    : null,
+              ),
             const SizedBox(height: DukaSpacing.s4),
             NeuTextField(
               label: 'Reason',

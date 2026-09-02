@@ -10,6 +10,8 @@ import 'package:pos_mobile/features/catalog/providers/catalog_provider.dart';
 import 'package:pos_mobile/models/catalog_models.dart';
 import 'package:pos_mobile/shared/widgets/error_by_code_card.dart';
 import 'package:pos_mobile/shared/widgets/neu_button.dart';
+import 'package:pos_mobile/shared/widgets/neu_section.dart';
+import 'package:pos_mobile/shared/widgets/neu_stepper.dart';
 import 'package:pos_mobile/shared/widgets/neu_text_field.dart';
 
 class ProductFormScreen extends StatefulWidget {
@@ -36,9 +38,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   late final _code = TextEditingController(
     text: widget.product?.code ?? widget.initialCode ?? '',
   );
-  late final _threshold = TextEditingController(
-    text: '${widget.product?.reorderThreshold ?? 0}',
-  );
   late final _cost = TextEditingController(
     text: widget.product?.costPrice?.toString() ?? '',
   );
@@ -49,6 +48,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     text: widget.product?.wingerPrice?.toString() ?? '',
   );
 
+  late int _threshold = widget.product?.reorderThreshold ?? 0;
   String? _categoryId;
   bool _submitted = false;
 
@@ -66,7 +66,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       _description,
       _unit,
       _code,
-      _threshold,
       _cost,
       _sell,
       _winger,
@@ -92,7 +91,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       'category_id': _categoryId,
       'unit': _unit.text.trim().isEmpty ? 'each' : _unit.text.trim(),
       'code': _code.text.trim().isEmpty ? null : _code.text.trim(),
-      'reorder_threshold': _int(_threshold) ?? 0,
+      'reorder_threshold': _threshold,
       if (canEditPrices) 'cost_price': _int(_cost),
       if (canEditPrices) 'sell_price': _int(_sell),
       if (canEditPrices) 'winger_price': _int(_winger),
@@ -115,7 +114,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = DukaColors.of(context);
     final canEditPrices = context.read<SessionProvider>().isOwner;
     final catalog = context.watch<CatalogProvider>();
 
@@ -127,77 +125,92 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(DukaSpacing.s5),
           children: [
-            NeuTextField(
-              label: 'SKU',
-              controller: _sku,
-              errorText: _submitted && _sku.text.trim().isEmpty
-                  ? 'Required'
-                  : null,
-            ),
-            const SizedBox(height: DukaSpacing.s4),
-            NeuTextField(
-              label: 'Name',
-              controller: _name,
-              errorText: _submitted && _name.text.trim().isEmpty
-                  ? 'Required'
-                  : null,
-            ),
-            const SizedBox(height: DukaSpacing.s4),
-            NeuTextField(label: 'Description', controller: _description),
-            const SizedBox(height: DukaSpacing.s4),
-            _CategoryField(
-              categories: catalog.categories,
-              value: _categoryId,
-              onChanged: (v) => setState(() => _categoryId = v),
-            ),
-            const SizedBox(height: DukaSpacing.s4),
-            Row(
-              children: [
-                Expanded(
-                  child: NeuTextField(label: 'Unit', controller: _unit),
-                ),
-                const SizedBox(width: DukaSpacing.s3),
-                Expanded(
-                  child: NeuTextField(label: 'Barcode / QR', controller: _code),
-                ),
-              ],
-            ),
-            const SizedBox(height: DukaSpacing.s4),
-            NeuTextField(
-              label: 'Reorder threshold',
-              controller: _threshold,
-              keyboardType: TextInputType.number,
+            NeuSection(
+              icon: Icons.inventory_2_outlined,
+              title: 'Item details',
+              child: Column(
+                children: [
+                  NeuTextField(
+                    label: 'Name',
+                    hint: 'e.g. Cola 300ml',
+                    controller: _name,
+                    prefix: const Icon(Icons.label_outline, size: 18),
+                    errorText: _submitted && _name.text.trim().isEmpty
+                        ? 'Required'
+                        : null,
+                  ),
+                  const SizedBox(height: DukaSpacing.s4),
+                  NeuTextField(
+                    label: 'Barcode / SKU',
+                    hint: 'e.g. SODA-300',
+                    controller: _sku,
+                    prefix: const Icon(Icons.qr_code_2, size: 18),
+                    errorText: _submitted && _sku.text.trim().isEmpty
+                        ? 'Required'
+                        : null,
+                  ),
+                  const SizedBox(height: DukaSpacing.s4),
+                  NeuTextField(
+                    label: 'Description',
+                    hint: 'Describe the product…',
+                    controller: _description,
+                  ),
+                  const SizedBox(height: DukaSpacing.s4),
+                  _CategoryField(
+                    categories: catalog.categories,
+                    value: _categoryId,
+                    onChanged: (v) => setState(() => _categoryId = v),
+                  ),
+                  const SizedBox(height: DukaSpacing.s4),
+                  NeuTextField(label: 'Unit', hint: 'each', controller: _unit),
+                ],
+              ),
             ),
 
             if (canEditPrices) ...[
-              const SizedBox(height: DukaSpacing.s6),
-              Text(
-                'Prices (minor units) — Owner only',
-                style: TextStyle(
-                  color: t.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              const SizedBox(height: DukaSpacing.s4),
+              NeuSection(
+                icon: Icons.payments_outlined,
+                title: 'Pricing',
+                child: Column(
+                  children: [
+                    NeuTextField(
+                      label: 'Buy price',
+                      hint: '0',
+                      prefix: const Text('TZS'),
+                      controller: _cost,
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: DukaSpacing.s4),
+                    NeuTextField(
+                      label: 'Sell price',
+                      hint: '0',
+                      prefix: const Text('TZS'),
+                      controller: _sell,
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: DukaSpacing.s4),
+                    NeuTextField(
+                      label: 'Winger price',
+                      hint: '0',
+                      prefix: const Text('TZS'),
+                      controller: _winger,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: DukaSpacing.s3),
-              NeuTextField(
-                label: 'Cost price',
-                controller: _cost,
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: DukaSpacing.s4),
-              NeuTextField(
-                label: 'Sell price',
-                controller: _sell,
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: DukaSpacing.s4),
-              NeuTextField(
-                label: 'Winger price',
-                controller: _winger,
-                keyboardType: TextInputType.number,
-              ),
             ],
+
+            const SizedBox(height: DukaSpacing.s4),
+            NeuSection(
+              icon: Icons.tune,
+              title: 'Inventory control',
+              child: _ThresholdRow(
+                value: _threshold,
+                onChanged: (v) => setState(() => _threshold = v),
+              ),
+            ),
 
             if (catalog.error != null && _submitted) ...[
               const SizedBox(height: DukaSpacing.s4),
@@ -207,18 +220,84 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 body: '${catalog.error}',
               ),
             ],
-
-            const SizedBox(height: DukaSpacing.s6),
-            NeuButton(
-              label: catalog.isBusy
-                  ? 'Saving…'
-                  : (widget.isEdit ? 'Save changes' : 'Create product'),
-              variant: NeuButtonVariant.primary,
-              expand: true,
-              onPressed: catalog.isBusy ? null : () => _submit(canEditPrices),
-            ),
+            const SizedBox(height: DukaSpacing.s8),
           ],
         ),
+      ),
+      bottomNavigationBar: _StickyBar(
+        child: NeuButton(
+          label: catalog.isBusy
+              ? 'Saving…'
+              : (widget.isEdit ? 'Save changes' : 'Create product'),
+          variant: NeuButtonVariant.primary,
+          expand: true,
+          onPressed: catalog.isBusy ? null : () => _submit(canEditPrices),
+        ),
+      ),
+    );
+  }
+}
+
+class _StickyBar extends StatelessWidget {
+  const _StickyBar({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = DukaColors.of(context);
+    return Container(
+      color: t.surface,
+      padding: EdgeInsets.fromLTRB(
+        DukaSpacing.s5,
+        DukaSpacing.s3,
+        DukaSpacing.s5,
+        DukaSpacing.s3 + MediaQuery.paddingOf(context).bottom,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ThresholdRow extends StatelessWidget {
+  const _ThresholdRow({required this.value, required this.onChanged});
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = DukaColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DukaSpacing.s4,
+        vertical: DukaSpacing.s3,
+      ),
+      decoration: BoxDecoration(
+        color: t.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(DukaRadius.control),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reorder threshold',
+                  style: TextStyle(
+                    color: t.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                Text(
+                  'Flag as low stock at or below this',
+                  style: TextStyle(color: t.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          NeuStepper(value: value, onChanged: onChanged, step: 5),
+        ],
       ),
     );
   }
