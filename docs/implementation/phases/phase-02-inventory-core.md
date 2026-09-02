@@ -5,8 +5,8 @@
 - `in-progress`
 - Last updated: 2026-09-02
 - Progress: `catalog` (T-0101–T-0103) and `inventory` (T-0104–T-0105) services shipped;
-  neumorphic design system wired into both clients (T-0118–T-0119). Client app shells +
-  screens (T-0106–T-0109) remain.
+  neumorphic design system (T-0118–T-0119) and web + mobile app shells (T-0120–T-0121)
+  in place. The feature screens (T-0106–T-0109) remain.
 
 ## Objective
 
@@ -43,8 +43,13 @@ Deliver catalog management and a stock movement ledger with derived on-hand, plu
 
 - [x] T-0118 Web neumorphic design system foundation (tokens, theme provider, base component kit)
 - [x] T-0119 Mobile neumorphic design system foundation (token classes, ThemeData, base widget kit)
+- [x] T-0120 Web app shell (auth, session, proxy refresh, sidebar/header nav, route + role guards)
+- [x] T-0121 Mobile app shell (auth, SessionController, go_router redirect, bottom nav)
 - Design system of record: `docs/design/interfaces/ui-design-system.md` (adopts the
   `design_handoff_neumorphic_system/` tokens + component rules; not its screen mockups).
+- Two API gaps surfaced by the shells, tracked in `tasks/backlog.md`: no
+  `GET /v1/businesses` list (forces onboarding, blocks the business switcher) and
+  `GET /v1/auth/me` returns empty `memberships`.
 
 ## Acceptance Criteria
 

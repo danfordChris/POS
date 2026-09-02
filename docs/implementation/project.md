@@ -9,9 +9,9 @@
 ## Current Priorities
 
 1. Phase 02 — Inventory core: backend complete — `catalog` (T-0101–T-0103) and
-   `inventory` (T-0104–T-0105) live behind Kong; neumorphic design system wired into
-   `web/` + `mobile/` (T-0118–T-0119, see `docs/design/interfaces/ui-design-system.md`).
-   Client app shells + screens (T-0106–T-0109) next.
+   `inventory` (T-0104–T-0105) live behind Kong; neumorphic design system
+   (T-0118–T-0119) and web + mobile app shells (T-0120–T-0121) in place. The feature
+   screens (T-0106–T-0109) are next.
 2. Phase 03 — Reorder alerts (`inventory` → `notifications`).
 3. Phase 04 — Sales + digital receipts.
 

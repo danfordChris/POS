@@ -1,5 +1,54 @@
 # Weekly Status
 
+## 2026-09-02 — web + mobile app shells
+
+### Summary
+
+- **Both clients now have a real app shell** — sign in / register / create-business
+  against Kong, session-driven routing, and the navigation chrome. Feature screens
+  (T-0106–T-0109) plug into this next.
+
+### Completed
+
+- **T-0120 (web)** — `lib/api.ts` typed Kong client (`ApiError` carries the
+  envelope); Next 16 `proxy.ts` gates every route on a refresh-token cookie and
+  transparently refreshes the access token against Kong before expiry; httpOnly
+  cookies set by `/api/auth/{login,register,logout}` + `/api/businesses` route
+  handlers (the browser never holds a token); `(auth)` login/register + `/onboarding`;
+  `(shell)` layout with a 232px sidebar (Owner-only "Manage" section hidden for
+  Staff), header (business switcher, theme toggle, sign out), dashboard, and themed
+  stubs for the feature routes (`Forbidden` for Staff on Owner-only pages). Gallery
+  moved to `/style`. Theme provider is now SSR-deterministic. `lint` + `build` pass.
+- **T-0121 (mobile)** — `data/api_client.dart` (Dio + bearer + one-shot 401
+  refresh + `ApiException`); `flutter_secure_storage` token store; `SessionController`
+  state machine (`loading → signedOut → needsBusiness → ready`) that `go_router`
+  redirects on; `StatefulShellRoute` bottom nav (Home / Catalog / Scan* / Sell /
+  More, Scan raised); real login/register/onboarding on the neumorphic kit; stubs
+  for the rest; gallery reachable from More. `flutter analyze` clean; `flutter test`
+  (3) pass.
+- **tenancy** — `GET /v1/businesses/:businessId` now echoes the caller's `role`
+  (from the membership `TenantGuard` already resolves) so a client can gate
+  Owner-only UI without a members lookup.
+
+### API gaps surfaced (backlog)
+
+- No `GET /v1/businesses` "list my memberships" endpoint → the shells force
+  onboarding for every user and cannot offer multi-business switching.
+- `GET /v1/auth/me` returns empty `memberships` / `wingerAccounts` (identity does
+  not compose tenancy data).
+
+### Tests
+
+- Web: `pnpm --filter web lint` + `build` pass. Mobile: `flutter analyze` +
+  `flutter test` pass. Backend unchanged — 66 workspace tests still green.
+  Validator `WORKFLOW:ok`.
+
+### Next
+
+- The Phase 02 screens against the live catalog + inventory APIs: mobile catalog +
+  product form (T-0106), scan (T-0107), stock-in / adjustment (T-0108); web catalog
+  + stock + movements + CSV (T-0109).
+
 ## 2026-09-02 — inventory service (Phase 02 backend complete)
 
 ### Summary
