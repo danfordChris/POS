@@ -33,7 +33,10 @@ is a fully isolated tenant; the platform vendor cannot see tenant business data.
 ## Conventions
 
 - Commit messages: imperative mood; no author, co-author, or tool attribution of any kind.
-- Branch, don't commit to a shared base, unless told otherwise. Commit/push only when asked.
+- Branch, don't commit to a shared base, unless told otherwise.
+- Commit at every natural checkpoint without being asked — when a task or coherent unit
+  of work is complete, tests are green, and the workflow validator is `WORKFLOW:ok`.
+  Don't batch unrelated work into one commit. Push only when asked.
 - Wrap fallible I/O and external calls in try/catch; return typed errors, never raw stack traces.
 - `docs/design/` holds approved product/system truth. Do not define net-new behavior in
   `docs/implementation/`; put unresolved behavior in `docs/changes/proposed/`.
