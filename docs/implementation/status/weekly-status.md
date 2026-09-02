@@ -1,5 +1,57 @@
 # Weekly Status
 
+## 2026-09-02 — Phase 02 feature screens code-complete
+
+### Summary
+
+- **All Phase 02 screens (T-0106–T-0109) are built** against the live catalog +
+  inventory APIs. The mobile app was first refactored onto the project's
+  documented Flutter architecture (see the mobile-architecture note below).
+
+### Completed
+
+- **T-0109 (web)** — `lib/tenant-api.ts` (server tenant-scoped Kong client);
+  `/catalog` list (search / category / status filters, on-hand column, cost
+  Owner-only, cursor) + `/catalog/new` + `/catalog/[id]` product form (price
+  fields Owner-only) + image upload + confirmed deactivate via server actions;
+  `/stock` on-hand table + `/stock/export` CSV route + Record-movement panel;
+  `/stock/movements` filterable ledger.
+- **Mobile architecture refactor** — `mobile/lib` restructured to the
+  `.agents/skills/skills/mobile/` conventions: `AppRoute` enum routing,
+  `provider` + local `BaseProvider`, `SessionProvider` (was an
+  `InheritedNotifier`), `AppProvider` (ThemeMode), `MultiProvider` in `main.dart`,
+  feature-first `lib/features/`, `lib/core/{router,network,theme,extensions}`,
+  `lib/data/services/<f>_service.dart` (static over `ApiClient.instance`),
+  `lib/models/`, `lib/shared/{providers,widgets}`. All imports
+  `package:pos_mobile/...` — `analysis_options` enforces
+  `always_use_package_imports`. Truth doc: `docs/design/architecture/mobile-architecture.md`.
+- **T-0106 (mobile)** — `CatalogProvider`; catalog list (search, on-hand + low
+  badge, refresh, "load more"); product detail (refetch, `cost_price` Owner-only,
+  Stock-in / Adjust / Deactivate actions); create/edit form (price fields
+  Owner-only, category dropdown). Home wired to product / low-stock counts +
+  quick actions.
+- **T-0107 (mobile)** — Scan screen: code entry → `CatalogService.findByCode`
+  (`?code=`, 404 → null) → open the product, or start a new product with the
+  code prefilled. Camera capture (`mobile_scanner`) is on the backlog.
+- **T-0108 (mobile)** — `StockProvider`; one Record-movement screen (segmented
+  `stock_in` / `adjustment`, product fixed from a detail or picked from Home,
+  signed quantity, reason) → `POST /stock/movements`; on success refreshes the
+  catalog's cached `StockItem` and shows the new on-hand; `422 insufficient_stock`
+  renders `ErrorByCodeCard`.
+
+### Tests
+
+- Web: `pnpm --filter web lint` + `build` pass. Mobile: `flutter analyze` →
+  "No issues found!"; `flutter test` → 3 passing. Backend unchanged — 66
+  workspace tests green. Validator `WORKFLOW:ok`.
+
+### Next
+
+- Live end-to-end pass: `docker compose up` (Kong + identity + tenancy + catalog
+  + inventory) and drive web + mobile against the real APIs; then Phase 02
+  acceptance sign-off. Then Phase 03 (reorder alerts: `inventory` →
+  `notifications`).
+
 ## 2026-09-02 — web + mobile app shells
 
 ### Summary

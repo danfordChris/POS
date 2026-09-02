@@ -22,5 +22,11 @@ Hold work not yet scheduled into a phase or written as a full task doc.
 - [ ] Expand Phase 02–06 checklist items into full task docs when each phase is scheduled
 - [ ] Service mesh (mTLS) evaluation — Phase 06
 - [ ] Invitation resend endpoint
+- [ ] Mobile camera scanning (`mobile_scanner` + camera permission config) — the
+      Scan screen (T-0107) does manual code entry today; the lookup/prefill flow is
+      already in place.
+- [ ] Mobile product image upload + a mobile stock/movements list screen.
+- [ ] Mobile provider unit tests (`CatalogProvider`/`StockProvider` load/error
+      transitions) — needs an injectable `ApiClient` or `http_mock_adapter` on Dio.
 - [ ] CI coverage gates
 - [ ] Post-MVP: NextSMS adapter, PDF invoicing, payments/mobile money, multi-location, EFD/VFD, offline sync, push notifications, `reporting`/`media` services

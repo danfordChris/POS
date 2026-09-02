@@ -134,7 +134,9 @@ class CatalogService {
       },
     );
     return (
-      movement: StockMovement.fromJson(data['movement'] as Map<String, dynamic>),
+      movement: StockMovement.fromJson(
+        data['movement'] as Map<String, dynamic>,
+      ),
       onHand: (data['on_hand'] as num).toInt(),
     );
   }

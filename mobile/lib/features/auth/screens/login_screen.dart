@@ -35,7 +35,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await context.read<SessionProvider>().signIn(_email.text.trim(), _password.text);
+      await context.read<SessionProvider>().signIn(
+        _email.text.trim(),
+        _password.text,
+      );
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e);
     } catch (_) {

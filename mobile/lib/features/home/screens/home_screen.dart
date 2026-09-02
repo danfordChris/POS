@@ -1,18 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:pos_mobile/features/auth/providers/session_provider.dart';
+
+import 'package:pos_mobile/core/router/router.dart';
 import 'package:pos_mobile/core/theme/duka_colors.dart';
 import 'package:pos_mobile/core/theme/duka_tokens.dart';
+import 'package:pos_mobile/features/auth/providers/session_provider.dart';
 import 'package:pos_mobile/core/theme/neu.dart';
+import 'package:pos_mobile/features/catalog/providers/catalog_provider.dart';
+import 'package:pos_mobile/shared/widgets/neu_button.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bizId = context.read<SessionProvider>().businessId;
+      if (bizId != null) context.read<CatalogProvider>().load(bizId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = DukaColors.of(context);
     final session = context.read<SessionProvider>();
     final firstName = (session.user?.name ?? '').split(' ').first;
+
+    final catalog = context.watch<CatalogProvider>();
+    final lowCount = catalog.products
+        .where((p) => catalog.stockFor(p.id)?.lowStock ?? false)
+        .length;
 
     return ListView(
       padding: const EdgeInsets.all(DukaSpacing.s5),
@@ -26,24 +50,38 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: DukaSpacing.s4),
-        const Row(
+        Row(
           children: [
             Expanded(
-              child: _Kpi(label: "Today's sales", value: '—'),
+              child: _Kpi(
+                label: 'Products',
+                value: '${catalog.products.length}',
+              ),
             ),
-            SizedBox(width: DukaSpacing.s3),
+            const SizedBox(width: DukaSpacing.s3),
             Expanded(
-              child: _Kpi(label: 'Low on stock', value: '—'),
+              child: _Kpi(label: 'Low on stock', value: '$lowCount'),
             ),
           ],
         ),
+        const SizedBox(height: DukaSpacing.s5),
+        NeuButton(
+          label: 'Browse catalog',
+          icon: Icons.inventory_2_outlined,
+          expand: true,
+          onPressed: () => context.go(AppRoute.catalog.path),
+        ),
+        const SizedBox(height: DukaSpacing.s3),
+        NeuButton(
+          label: 'Record stock movement',
+          icon: Icons.add_box_outlined,
+          expand: true,
+          onPressed: () => context.push(AppRoute.recordMovement.path),
+        ),
         const SizedBox(height: DukaSpacing.s4),
-        NeuBox(
-          child: Text(
-            'Live figures arrive with the Catalog and Sell screens '
-            '(T-0106–T-0108). Your session, nav, and roles are ready now.',
-            style: TextStyle(color: t.textSecondary, fontSize: 16),
-          ),
+        Text(
+          "Today's sales and receipts arrive with Phase 04.",
+          style: TextStyle(color: t.textSecondary, fontSize: 14),
         ),
       ],
     );
@@ -59,6 +97,7 @@ class _Kpi extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = DukaColors.of(context);
     return NeuBox(
+      padding: const EdgeInsets.all(DukaSpacing.s4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

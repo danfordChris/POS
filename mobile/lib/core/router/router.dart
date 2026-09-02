@@ -5,12 +5,16 @@ import 'package:pos_mobile/features/auth/screens/login_screen.dart';
 import 'package:pos_mobile/features/auth/screens/onboarding_screen.dart';
 import 'package:pos_mobile/features/auth/screens/register_screen.dart';
 import 'package:pos_mobile/features/catalog/screens/catalog_screen.dart';
+import 'package:pos_mobile/features/catalog/screens/product_detail_screen.dart';
+import 'package:pos_mobile/features/catalog/screens/product_form_screen.dart';
 import 'package:pos_mobile/features/dev/screens/gallery_screen.dart';
 import 'package:pos_mobile/features/home/screens/home_screen.dart';
 import 'package:pos_mobile/features/more/screens/more_screen.dart';
 import 'package:pos_mobile/features/scan/screens/scan_screen.dart';
 import 'package:pos_mobile/features/sell/screens/sell_screen.dart';
 import 'package:pos_mobile/features/shell/screens/app_shell.dart';
+import 'package:pos_mobile/features/stock/screens/record_movement_screen.dart';
+import 'package:pos_mobile/models/catalog_models.dart';
 
 /// Single source of truth for every path. Never inline a path string.
 enum AppRoute {
@@ -25,6 +29,10 @@ enum AppRoute {
   sell('/sell'),
   more('/more'),
   // secondary
+  productNew('/catalog/new'),
+  productDetail('/catalog/detail'),
+  productEdit('/catalog/edit'),
+  recordMovement('/stock/record'),
   gallery('/more/gallery');
 
   const AppRoute(this.path);
@@ -53,11 +61,7 @@ GoRouter createRouter(SessionProvider session) {
               ? null
               : AppRoute.onboarding.path;
         case SessionStatus.ready:
-          const authOnly = {
-            '/login',
-            '/register',
-            '/onboarding',
-          };
+          const authOnly = {'/login', '/register', '/onboarding'};
           return authOnly.contains(loc) ? AppRoute.home.path : null;
       }
     },
@@ -77,6 +81,35 @@ GoRouter createRouter(SessionProvider session) {
       GoRoute(
         path: AppRoute.gallery.path,
         builder: (_, _) => const GalleryScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.productNew.path,
+        parentNavigatorKey: NavigationKeys.root,
+        builder: (_, state) => ProductFormScreen(
+          initialCode: state.extra is String ? state.extra as String : null,
+        ),
+      ),
+      GoRoute(
+        path: AppRoute.productDetail.path,
+        parentNavigatorKey: NavigationKeys.root,
+        builder: (_, state) =>
+            ProductDetailScreen(product: state.extra as Product),
+      ),
+      GoRoute(
+        path: AppRoute.productEdit.path,
+        parentNavigatorKey: NavigationKeys.root,
+        builder: (_, state) =>
+            ProductFormScreen(product: state.extra as Product),
+      ),
+      GoRoute(
+        path: AppRoute.recordMovement.path,
+        parentNavigatorKey: NavigationKeys.root,
+        builder: (_, state) {
+          final args = state.extra is RecordMovementArgs
+              ? state.extra as RecordMovementArgs
+              : const RecordMovementArgs();
+          return RecordMovementScreen(args: args);
+        },
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(shell: shell),

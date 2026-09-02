@@ -6,7 +6,7 @@
 - Last updated: 2026-09-02
 - Progress: `catalog` (T-0101–T-0103) and `inventory` (T-0104–T-0105) services shipped;
   neumorphic design system (T-0118–T-0119) and web + mobile app shells (T-0120–T-0121)
-  in place. The feature screens (T-0106–T-0109) remain.
+  in place. **All feature screens (T-0106–T-0109) shipped.** Phase 02 is code-complete pending a live `docker compose up` end-to-end pass + acceptance sign-off.
 
 ## Objective
 
@@ -34,10 +34,10 @@ Deliver catalog management and a stock movement ledger with derived on-hand, plu
 - [x] T-0103 Image upload adapter + endpoint
 - [x] T-0104 Stock ledger model + movement endpoint (transactional on-hand)
 - [x] T-0105 Stock read endpoints (on-hand, movements, low)
-- [ ] T-0106 Mobile catalog + product form
-- [ ] T-0107 Mobile scan screen + lookup/prefill
-- [ ] T-0108 Mobile stock-in + adjustment flows
-- [ ] T-0109 Web catalog + stock + movements + CSV
+- [x] T-0106 Mobile catalog + product form
+- [x] T-0107 Mobile scan screen + lookup/prefill (camera capture deferred — backlog)
+- [x] T-0108 Mobile stock-in + adjustment flows
+- [x] T-0109 Web catalog + stock + movements + CSV
 
 ### Client foundation (unblocks T-0106–T-0109)
 

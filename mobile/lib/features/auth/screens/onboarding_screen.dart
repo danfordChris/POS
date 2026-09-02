@@ -34,7 +34,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _error = null;
     });
     try {
-      await context.read<SessionProvider>().createBusiness(_name.text.trim(), _currency);
+      await context.read<SessionProvider>().createBusiness(
+        _name.text.trim(),
+        _currency,
+      );
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e);
     } catch (_) {
