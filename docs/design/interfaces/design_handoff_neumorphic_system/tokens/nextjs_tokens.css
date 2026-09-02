@@ -1,0 +1,59 @@
+/* Duka Stock — neumorphic design tokens. Import once at app root. */
+:root, [data-theme="light"] {
+  --surface: oklch(96.5% 0.012 75);
+  --surface-sunken: oklch(93.5% 0.014 75);
+  --text-primary: oklch(26% 0.02 75);
+  --text-secondary: oklch(45% 0.018 75);
+  --text-disabled: oklch(68% 0.012 75);
+  --accent: oklch(56% 0.1 195);
+  --accent-hover: oklch(51% 0.1 195);
+  --accent-contrast: oklch(99% 0.005 195);
+  --success: oklch(56% 0.13 145);
+  --warning: oklch(62% 0.14 75);
+  --danger: oklch(55% 0.17 25);
+  --info: oklch(56% 0.1 235);
+  --shadow-light: oklch(99.5% 0.005 75 / 0.9);
+  --shadow-dark: oklch(76% 0.02 75 / 0.65);
+}
+
+[data-theme="dark"] {
+  --surface: oklch(28% 0.012 255);
+  --surface-sunken: oklch(24% 0.012 255);
+  --text-primary: oklch(93% 0.008 255);
+  --text-secondary: oklch(73% 0.01 255);
+  --text-disabled: oklch(52% 0.01 255);
+  --accent: oklch(70% 0.11 195);
+  --accent-hover: oklch(75% 0.11 195);
+  --accent-contrast: oklch(16% 0.02 195);
+  --success: oklch(65% 0.14 145);
+  --warning: oklch(72% 0.14 75);
+  --danger: oklch(66% 0.17 25);
+  --info: oklch(66% 0.1 235);
+  --shadow-light: oklch(35% 0.015 255 / 0.7);
+  --shadow-dark: oklch(12% 0.01 255 / 0.85);
+}
+
+:root {
+  --radius-control: 16px;
+  --radius-card: 22px;
+  --radius-sheet: 28px;
+  --radius-pill: 999px;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 40px; --space-9: 48px;
+
+  --elev-sm: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+  --elev-md: 6px 6px 10px var(--shadow-dark), -6px -6px 10px var(--shadow-light);
+  --elev-lg: 10px 10px 18px var(--shadow-dark), -10px -10px 18px var(--shadow-light);
+  --elev-inset: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+
+  --font-family: 'Nunito', system-ui, sans-serif;
+}
+
+body { background: var(--surface); color: var(--text-primary); font-family: var(--font-family); }
+
+/* Usage example:
+.card { background: var(--surface); border-radius: var(--radius-card); box-shadow: var(--elev-md); }
+.input { background: var(--surface-sunken); border-radius: var(--radius-control); box-shadow: var(--elev-inset); }
+.btn-primary { background: var(--accent); color: var(--accent-contrast); border-radius: var(--radius-pill); box-shadow: var(--elev-sm); }
+*/

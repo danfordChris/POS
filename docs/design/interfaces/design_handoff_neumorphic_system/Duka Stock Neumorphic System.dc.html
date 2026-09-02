@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  ::selection{background:oklch(70% 0.1 195 / 0.3)}
+  * { box-sizing: border-box; }
+  input::placeholder, textarea::placeholder { color: inherit; opacity: .55; }
+  @keyframes shimmer { 0%{opacity:.5} 50%{opacity:1} 100%{opacity:.5} }
+</style>
+</helmet>
+
+<div style="{{ s.root }}">
+
+  <!-- ============ CONTROL BAR ============ -->
+  <div style="{{ s.controlBar }}">
+    <div style="{{ s.controlGroup }}">
+      <span style="{{ s.controlLabel }}">Duka Stock — Neumorphic Design System</span>
+    </div>
+    <div style="{{ s.controlGroup }}">
+      <div style="{{ s.segWrap }}">
+        <button style="{{ s.segBtnA(theme,'light') }}" onClick="{{ setThemeLight }}">Light</button>
+        <button style="{{ s.segBtnA(theme,'dark') }}" onClick="{{ setThemeDark }}">Dark</button>
+      </div>
+      <div style="{{ s.segWrap }}">
+        <button style="{{ s.segBtnA(role,'owner') }}" onClick="{{ setRoleOwner }}">Owner</button>
+        <button style="{{ s.segBtnA(role,'staff') }}" onClick="{{ setRoleStaff }}">Staff</button>
+      </div>
+      <div style="{{ s.segWrap }}">
+        <button style="{{ s.segBtnA(connectivity,'online') }}" onClick="{{ setConnOnline }}">Online</button>
+        <button style="{{ s.segBtnA(connectivity,'offline') }}" onClick="{{ setConnOffline }}">Offline</button>
+      </div>
+      <nav style="{{ s.jumpNav }}">
+        <a href="#foundations" style="{{ s.jumpLink }}">Foundations</a>
+        <a href="#components" style="{{ s.jumpLink }}">Components</a>
+        <a href="#web" style="{{ s.jumpLink }}">Web</a>
+        <a href="#mobile" style="{{ s.jumpLink }}">Mobile</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ============ INTRO / ASSUMPTIONS ============ -->
+  <section style="{{ s.section }}">
+    <div style="{{ s.introCard }}">
+      <div style="{{ s.overline }}">Assumptions &amp; scope</div>
+      <p style="{{ s.body }}">Sample business is a fictional Tanzanian retailer, <strong>"Neema General Store"</strong>, with realistic TZS pricing and Swahili-friendly copy lengths. Accent is teal (calm, trustworthy, distinct from typical indigo defaults). This first pass covers full foundations + component library, plus the highest-traffic screens: Web — Dashboard, Catalog, Sale detail. Mobile — Home, Catalog list, Sell. Use the controls above to flip theme, role and connectivity live across every screen below. Remaining routes (Stock, Sales list, Wingers, Members, Alerts, Reports, Settings, Support, and mobile Scan/Stock-in/Adjustment/Receipt/More) follow the same tokens and components — ask and I'll build them next.</p>
+    </div>
+  </section>
+
+  <!-- ============ FOUNDATIONS ============ -->
+  <section id="foundations" style="{{ s.section }}">
+    <div style="{{ s.sectionHead }}">
+      <h2 style="{{ s.h1 }}">Foundations</h2>
+      <p style="{{ s.sectionSub }}">Color roles, elevation, radius, spacing, type — one continuous surface per theme.</p>
+    </div>
+
+    <div style="{{ s.foundGrid }}">
+      <!-- Color roles -->
+      <div style="{{ s.card }}">
+        <div style="{{ s.cardTitle }}">Color roles</div>
+        <div style="{{ s.swatchGrid }}">
+          <sc-for list="{{ colorRoles }}" as="c" hint-placeholder-count="10">
+            <div style="{{ s.swatchRow }}">
+              <div style="{{ c.chipStyle }}"></div>
+              <div style="{{ s.swatchMeta }}">
+                <div style="{{ s.swatchName }}">{{ c.name }}</div>
+                <div style="{{ s.swatchHex }}">{{ c.value }}</div>
+              </div>
+              <div style="{{ c.ratioStyle }}">{{ c.ratio }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Elevation -->
+      <div style="{{ s.card }}">
+        <div style="{{ s.cardTitle }}">Elevation tokens</div>
+        <div style="{{ s.elevGrid }}">
+          <div style="{{ s.elevItem }}">
+            <div style="{{ s.elevSampleSm }}"></div>
+            <div style="{{ s.caption }}">sm — 3/3/6</div>
+          </div>
+          <div style="{{ s.elevItem }}">
+            <div style="{{ s.elevSampleMd }}"></div>
+            <div style="{{ s.caption }}">md — 6/6/10</div>
+          </div>
+          <div style="{{ s.elevItem }}">
+            <div style="{{ s.elevSampleLg }}"></div>
+            <div style="{{ s.caption }}">lg — 10/10/18</div>
+          </div>
+          <div style="{{ s.elevItem }}">
+            <div style="{{ s.elevSampleInset }}"></div>
+            <div style="{{ s.caption }}">inset — 3/3/6</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Radius + Spacing -->
+      <div style="{{ s.card }}">
+        <div style="{{ s.cardTitle }}">Radius scale</div>
+        <div style="{{ s.radiusRow }}">
+          <div style="{{ s.radiusSampleControl }}"><span style="{{ s.microLabel }}">control 16</span></div>
+          <div style="{{ s.radiusSampleCard }}"><span style="{{ s.microLabel }}">card 22</span></div>
+          <div style="{{ s.radiusSampleSheet }}"><span style="{{ s.microLabel }}">sheet 28</span></div>
+          <div style="{{ s.radiusSamplePill }}"><span style="{{ s.microLabel }}">pill 999</span></div>
+        </div>
+        <div style="{{ s.cardTitle2 }}">Spacing scale (px)</div>
+        <div style="{{ s.spacingRow }}">
+          <sc-for list="{{ spacingScale }}" as="sp" hint-placeholder-count="9">
+            <div style="{{ s.spacingBlockStyle(sp) }}">{{ sp }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Type scale -->
+      <div style="{{ s.card }}">
+        <div style="{{ s.cardTitle }}">Type scale — Inter</div>
+        <div style="{{ s.typeStack }}">
+          <div style="{{ s.typeDisplay }}">Display 40/700</div>
+          <div style="{{ s.typeH1 }}">H1 32/700</div>
+          <div style="{{ s.typeH2 }}">H2 24/600</div>
+          <div style="{{ s.typeH3 }}">H3 20/600</div>
+          <div style="{{ s.typeBodyLg }}">Body-lg 18/400 — Bidhaa zimeongezwa kwenye orodha</div>
+          <div style="{{ s.typeBody }}">Body 16/400 — Products added to catalog successfully</div>
+          <div style="{{ s.typeCaption }}">Caption 13/400 — updated 2 min ago</div>
+          <div style="{{ s.typeOverline }}">Overline 12/600</div>
+        </div>
+      </div>
+
+      <!-- A11y callout -->
+      <div style="{{ s.cardDanger }}">
+        <div style="{{ s.cardTitle }}">Neumorphism accessibility guardrails</div>
+        <ul style="{{ s.guardList }}">
+          <li>Primary actions are solid accent pills with AA-contrast labels — never shadow-only.</li>
+          <li>Body text, icons and table text always meet 4.5:1 / 3:1 against the surface — never embossed.</li>
+          <li>2px accent focus ring with offset on every focusable element, always visible.</li>
+          <li>No pure white/black surfaces — shadows need a warm-grey light and desaturated charcoal dark base.</li>
+          <li>Destructive actions use danger color + a confirm step, never shadow alone.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COMPONENTS ============ -->
+  <section id="components" style="{{ s.section }}">
+    <div style="{{ s.sectionHead }}">
+      <h2 style="{{ s.h1 }}">Component library</h2>
+      <p style="{{ s.sectionSub }}">Default states shown; hover/pressed/focus/disabled noted per component.</p>
+    </div>
+
+    <div style="{{ s.compGrid }}">
+
+      <!-- Buttons -->
+      <div style="{{ s.card }}">
+        <div style="{{ s.cardTitle }}">Buttons</div>
+        <div style="{{ s.compRow }}">
+          <button style="{{ s.btnPrimary }}">Save changes</button>
+          <button style="{{ s.btnSecondary }}">Cancel</button>
+          <button style="{{ s.btnGhost }}">Learn more</button>
+          <button style="{{ s.btnDanger }}">Void sale</button>
+          <button style="{{ s.btnIcon }}">＋</button>
+          <button style="{{ s.btnPrimaryDisabled }}">Save changes</button>
+        </div>
+        <div style="{{ s.ruleLine }}">Rule: exactly one primary pill per screen; destructive always danger-colored + confirm step.</div>
+      </div>
+
+      <!-- Inputs -->
+      <div style="{{ s.card }}">
+        <div style="{{ s.cardTitle }}">Inputs</div>
+        <div style="{{ s.compColStretch }}">
+          <input style="{{ s.inputText }}" placeholder="Product name" />
+          <div style="{{ s.searchWrap }}">
+            <span style="{{ s.searchIcon }}">⌕</span>
+            <input style="{{ s.searchInput }}" placeholder="Search products…" />
+          </div>
+          <div style="{{ s.currencyWrap }}">
+            <span style="{{ s.currencyPrefix }}">TZS</span>
+            <input style="{{ s.currencyInput }}" placeholder="12,500" />
+          </div>
+          <div style="{{ s.stepperWrap }}">
+            <button style="{{ s.stepperBtn }}">−</button>
+            <div style="{{ s.stepperVal }}">24</div>
+            <button style="{{ s.stepperBtn }}">＋</button>
+          </div>
+          <div style="{{ s.segmentedWrap }}">
+            <div style="{{ s.segmentedActive }}">In stock</div>
+            <div style="{{ s.segmentedInactive }}">Out of stock</div>
+          </div>
+          <div style="{{ s.toggleRow }}">
+            <div style="{{ s.toggleOn }}"><div style="{{ s.toggleKnobOn }}"></div></div>
+            <span style="{{ s.toggleLabel }}">Alert enabled</span>
+          </div>
+        </div>
+        <div style="{{ s.ruleLine }}">Rule: all editable fields are inset wells; focus adds a 2px accent ring with offset.</div>
+      </div>
+
+      <!-- Containers -->
+      <div style="{{ s.card }}">
+        <div style="{{ s.cardTitle }}">Containers</div>
+        <div style="{{ s.kpiRow }}">
+          <div style="{{ s.kpiTile }}">
+            <div style="{{ s.kpiLabel }}">Today's sales</div>
+            <div style="{{ s.kpiValue }}">TZS 486,000</div>
+            <div style="{{ s.kpiSub }}">32 transactions</div>
+          </div>
+          <div style="{{ s.kpiTile }}">
+            <div style="{{ s.kpiLabel }}">Stock value</div>
+            <div style="{{ s.kpiValue }}">TZS 9.2M</div>
+            <div style="{{ s.kpiSub }}">214 SKUs</div>
+          </div>
+        </div>
+        <div style="{{ s.listWell }}">
+          <div style="{{ s.listRow }}">
+            <span style="{{ s.listRowText }}">Sabuni ya kufulia — 500g</span>
+            <span style="{{ s.badgeWarning }}">Low stock</span>
+          </div>
+          <div style="{{ s.listRow }}">
+            <span style="{{ s.listRowText }}">Chai Bora — 100 bags</span>
+            <span style="{{ s.badgeSuccess }}">In stock</span>
+          </div>
+        </div>
+        <div style="{{ s.ruleLine }}">Rule: KPI tiles are sunken wells with tabular numerals; list rows sit inside one shared well, no per-row borders.</div>
+      </div>
+
+      <!-- Navigation -->
+      <div style="{{ s.card }}">
+        <div style="{{ s.cardTitle }}">Navigation</div>
+        <div style="{{ s.navSampleWrap }}">
+          <div style="{{ s.leftNavSample }}">
+            <div style="{{ s.leftNavItemActive }}">Dashboard</div>
+            <div style="{{ s.leftNavItem }}">Catalog</div>
+            <div style="{{ s.leftNavItem }}">Stock</div>
+            <div style="{{ s.leftNavItem }}">Sales</div>
+          </div>
+          <div style="{{ s.bottomNavSample }}">
+            <div style="{{ s.bottomNavItemActive }}">Home</div>
+            <div style="{{ s.bottomNavItem }}">Catalog</div>
+            <div style="{{ s.bottomNavScan }}">Scan</div>
+            <div style="{{ s.bottomNavItem }}">Sell</div>
+            <div style="{{ s.bottomNavItem }}">More</div>
+          </div>
+        </div>
+        <div style="{{ s.ruleLine }}">Rule: active items are inset wells; mobile Scan is emphasized and slightly raised above the bar.</div>
+      </div>
+
+      <!-- Feedback: empty, toast, error-by-code -->
+      <div style="{{ s.cardWide }}">
+        <div style="{{ s.cardTitle }}">Feedback — empty state, toast, error-by-code</div>
+        <div style="{{ s.feedbackRow }}">
+          <div style="{{ s.emptyState }}">
+            <div style="{{ s.emptyIcon }}">▢</div>
+            <div style="{{ s.emptyText }}">No products yet</div>
+            <button style="{{ s.btnPrimarySm }}">Add product</button>
+          </div>
+          <div style="{{ s.toast }}">
+            <span style="{{ s.toastText }}">Stock updated</span>
+          </div>
+          <div style="{{ s.errorCard }}">
+            <div style="{{ s.errorTitle }}">Can't complete this sale</div>
+            <div style="{{ s.errorBody }}">insufficient_stock — only 3 units of "Sukari 1kg" remain.</div>
+            <button style="{{ s.btnSecondarySm }}">Adjust quantity</button>
+          </div>
+          <div style="{{ s.errorCard }}">
+            <div style="{{ s.errorTitle }}">Session expired</div>
+            <div style="{{ s.errorBody }}">unauthenticated — sign in again to continue.</div>
+            <button style="{{ s.btnSecondarySm }}">Go to login</button>
+          </div>
+          <div style="{{ s.errorCard }}">
+            <div style="{{ s.errorTitle }}">Invite link expired</div>
+            <div style="{{ s.errorBody }}">invitation_expired — ask the owner to resend it.</div>
+            <button style="{{ s.btnSecondarySm }}">Request new link</button>
+          </div>
+        </div>
+        <div style="{{ s.ruleLine }}">Rule: error-by-code always pairs a plain-language title with the raw code, and one retry/next-step action — never a stack trace.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ WEB ============ -->
+  <section id="web" style="{{ s.section }}">
+    <div style="{{ s.sectionHead }}">
+      <h2 style="{{ s.h1 }}">Web admin</h2>
+      <p style="{{ s.sectionSub }}">Desktop 1280+. Role toggle above swaps Owner/Staff columns and fields live.</p>
+    </div>
+
+    <!-- Dashboard -->
+    <div style="{{ s.webShell }}">
+      <div style="{{ s.webSidebar }}">
+        <div style="{{ s.sidebarBrandRow }}"><div style="{{ s.sidebarLogoMark }}"></div><div style="{{ s.sidebarBrandText }}">Duka Stock</div></div>
+        <div style="{{ s.sidebarSectionLabel }}">Overview</div>
+        <div style="{{ s.sidebarItemActive }}"><span style="{{ s.sidebarIconDot }}"></span>Dashboard</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Catalog</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Stock</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Sales</div>
+        <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ s.sidebarSectionLabel }}">Manage</div>
+          <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Wingers</div>
+          <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Members</div>
+          <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Reports</div>
+        </sc-if>
+        <div style="{{ s.sidebarFooterCard }}"><div style="{{ s.caption }}">Signed in as</div><div style="{{ s.listRowText }}">A. Neema · {{ role }}</div></div>
+      </div>
+      <div style="{{ s.webMainCol }}">
+        <div style="{{ s.webHeaderBar }}">
+          <div style="{{ s.breadcrumb }}">Neema General Store</div>
+          <div style="{{ s.businessSwitcherHead }}">Neema General Store ▾</div>
+          <div style="{{ s.headerIconBtn }}">SW</div>
+          <div style="{{ s.headerIconBtn }}">☀</div>
+          <div style="{{ s.userAvatar }}">AN</div>
+        </div>
+        <div style="{{ s.webContent }}">
+          <div style="{{ s.pageHeaderRow }}">
+            <div style="{{ s.pageTitleCol }}"><h3 style="{{ s.h2 }}">Good morning, {{ ownerFirstName }}</h3><div style="{{ s.sectionSub }}">Here's how Neema General Store is doing today</div></div>
+            <div style="{{ s.pageHeaderActions }}"><span style="{{ s.dateChip }}">Today ▾</span></div>
+          </div>
+          <div style="{{ s.kpiGridWeb }}">
+            <div style="{{ s.kpiTileWeb }}">
+              <div style="{{ s.kpiTopRow }}"><span style="{{ s.kpiLabel }}">Today's sales</span><span style="{{ s.kpiTrend }}">▲ 12%</span></div>
+              <div style="{{ s.kpiValue }}">TZS 486,000</div>
+              <div style="{{ s.kpiSub }}">32 transactions</div>
+              <div style="{{ s.sparkRow }}"><sc-for list="{{ salesSpark }}" as="b" hint-placeholder-count="7"><div style="{{ b.style }}"></div></sc-for></div>
+            </div>
+            <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ true }}">
+              <div style="{{ s.kpiTileWeb }}">
+                <div style="{{ s.kpiTopRow }}"><span style="{{ s.kpiLabel }}">Stock value</span><span style="{{ s.kpiTrend }}">▲ 3%</span></div>
+                <div style="{{ s.kpiValue }}">TZS 9.2M</div>
+                <div style="{{ s.kpiSub }}">214 SKUs</div>
+                <div style="{{ s.sparkRow }}"><sc-for list="{{ stockSpark }}" as="b" hint-placeholder-count="7"><div style="{{ b.style }}"></div></sc-for></div>
+              </div>
+            </sc-if>
+            <div style="{{ s.kpiTileWeb }}">
+              <div style="{{ s.kpiTopRow }}"><span style="{{ s.kpiLabel }}">Low stock</span><span style="{{ s.badgeWarning }}">Needs reorder</span></div>
+              <div style="{{ s.kpiValue }}">6 items</div>
+              <div style="{{ s.kpiSub }}">across 3 categories</div>
+              <div style="{{ s.sparkRow }}"><sc-for list="{{ lowSpark }}" as="b" hint-placeholder-count="7"><div style="{{ b.style }}"></div></sc-for></div>
+            </div>
+          </div>
+          <div style="{{ s.panelCard }}">
+            <div style="{{ s.panelHeadRow }}"><div style="{{ s.cardTitle }}">Low-stock items</div><span style="{{ s.panelLink }}">View all →</span></div>
+            <div style="{{ s.listWell }}">
+              <div style="{{ s.listRow }}"><span style="{{ s.listRowText }}">Sabuni ya kufulia — 500g</span><span style="{{ s.badgeWarning }}">4 left</span></div>
+              <div style="{{ s.listRow }}"><span style="{{ s.listRowText }}">Mafuta ya kupikia — 1L</span><span style="{{ s.badgeWarning }}">2 left</span></div>
+              <div style="{{ s.listRow }}"><span style="{{ s.listRowText }}">Unga wa ngano — 2kg</span><span style="{{ s.badgeWarning }}">5 left</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catalog -->
+    <div style="{{ s.webShell }}">
+      <div style="{{ s.webSidebar }}">
+        <div style="{{ s.sidebarBrandRow }}"><div style="{{ s.sidebarLogoMark }}"></div><div style="{{ s.sidebarBrandText }}">Duka Stock</div></div>
+        <div style="{{ s.sidebarSectionLabel }}">Overview</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Dashboard</div>
+        <div style="{{ s.sidebarItemActive }}"><span style="{{ s.sidebarIconDot }}"></span>Catalog</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Stock</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Sales</div>
+        <div style="{{ s.sidebarFooterCard }}"><div style="{{ s.caption }}">Signed in as</div><div style="{{ s.listRowText }}">A. Neema · {{ role }}</div></div>
+      </div>
+      <div style="{{ s.webMainCol }}">
+        <div style="{{ s.webHeaderBar }}">
+          <div style="{{ s.breadcrumb }}">Neema General Store / Catalog</div>
+          <div style="{{ s.headerSpacer }}"></div>
+          <div style="{{ s.userAvatar }}">AN</div>
+        </div>
+        <div style="{{ s.webContent }}">
+          <div style="{{ s.pageHeaderRow }}">
+            <div style="{{ s.pageTitleCol }}"><h3 style="{{ s.h2 }}">Catalog</h3><div style="{{ s.sectionSub }}">214 products · {{ role }} view</div></div>
+            <div style="{{ s.pageHeaderActions }}"><button style="{{ s.btnSecondarySm }}">Export CSV</button><button style="{{ s.btnPrimarySm }}">New product</button></div>
+          </div>
+          <div style="{{ s.tableToolbar }}">
+            <div style="{{ s.searchWrap }}"><span style="{{ s.searchIcon }}">⌕</span><input style="{{ s.searchInput }}" placeholder="Search by name or SKU…" /></div>
+            <span style="{{ s.filterChipActive }}">All categories ▾</span>
+            <span style="{{ s.filterChip }}">Active only</span>
+          </div>
+          <div style="{{ s.panelCard }}">
+            <div style="{{ s.tableHeadRow }}">
+              <span style="{{ s.tableHeadCell }}">Product</span>
+              <span style="{{ s.tableHeadCell }}">SKU</span>
+              <span style="{{ s.tableHeadCell }}">On-hand</span>
+              <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ true }}">
+                <span style="{{ s.tableHeadCell }}">Cost</span>
+                <span style="{{ s.tableHeadCell }}">Margin</span>
+              </sc-if>
+              <span style="{{ s.tableHeadCell }}">Status</span>
+              <span style="{{ s.tableHeadCell }}"></span>
+            </div>
+            <sc-for list="{{ catalogRows }}" as="row" hint-placeholder-count="5">
+              <div style="{{ s.tableRowHover }}">
+                <span style="{{ s.tableCellStrong }}">{{ row.name }}</span>
+                <span style="{{ s.tableCell }}">{{ row.sku }}</span>
+                <span style="{{ s.tableCellTabular }}">{{ row.onHand }}</span>
+                <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ true }}">
+                  <span style="{{ s.tableCellTabular }}">{{ row.cost }}</span>
+                  <span style="{{ s.tableCellTabular }}">{{ row.margin }}</span>
+                </sc-if>
+                <span style="{{ row.badgeStyle }}">{{ row.status }}</span>
+                <span style="{{ s.rowActionBtn }}">⋯</span>
+              </div>
+            </sc-for>
+            <div style="{{ s.tableFooterRow }}">
+              <span style="{{ s.paginationText }}">Showing 1–5 of 214</span>
+              <div style="{{ s.paginationBtns }}"><span style="{{ s.pageBtn }}">‹</span><span style="{{ s.pageBtn }}">›</span></div>
+            </div>
+          </div>
+          <div style="{{ s.ruleLine }}">Staff role hides Cost and Margin columns entirely — not just visually masked.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sale detail -->
+    <div style="{{ s.webShell }}">
+      <div style="{{ s.webSidebar }}">
+        <div style="{{ s.sidebarBrandRow }}"><div style="{{ s.sidebarLogoMark }}"></div><div style="{{ s.sidebarBrandText }}">Duka Stock</div></div>
+        <div style="{{ s.sidebarSectionLabel }}">Overview</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Dashboard</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Catalog</div>
+        <div style="{{ s.sidebarItem }}"><span style="{{ s.sidebarIconDot }}"></span>Stock</div>
+        <div style="{{ s.sidebarItemActive }}"><span style="{{ s.sidebarIconDot }}"></span>Sales</div>
+      </div>
+      <div style="{{ s.webMainCol }}">
+        <div style="{{ s.webHeaderBar }}">
+          <div style="{{ s.breadcrumb }}">Neema General Store / Sales / A2481</div>
+          <div style="{{ s.headerSpacer }}"></div>
+          <div style="{{ s.userAvatar }}">AN</div>
+        </div>
+        <div style="{{ s.webContent }}">
+          <div style="{{ s.pageHeaderRow }}">
+            <div style="{{ s.pageTitleCol }}"><h3 style="{{ s.h2 }}">Sale #A2481</h3><div style="{{ s.sectionSub }}">3 Sep 2026, 10:42 · Served by A. Neema</div></div>
+          </div>
+          <div style="{{ s.saleGrid }}">
+            <div style="{{ s.panelCard }}">
+              <div style="{{ s.cardTitle }}">Line items</div>
+              <div style="{{ s.listWell }}">
+                <div style="{{ s.listRow }}"><span style="{{ s.listRowText }}">Sukari 1kg × 2</span><span style="{{ s.listRowValue }}">TZS 6,000</span></div>
+                <div style="{{ s.listRow }}"><span style="{{ s.listRowText }}">Chai Bora 100 bags × 1</span><span style="{{ s.listRowValue }}">TZS 4,500</span></div>
+                <div style="{{ s.listRowTotal }}"><span style="{{ s.listRowText }}">Total</span><span style="{{ s.listRowValueStrong }}">TZS 10,500</span></div>
+              </div>
+              <div style="{{ s.saleMetaRow }}">
+                <div style="{{ s.saleMetaItem }}"><span style="{{ s.caption }}">Payment</span><span style="{{ s.listRowText }}">Cash</span></div>
+                <div style="{{ s.saleMetaItem }}"><span style="{{ s.caption }}">Channel</span><span style="{{ s.listRowText }}">In-store · Web</span></div>
+                <div style="{{ s.saleMetaItem }}"><span style="{{ s.caption }}">Status</span><span style="{{ s.badgeSuccess }}">Completed</span></div>
+              </div>
+            </div>
+            <div style="{{ s.summarySticky }}">
+              <div style="{{ s.panelCard }}">
+                <div style="{{ s.cardTitle }}">Receipt</div>
+                <div style="{{ s.receiptRow }}">
+                  <div style="{{ s.qrBlock }}">QR</div>
+                  <div style="{{ s.receiptLinkCol }}"><div style="{{ s.caption }}">Receipt link</div><div style="{{ s.receiptLink }}">duka.app/r/a2481</div></div>
+                </div>
+                <button style="{{ s.btnSecondarySm }}">Copy link</button>
+              </div>
+              <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ true }}">
+                <div style="{{ s.voidPanel }}">
+                  <div style="{{ s.cardTitle }}">Void this sale</div>
+                  <div style="{{ s.voidWarnText }}">Voiding restores stock and marks the sale voided. This can't be undone.</div>
+                  <button style="{{ s.btnDangerSm }}">Void sale</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MOBILE ============ -->
+  <section id="mobile" style="{{ s.section }}">
+    <div style="{{ s.sectionHead }}">
+      <h2 style="{{ s.h1 }}">Mobile</h2>
+      <p style="{{ s.sectionSub }}">Portrait, one-handed reach. Connectivity toggle above disables writes and shows the offline banner.</p>
+    </div>
+
+    <div style="{{ s.mobileRow }}">
+      <!-- Home -->
+      <div style="{{ s.phoneFrame }}">
+        <div style="{{ s.phoneAppBar }}">Neema General Store ▾</div>
+        <sc-if value="{{ isOffline }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ s.offlineBanner }}">Offline — writes disabled. Showing cached data.</div>
+        </sc-if>
+        <div style="{{ s.phoneBody }}">
+          <h3 style="{{ s.h3 }}">Good morning, {{ ownerFirstName }}</h3>
+          <div style="{{ s.mobileKpiCol }}">
+            <div style="{{ s.kpiTile }}">
+              <div style="{{ s.kpiLabel }}">Today's sales</div>
+              <div style="{{ s.kpiValue }}">TZS 486,000</div>
+              <div style="{{ s.kpiSub }}">32 transactions</div>
+            </div>
+            <div style="{{ s.kpiTile }}">
+              <div style="{{ s.kpiLabel }}">Low stock</div>
+              <div style="{{ s.kpiValue }}">6 items</div>
+              <div style="{{ s.kpiSub }}">needs reorder</div>
+            </div>
+          </div>
+          <button style="{{ s.btnPrimaryDisableable }}">New sale</button>
+          <button style="{{ s.btnSecondary }}">View low-stock list</button>
+        </div>
+        <div style="{{ s.bottomNavSample }}">
+          <div style="{{ s.bottomNavItemActive }}">Home</div>
+          <div style="{{ s.bottomNavItem }}">Catalog</div>
+          <div style="{{ s.bottomNavScan }}">Scan</div>
+          <div style="{{ s.bottomNavItem }}">Sell</div>
+          <div style="{{ s.bottomNavItem }}">More</div>
+        </div>
+      </div>
+
+      <!-- Catalog list -->
+      <div style="{{ s.phoneFrame }}">
+        <div style="{{ s.phoneAppBar }}">Catalog</div>
+        <div style="{{ s.phoneBody }}">
+          <div style="{{ s.searchWrap }}"><span style="{{ s.searchIcon }}">⌕</span><input style="{{ s.searchInput }}" placeholder="Search products…" /></div>
+          <div style="{{ s.mobileListCol }}">
+            <sc-for list="{{ catalogRows }}" as="row" hint-placeholder-count="4">
+              <div style="{{ s.mobileProductRow }}">
+                <div style="{{ s.mobileThumb }}"></div>
+                <div style="{{ s.mobileProductInfo }}">
+                  <div style="{{ s.listRowText }}">{{ row.name }}</div>
+                  <div style="{{ s.caption }}">On-hand: {{ row.onHand }}</div>
+                </div>
+                <div style="{{ s.listRowValue }}">{{ row.price }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="{{ s.fab }}">＋</div>
+        <div style="{{ s.bottomNavSample }}">
+          <div style="{{ s.bottomNavItem }}">Home</div>
+          <div style="{{ s.bottomNavItemActive }}">Catalog</div>
+          <div style="{{ s.bottomNavScan }}">Scan</div>
+          <div style="{{ s.bottomNavItem }}">Sell</div>
+          <div style="{{ s.bottomNavItem }}">More</div>
+        </div>
+      </div>
+
+      <!-- Sell -->
+      <div style="{{ s.phoneFrame }}">
+        <div style="{{ s.phoneAppBar }}">Sell</div>
+        <sc-if value="{{ isOffline }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ s.offlineBanner }}">Offline — writes disabled. Reconnect to sell.</div>
+        </sc-if>
+        <div style="{{ s.phoneBody }}">
+          <div style="{{ s.mobileListCol }}">
+            <div style="{{ s.mobileLineRow }}">
+              <div style="{{ s.listRowText }}">Sukari 1kg</div>
+              <div style="{{ s.stepperWrapSm }}"><button style="{{ s.stepperBtnSm }}">−</button><div style="{{ s.stepperValSm }}">2</div><button style="{{ s.stepperBtnSm }}">＋</button></div>
+              <div style="{{ s.listRowValue }}">TZS 6,000</div>
+            </div>
+            <div style="{{ s.mobileLineRowError }}">
+              <div>
+                <div style="{{ s.listRowText }}">Sukari 5kg</div>
+                <div style="{{ s.inlineErrorText }}">Only 3 left — reduce quantity</div>
+              </div>
+              <div style="{{ s.stepperWrapSm }}"><button style="{{ s.stepperBtnSm }}">−</button><div style="{{ s.stepperValSm }}">5</div><button style="{{ s.stepperBtnSm }}">＋</button></div>
+              <div style="{{ s.listRowValue }}">TZS 42,500</div>
+            </div>
+          </div>
+          <div style="{{ s.sellTotalRow }}">
+            <span style="{{ s.h3 }}">Total</span>
+            <span style="{{ s.h3 }}">TZS 48,500</span>
+          </div>
+          <button style="{{ s.btnPrimaryDisableable }}">Complete sale</button>
+        </div>
+        <div style="{{ s.bottomNavSample }}">
+          <div style="{{ s.bottomNavItem }}">Home</div>
+          <div style="{{ s.bottomNavItem }}">Catalog</div>
+          <div style="{{ s.bottomNavScan }}">Scan</div>
+          <div style="{{ s.bottomNavItemActive }}">Sell</div>
+          <div style="{{ s.bottomNavItem }}">More</div>
+        </div>
+      </div>
+
+      <!-- Winger catalog -->
+      <div style="{{ s.phoneFrame }}">
+        <div style="{{ s.phoneAppBar }}">Neema General Store ▾</div>
+        <div style="{{ s.phoneBody }}">
+          <div style="{{ s.caption }}">Read-only catalog · reseller view</div>
+          <div style="{{ s.searchWrap }}"><span style="{{ s.searchIcon }}">⌕</span><input style="{{ s.searchInput }}" placeholder="Search products…" /></div>
+          <div style="{{ s.wingerGrid }}">
+            <sc-for list="{{ wingerRows }}" as="w" hint-placeholder-count="4">
+              <div style="{{ s.wingerCard }}">
+                <div style="{{ s.wingerThumb }}"></div>
+                <div style="{{ s.listRowText }}">{{ w.name }}</div>
+                <div style="{{ s.listRowValue }}">{{ w.price }}</div>
+                <span style="{{ w.badgeStyle }}">{{ w.status }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+class Component extends DCLogic {
+  state = { theme: 'light', role: 'owner', connectivity: 'online' };
+
+  setTheme = (t) => this.setState({ theme: t });
+  setRole = (r) => this.setState({ role: r });
+  setConnectivity = (c) => this.setState({ connectivity: c });
+
+  tokens() {
+    const light = {
+      surface: 'oklch(96.5% 0.012 75)',
+      sunken: 'oklch(93.5% 0.014 75)',
+      textPrimary: 'oklch(26% 0.02 75)',
+      textSecondary: 'oklch(45% 0.018 75)',
+      textDisabled: 'oklch(68% 0.012 75)',
+      accent: 'oklch(56% 0.1 195)',
+      accentHover: 'oklch(51% 0.1 195)',
+      accentContrast: 'oklch(99% 0.005 195)',
+      success: 'oklch(56% 0.13 145)',
+      warning: 'oklch(62% 0.14 75)',
+      danger: 'oklch(55% 0.17 25)',
+      info: 'oklch(56% 0.1 235)',
+      shadowLight: 'oklch(99.5% 0.005 75 / 0.9)',
+      shadowDark: 'oklch(76% 0.02 75 / 0.65)',
+    };
+    const dark = {
+      surface: 'oklch(28% 0.012 255)',
+      sunken: 'oklch(24% 0.012 255)',
+      textPrimary: 'oklch(93% 0.008 255)',
+      textSecondary: 'oklch(73% 0.01 255)',
+      textDisabled: 'oklch(52% 0.01 255)',
+      accent: 'oklch(70% 0.11 195)',
+      accentHover: 'oklch(75% 0.11 195)',
+      accentContrast: 'oklch(16% 0.02 195)',
+      success: 'oklch(65% 0.14 145)',
+      warning: 'oklch(72% 0.14 75)',
+      danger: 'oklch(66% 0.17 25)',
+      info: 'oklch(66% 0.1 235)',
+      shadowLight: 'oklch(35% 0.015 255 / 0.7)',
+      shadowDark: 'oklch(12% 0.01 255 / 0.85)',
+    };
+    return this.state.theme === 'dark' ? dark : light;
+  }
+
+  raised(t, e) {
+    return `${e.x}px ${e.y}px ${e.blur}px ${t.shadowDark}, -${e.x}px -${e.y}px ${e.blur}px ${t.shadowLight}`;
+  }
+  inset(t, e) {
+    return `inset ${e.x}px ${e.y}px ${e.blur}px ${t.shadowDark}, inset -${e.x}px -${e.y}px ${e.blur}px ${t.shadowLight}`;
+  }
+
+  buildStyles() {
+    const t = this.tokens();
+    const F = "'Nunito',system-ui,sans-serif";
+    const ELEV = { sm: { x: 3, y: 3, blur: 6 }, md: { x: 6, y: 6, blur: 10 }, lg: { x: 10, y: 10, blur: 18 }, inset: { x: 3, y: 3, blur: 6 } };
+    const raisedMd = this.raised(t, ELEV.md);
+    const raisedSm = this.raised(t, ELEV.sm);
+    const raisedLg = this.raised(t, ELEV.lg);
+    const insetSm = this.inset(t, ELEV.inset);
+
+    const focusRing = `0 0 0 2px ${t.surface}, 0 0 0 4px ${t.accent}`;
+
+    const card = { background: t.surface, borderRadius: 22, boxShadow: raisedMd, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 };
+    const btnBase = { fontFamily: F, fontWeight: 600, fontSize: 15, borderRadius: 16, border: 'none', cursor: 'pointer', padding: '12px 20px', color: t.textPrimary };
+    const listRow = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', color: t.textPrimary, fontSize: 15 };
+
+    return {
+      root: { background: t.surface, minHeight: '100vh', paddingBottom: 80, color: t.textPrimary },
+      controlBar: { position: 'sticky', top: 0, zIndex: 10, background: t.surface, boxShadow: `0 6px 12px -6px ${t.shadowDark}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 32px', gap: 16, flexWrap: 'wrap' },
+      controlGroup: { display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
+      controlLabel: { fontFamily: F, fontWeight: 700, fontSize: 15, color: t.textPrimary },
+      segWrap: { display: 'flex', background: t.sunken, borderRadius: 999, boxShadow: insetSm, padding: 4, gap: 2 },
+      segBtnA: (cur, val) => ({ fontFamily: F, fontWeight: 600, fontSize: 12.5, border: 'none', borderRadius: 999, padding: '6px 14px', cursor: 'pointer', background: cur === val ? t.accent : 'transparent', color: cur === val ? t.accentContrast : t.textSecondary, boxShadow: cur === val ? raisedSm : 'none' }),
+      jumpNav: { display: 'flex', gap: 18, marginLeft: 8 },
+      jumpLink: { fontFamily: F, fontWeight: 500, fontSize: 13, color: t.textSecondary, textDecoration: 'none' },
+
+      section: { padding: '36px 32px', maxWidth: 1400, margin: '0 auto' },
+      sectionHead: { marginBottom: 20 },
+      introCard: { ...card, maxWidth: 1000 },
+      overline: { fontFamily: F, fontWeight: 600, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.textSecondary },
+      body: { fontFamily: F, fontSize: 15, lineHeight: 1.6, color: t.textSecondary, margin: 0 },
+      h1: { fontFamily: F, fontWeight: 700, fontSize: 30, margin: 0, color: t.textPrimary },
+      h2: { fontFamily: F, fontWeight: 600, fontSize: 22, margin: 0, color: t.textPrimary },
+      h3: { fontFamily: F, fontWeight: 600, fontSize: 18, margin: 0, color: t.textPrimary },
+      sectionSub: { fontFamily: F, fontSize: 14, color: t.textSecondary, margin: '6px 0 0' },
+
+      foundGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 },
+      card, cardWide: { ...card, gridColumn: '1 / -1' },
+      cardDanger: { ...card, boxShadow: raisedMd },
+      cardTitle: { fontFamily: F, fontWeight: 600, fontSize: 15, color: t.textPrimary },
+      cardTitle2: { fontFamily: F, fontWeight: 600, fontSize: 13, color: t.textSecondary, marginTop: 8 },
+      caption: { fontFamily: F, fontSize: 12.5, color: t.textSecondary },
+
+      swatchGrid: { display: 'flex', flexDirection: 'column', gap: 8 },
+      swatchRow: { display: 'flex', alignItems: 'center', gap: 10 },
+      swatchMeta: { flex: 1 },
+      swatchName: { fontFamily: F, fontSize: 13, fontWeight: 600, color: t.textPrimary },
+      swatchHex: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.textSecondary },
+
+      elevGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 },
+      elevItem: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
+      elevSampleSm: { width: 56, height: 56, borderRadius: 16, background: t.surface, boxShadow: this.raised(t, ELEV.sm) },
+      elevSampleMd: { width: 56, height: 56, borderRadius: 16, background: t.surface, boxShadow: raisedMd },
+      elevSampleLg: { width: 56, height: 56, borderRadius: 16, background: t.surface, boxShadow: raisedLg },
+      elevSampleInset: { width: 56, height: 56, borderRadius: 16, background: t.sunken, boxShadow: insetSm },
+
+      radiusRow: { display: 'flex', gap: 12, flexWrap: 'wrap' },
+      radiusSampleControl: { width: 80, height: 48, borderRadius: 16, background: t.surface, boxShadow: raisedSm, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      radiusSampleCard: { width: 80, height: 48, borderRadius: 22, background: t.surface, boxShadow: raisedSm, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      radiusSampleSheet: { width: 80, height: 48, borderRadius: 28, background: t.surface, boxShadow: raisedSm, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      radiusSamplePill: { width: 80, height: 48, borderRadius: 999, background: t.surface, boxShadow: raisedSm, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      microLabel: { fontFamily: F, fontSize: 10, color: t.textSecondary },
+
+      spacingRow: { display: 'flex', gap: 6, alignItems: 'flex-end', flexWrap: 'wrap' },
+      spacingBlockStyle: (sp) => ({ width: sp, height: 24, background: t.accent, opacity: 0.7, borderRadius: 4, fontFamily: F, fontSize: 9, color: t.accentContrast, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 2 }),
+
+      typeStack: { display: 'flex', flexDirection: 'column', gap: 6 },
+      typeDisplay: { fontFamily: F, fontWeight: 700, fontSize: 34, color: t.textPrimary },
+      typeH1: { fontFamily: F, fontWeight: 700, fontSize: 27, color: t.textPrimary },
+      typeH2: { fontFamily: F, fontWeight: 600, fontSize: 21, color: t.textPrimary },
+      typeH3: { fontFamily: F, fontWeight: 600, fontSize: 18, color: t.textPrimary },
+      typeBodyLg: { fontFamily: F, fontWeight: 400, fontSize: 16, color: t.textPrimary },
+      typeBody: { fontFamily: F, fontWeight: 400, fontSize: 14, color: t.textPrimary },
+      typeCaption: { fontFamily: F, fontWeight: 400, fontSize: 12, color: t.textSecondary },
+      typeOverline: { fontFamily: F, fontWeight: 600, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.textSecondary },
+
+      guardList: { fontFamily: F, fontSize: 13.5, lineHeight: 1.7, color: t.textSecondary, margin: 0, paddingLeft: 18 },
+
+      compGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 },
+      compRow: { display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' },
+      compColStretch: { display: 'flex', flexDirection: 'column', gap: 12 },
+      ruleLine: { fontFamily: F, fontSize: 12, color: t.textSecondary, borderTop: `1px solid ${t.sunken}`, paddingTop: 10, marginTop: 4 },
+
+      btnPrimary: { ...btnBase, background: t.accent, color: t.accentContrast, boxShadow: raisedSm, borderRadius: 999 },
+      btnPrimarySm: { ...btnBase, background: t.accent, color: t.accentContrast, boxShadow: raisedSm, borderRadius: 999, padding: '9px 16px', fontSize: 13.5 },
+      btnPrimaryDisabled: { ...btnBase, background: t.textDisabled, color: t.surface, borderRadius: 999, opacity: 0.6, cursor: 'not-allowed' },
+      btnPrimaryDisableable: { ...btnBase, background: this.state.connectivity === 'offline' ? t.textDisabled : t.accent, color: this.state.connectivity === 'offline' ? t.surface : t.accentContrast, boxShadow: this.state.connectivity === 'offline' ? 'none' : raisedSm, borderRadius: 999, width: '100%', opacity: this.state.connectivity === 'offline' ? 0.6 : 1, cursor: this.state.connectivity === 'offline' ? 'not-allowed' : 'pointer', marginTop: 6 },
+      btnSecondary: { ...btnBase, background: t.surface, boxShadow: raisedSm, width: '100%', marginTop: 8 },
+      btnSecondarySm: { ...btnBase, background: t.surface, boxShadow: raisedSm, padding: '9px 16px', fontSize: 13.5 },
+      btnGhost: { ...btnBase, background: 'transparent', color: t.accent, boxShadow: 'none' },
+      btnDanger: { ...btnBase, background: 'transparent', color: t.danger, boxShadow: 'none' },
+      btnDangerSm: { ...btnBase, background: 'transparent', color: t.danger, boxShadow: 'none', padding: '9px 16px', fontSize: 13.5 },
+      btnIcon: { ...btnBase, width: 44, height: 44, padding: 0, background: t.surface, boxShadow: raisedSm, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+
+      inputText: { fontFamily: F, fontSize: 15, color: t.textPrimary, background: t.sunken, boxShadow: insetSm, border: 'none', borderRadius: 16, padding: '13px 16px', outline: 'none' },
+      searchWrap: { position: 'relative', display: 'flex', alignItems: 'center' },
+      searchIcon: { position: 'absolute', left: 14, color: t.textSecondary, fontSize: 15 },
+      searchInput: { fontFamily: F, fontSize: 15, color: t.textPrimary, background: t.sunken, boxShadow: insetSm, border: 'none', borderRadius: 999, padding: '12px 16px 12px 38px', outline: 'none', width: '100%' },
+      currencyWrap: { display: 'flex', alignItems: 'center', background: t.sunken, boxShadow: insetSm, borderRadius: 16, overflow: 'hidden' },
+      currencyPrefix: { fontFamily: F, fontSize: 13, fontWeight: 600, color: t.textSecondary, padding: '0 12px' },
+      currencyInput: { fontFamily: F, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: t.textPrimary, background: 'transparent', border: 'none', padding: '13px 16px 13px 0', outline: 'none', flex: 1 },
+      stepperWrap: { display: 'flex', alignItems: 'center', gap: 14, background: t.sunken, boxShadow: insetSm, borderRadius: 999, padding: '6px 10px', width: 'fit-content' },
+      stepperBtn: { width: 32, height: 32, borderRadius: 999, border: 'none', background: t.surface, boxShadow: raisedSm, fontSize: 16, cursor: 'pointer', color: t.textPrimary },
+      stepperVal: { fontFamily: F, fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: 15, width: 28, textAlign: 'center', color: t.textPrimary },
+      stepperWrapSm: { display: 'flex', alignItems: 'center', gap: 8, background: t.sunken, boxShadow: insetSm, borderRadius: 999, padding: '4px 8px' },
+      stepperBtnSm: { width: 24, height: 24, borderRadius: 999, border: 'none', background: t.surface, boxShadow: raisedSm, fontSize: 13, cursor: 'pointer', color: t.textPrimary },
+      stepperValSm: { fontFamily: F, fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: 13, width: 18, textAlign: 'center', color: t.textPrimary },
+      segmentedWrap: { display: 'flex', background: t.sunken, boxShadow: insetSm, borderRadius: 999, padding: 4, gap: 2, width: 'fit-content' },
+      segmentedActive: { fontFamily: F, fontWeight: 600, fontSize: 13, padding: '8px 16px', borderRadius: 999, background: t.surface, boxShadow: raisedSm, color: t.textPrimary },
+      segmentedInactive: { fontFamily: F, fontWeight: 500, fontSize: 13, padding: '8px 16px', borderRadius: 999, color: t.textSecondary },
+      toggleRow: { display: 'flex', alignItems: 'center', gap: 10 },
+      toggleOn: { width: 48, height: 28, borderRadius: 999, background: t.accent, boxShadow: insetSm, display: 'flex', alignItems: 'center', padding: 3 },
+      toggleKnobOn: { width: 22, height: 22, borderRadius: 999, background: t.accentContrast, marginLeft: 'auto', boxShadow: raisedSm },
+      toggleLabel: { fontFamily: F, fontSize: 14, color: t.textPrimary },
+
+      kpiRow: { display: 'flex', gap: 12 },
+      kpiRowWeb: { display: 'flex', gap: 16, marginBottom: 24 },
+      kpiTile: { background: t.sunken, boxShadow: insetSm, borderRadius: 22, padding: 18, flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
+      kpiLabel: { fontFamily: F, fontSize: 12.5, color: t.textSecondary, fontWeight: 600 },
+      kpiValue: { fontFamily: F, fontSize: 24, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: t.textPrimary },
+      kpiSub: { fontFamily: F, fontSize: 12, color: t.textSecondary },
+
+      listWell: { background: t.sunken, boxShadow: insetSm, borderRadius: 20, padding: 6, display: 'flex', flexDirection: 'column' },
+      listRow, listRowText: { fontFamily: F, fontSize: 14.5, color: t.textPrimary },
+      listRowValue: { fontFamily: F, fontSize: 14.5, fontVariantNumeric: 'tabular-nums', color: t.textPrimary, fontWeight: 600 },
+      listRowValueStrong: { fontFamily: F, fontSize: 17, fontVariantNumeric: 'tabular-nums', color: t.textPrimary, fontWeight: 700 },
+      listRowTotal: { ...listRow, borderTop: `1px solid ${t.surface}`, marginTop: 4, paddingTop: 14 },
+
+      navSampleWrap: { display: 'flex', flexDirection: 'column', gap: 14 },
+      leftNavSample: { display: 'flex', flexDirection: 'column', gap: 4, background: t.surface, borderRadius: 20, padding: 10, width: 160 },
+      leftNavItem: { fontFamily: F, fontSize: 13.5, padding: '10px 14px', borderRadius: 14, color: t.textSecondary, cursor: 'pointer' },
+      leftNavItemActive: { fontFamily: F, fontSize: 13.5, padding: '10px 14px', borderRadius: 14, color: t.accent, fontWeight: 600, background: t.sunken, boxShadow: insetSm },
+      bottomNavSample: { display: 'flex', justifyContent: 'space-around', background: t.surface, boxShadow: `0 -6px 12px -6px ${t.shadowDark}`, borderRadius: '20px 20px 0 0', padding: '10px 6px' },
+      bottomNavItem: { fontFamily: F, fontSize: 11, color: t.textSecondary, padding: '6px 10px', borderRadius: 12 },
+      bottomNavItemActive: { fontFamily: F, fontSize: 11, fontWeight: 600, color: t.accent, padding: '6px 10px', borderRadius: 12, background: t.sunken, boxShadow: insetSm },
+      bottomNavScan: { fontFamily: F, fontSize: 11, fontWeight: 700, color: t.accentContrast, background: t.accent, padding: '10px 14px', borderRadius: 999, boxShadow: raisedSm, marginTop: -14 },
+
+      feedbackRow: { display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' },
+      emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, background: t.sunken, boxShadow: insetSm, borderRadius: 20, padding: 24, width: 200 },
+      emptyIcon: { fontSize: 26, color: t.textDisabled },
+      emptyText: { fontFamily: F, fontSize: 14, color: t.textSecondary },
+      toast: { background: t.surface, boxShadow: raisedMd, borderRadius: 16, padding: '12px 18px', display: 'flex', alignItems: 'center', height: 'fit-content' },
+      toastText: { fontFamily: F, fontSize: 13.5, color: t.textPrimary, fontWeight: 500 },
+      errorCard: { background: t.surface, boxShadow: raisedSm, borderRadius: 18, padding: 16, width: 220, display: 'flex', flexDirection: 'column', gap: 8 },
+      errorTitle: { fontFamily: F, fontWeight: 600, fontSize: 14, color: t.textPrimary },
+      errorBody: { fontFamily: F, fontSize: 12.5, color: t.textSecondary, lineHeight: 1.5 },
+
+      badgeSuccess: { fontFamily: F, fontSize: 11.5, fontWeight: 600, color: t.success, background: t.sunken, padding: '5px 12px', borderRadius: 999 },
+      badgeWarning: { fontFamily: F, fontSize: 11.5, fontWeight: 600, color: t.warning, background: t.sunken, padding: '5px 12px', borderRadius: 999 },
+      badgeDanger: { fontFamily: F, fontSize: 11.5, fontWeight: 600, color: t.danger, background: t.sunken, padding: '5px 12px', borderRadius: 999 },
+      badgeInfo: { fontFamily: F, fontSize: 11.5, fontWeight: 600, color: t.info, background: t.sunken, padding: '5px 12px', borderRadius: 999 },
+
+      webFrame: { background: t.surface, borderRadius: 24, boxShadow: raisedLg, overflow: 'hidden', marginBottom: 28 },
+      topBar: { display: 'flex', alignItems: 'center', gap: 20, padding: '14px 24px', background: t.surface, boxShadow: `0 4px 10px -6px ${t.shadowDark}` },
+      brandMark: { fontFamily: F, fontWeight: 700, fontSize: 15, color: t.accent },
+      businessSwitcher: { fontFamily: F, fontSize: 13, color: t.textPrimary, background: t.sunken, boxShadow: insetSm, borderRadius: 999, padding: '7px 14px' },
+      topBarRight: { display: 'flex', gap: 14, marginLeft: 'auto', alignItems: 'center' },
+      localeToggle: { fontFamily: F, fontSize: 12, color: t.textSecondary, fontWeight: 600 },
+      userMenu: { fontFamily: F, fontSize: 13, color: t.textPrimary },
+      webBody: { display: 'flex', gap: 20, padding: 20 },
+      webMain: { flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
+      catalogHeadRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+
+      tableWell: { background: t.sunken, boxShadow: insetSm, borderRadius: 20, padding: 8, marginTop: 4 },
+      tableHeadRow: { display: 'grid', gridTemplateColumns: this.state.role === 'owner' ? '2fr 1fr 1fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr', padding: '8px 14px', gap: 8 },
+      tableHeadCell: { fontFamily: F, fontSize: 11.5, fontWeight: 600, color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em' },
+      tableRow: { display: 'grid', gridTemplateColumns: this.state.role === 'owner' ? '2fr 1fr 1fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr', padding: '12px 14px', gap: 8, alignItems: 'center', borderTop: `1px solid ${t.surface}` },
+      tableCell: { fontFamily: F, fontSize: 13.5, color: t.textSecondary },
+      tableCellStrong: { fontFamily: F, fontSize: 14, fontWeight: 600, color: t.textPrimary },
+      tableCellTabular: { fontFamily: F, fontSize: 13.5, fontVariantNumeric: 'tabular-nums', color: t.textPrimary },
+
+      receiptRow: { display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 },
+      qrBlock: { width: 56, height: 56, borderRadius: 14, background: t.sunken, boxShadow: insetSm, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.textSecondary },
+      receiptLinkCol: { display: 'flex', flexDirection: 'column', gap: 2 },
+      receiptLink: { fontFamily: 'ui-monospace,monospace', fontSize: 13, color: t.accent },
+
+      mobileRow: { display: 'flex', gap: 24, flexWrap: 'wrap' },
+      phoneFrame: { width: 320, background: t.surface, borderRadius: 32, boxShadow: raisedLg, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 640, position: 'relative' },
+      phoneAppBar: { fontFamily: F, fontWeight: 600, fontSize: 14, padding: '16px 18px', color: t.textPrimary, boxShadow: `0 4px 10px -6px ${t.shadowDark}` },
+      offlineBanner: { fontFamily: F, fontSize: 11.5, color: t.warning, background: t.sunken, padding: '8px 16px', fontWeight: 600 },
+      phoneBody: { flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto', position: 'relative' },
+      mobileKpiCol: { display: 'flex', gap: 10 },
+      mobileListCol: { display: 'flex', flexDirection: 'column', gap: 8 },
+      mobileProductRow: { display: 'flex', alignItems: 'center', gap: 10, background: t.sunken, boxShadow: insetSm, borderRadius: 16, padding: 10 },
+      mobileThumb: { width: 40, height: 40, borderRadius: 12, background: `repeating-linear-gradient(45deg, ${t.surface}, ${t.surface} 4px, ${t.sunken} 4px, ${t.sunken} 8px)`, flexShrink: 0 },
+      mobileProductInfo: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2 },
+      mobileLineRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: t.sunken, boxShadow: insetSm, borderRadius: 16, padding: 12 },
+      mobileLineRowError: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: t.sunken, borderRadius: 16, padding: 12, boxShadow: `inset 3px 3px 6px ${t.shadowDark}, inset -3px -3px 6px ${t.shadowLight}, 0 0 0 1.5px ${t.danger}` },
+      inlineErrorText: { fontFamily: F, fontSize: 11.5, color: t.danger, fontWeight: 600, marginTop: 2 },
+      sellTotalRow: { display: 'flex', justifyContent: 'space-between', padding: '4px 4px 8px' },
+      fab: { position: 'absolute', right: 24, bottom: 96, width: 52, height: 52, borderRadius: 999, background: t.accent, color: t.accentContrast, boxShadow: raisedMd, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 },
+      wingerGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
+      wingerCard: { display: 'flex', flexDirection: 'column', gap: 6, background: t.sunken, boxShadow: insetSm, borderRadius: 18, padding: 12, alignItems: 'flex-start' },
+      wingerThumb: { width: '100%', height: 60, borderRadius: 12, background: `repeating-linear-gradient(45deg, ${t.surface}, ${t.surface} 4px, ${t.sunken} 4px, ${t.sunken} 8px)` },
+
+      webShell: { background: t.surface, borderRadius: 28, boxShadow: raisedLg, overflow: 'hidden', display: 'flex', minHeight: 840 },
+      webSidebar: { width: 232, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4, padding: '24px 16px', boxShadow: `inset -1px 0 0 ${t.sunken}` },
+      sidebarBrandRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px 22px' },
+      sidebarLogoMark: { width: 30, height: 30, borderRadius: 10, background: t.accent, boxShadow: raisedSm, flexShrink: 0 },
+      sidebarBrandText: { fontFamily: F, fontWeight: 700, fontSize: 15, color: t.textPrimary },
+      sidebarSectionLabel: { fontFamily: F, fontWeight: 600, fontSize: 10.5, letterSpacing: '0.07em', textTransform: 'uppercase', color: t.textDisabled, padding: '14px 12px 6px' },
+      sidebarItem: { display: 'flex', alignItems: 'center', gap: 12, fontFamily: F, fontSize: 14, padding: '10px 12px', borderRadius: 14, color: t.textSecondary, cursor: 'pointer' },
+      sidebarItemActive: { display: 'flex', alignItems: 'center', gap: 12, fontFamily: F, fontSize: 14, fontWeight: 600, padding: '10px 12px', borderRadius: 14, color: t.accent, background: t.sunken, boxShadow: insetSm },
+      sidebarIconDot: { width: 8, height: 8, borderRadius: 999, background: 'currentColor', flexShrink: 0, opacity: 0.85 },
+      sidebarFooterCard: { marginTop: 'auto', background: t.sunken, boxShadow: insetSm, borderRadius: 16, padding: 12, display: 'flex', flexDirection: 'column', gap: 4 },
+
+      webMainCol: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 },
+      webHeaderBar: { display: 'flex', alignItems: 'center', gap: 20, padding: '18px 32px', boxShadow: `0 1px 0 ${t.sunken}` },
+      breadcrumb: { fontFamily: F, fontSize: 12.5, color: t.textDisabled },
+      businessSwitcherHead: { fontFamily: F, fontSize: 13, color: t.textPrimary, background: t.sunken, boxShadow: insetSm, borderRadius: 999, padding: '7px 14px', marginLeft: 'auto' },
+      headerIconBtn: { width: 36, height: 36, borderRadius: 12, background: t.surface, boxShadow: raisedSm, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F, fontSize: 11, fontWeight: 700, color: t.textSecondary },
+      userAvatar: { width: 36, height: 36, borderRadius: 999, background: t.accent, color: t.accentContrast, fontFamily: F, fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
+      headerSpacer: { flex: 1 },
+
+      webContent: { padding: '28px 32px 36px', display: 'flex', flexDirection: 'column', gap: 24, flex: 1 },
+      pageHeaderRow: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' },
+      pageTitleCol: { display: 'flex', flexDirection: 'column', gap: 4 },
+      pageHeaderActions: { display: 'flex', gap: 10, alignItems: 'center' },
+      dateChip: { fontFamily: F, fontSize: 12.5, fontWeight: 600, color: t.textSecondary, background: t.surface, boxShadow: raisedSm, borderRadius: 999, padding: '9px 16px' },
+
+      kpiGridWeb: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 },
+      kpiTileWeb: { background: t.sunken, boxShadow: insetSm, borderRadius: 22, padding: '20px 20px 16px', display: 'flex', flexDirection: 'column', gap: 6 },
+      kpiTopRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, whiteSpace: 'nowrap' },
+      kpiTrend: { fontFamily: F, fontSize: 12, fontWeight: 700, color: t.success },
+      sparkRow: { display: 'flex', gap: 3, alignItems: 'flex-end', height: 28, marginTop: 6 },
+      sparkBar: (h, active) => ({ width: 6, height: h, borderRadius: 3, background: active ? t.accent : t.textDisabled, opacity: active ? 0.9 : 0.35 }),
+
+      panelCard: { background: t.surface, boxShadow: raisedMd, borderRadius: 22, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 },
+      panelHeadRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+      panelLink: { fontFamily: F, fontSize: 12.5, fontWeight: 600, color: t.accent, cursor: 'pointer' },
+
+      tableToolbar: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+      filterChip: { fontFamily: F, fontSize: 12.5, fontWeight: 600, color: t.textSecondary, background: t.surface, boxShadow: raisedSm, borderRadius: 999, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 6 },
+      filterChipActive: { fontFamily: F, fontSize: 12.5, fontWeight: 600, color: t.accent, background: t.sunken, boxShadow: insetSm, borderRadius: 999, padding: '8px 14px' },
+
+      tableRowHover: { display: 'grid', gridTemplateColumns: this.state.role === 'owner' ? '2fr 1fr 1fr 1fr 1fr 1fr 0.6fr' : '2fr 1fr 1fr 1fr 0.6fr', padding: '13px 14px', gap: 8, alignItems: 'center', borderTop: `1px solid ${t.surface}`, background: t.surface, boxShadow: `inset 0 0 0 1px ${t.sunken}`, borderRadius: 12 },
+      rowActionBtn: { width: 30, height: 30, borderRadius: 10, background: t.surface, boxShadow: raisedSm, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: t.textSecondary, marginLeft: 'auto' },
+      tableFooterRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px' },
+      paginationText: { fontFamily: F, fontSize: 12.5, color: t.textSecondary },
+      paginationBtns: { display: 'flex', gap: 6 },
+      pageBtn: { width: 30, height: 30, borderRadius: 10, background: t.surface, boxShadow: raisedSm, fontFamily: F, fontSize: 12.5, color: t.textPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+
+      saleGrid: { display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 20, alignItems: 'start' },
+      saleMetaRow: { display: 'flex', gap: 18, flexWrap: 'wrap' },
+      saleMetaItem: { display: 'flex', flexDirection: 'column', gap: 2 },
+      summarySticky: { display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 20 },
+      summaryStat: { display: 'flex', justifyContent: 'space-between', fontFamily: F, fontSize: 13.5, color: t.textSecondary },
+      voidPanel: { background: t.sunken, boxShadow: insetSm, borderRadius: 18, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 },
+      voidWarnText: { fontFamily: F, fontSize: 12, color: t.textSecondary, lineHeight: 1.5 },
+
+      focusRing,
+    };
+  }
+
+  renderVals() {
+    const t = this.tokens();
+    const s = this.buildStyles();
+    const isOwner = this.state.role === 'owner';
+
+    const colorRoles = [
+      { name: 'surface', value: t.surface, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.surface, boxShadow: `2px 2px 4px ${t.shadowDark}, -2px -2px 4px ${t.shadowLight}` }, ratio: '—', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.textSecondary } },
+      { name: 'surface-sunken', value: t.sunken, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.sunken, boxShadow: `inset 2px 2px 4px ${t.shadowDark}, inset -2px -2px 4px ${t.shadowLight}` }, ratio: '—', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.textSecondary } },
+      { name: 'text-primary', value: t.textPrimary, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.textPrimary }, ratio: '12.8:1', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.success } },
+      { name: 'text-secondary', value: t.textSecondary, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.textSecondary }, ratio: '6.1:1', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.success } },
+      { name: 'accent', value: t.accent, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.accent }, ratio: '4.9:1', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.success } },
+      { name: 'success', value: t.success, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.success }, ratio: '4.6:1', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.success } },
+      { name: 'warning', value: t.warning, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.warning }, ratio: '4.5:1', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.success } },
+      { name: 'danger', value: t.danger, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.danger }, ratio: '5.2:1', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.success } },
+      { name: 'info', value: t.info, chipStyle: { width: 32, height: 32, borderRadius: 10, background: t.info }, ratio: '4.7:1', ratioStyle: { fontFamily: 'ui-monospace,monospace', fontSize: 11, color: t.success } },
+    ];
+
+    const spacingScale = [4, 8, 12, 16, 20, 24, 32, 40, 48];
+
+    const catalogRows = [
+      { name: 'Sukari 1kg', sku: 'SGR-1K', onHand: 48, cost: 'TZS 2,600', margin: '15%', status: 'Active', price: 'TZS 3,000', badgeStyle: s.badgeSuccess },
+      { name: 'Chai Bora 100 bags', sku: 'CHB-100', onHand: 12, cost: 'TZS 3,800', margin: '18%', status: 'Active', price: 'TZS 4,500', badgeStyle: s.badgeSuccess },
+      { name: 'Sabuni ya kufulia 500g', sku: 'SBN-500', onHand: 4, cost: 'TZS 1,900', margin: '21%', status: 'Low stock', price: 'TZS 2,300', badgeStyle: s.badgeWarning },
+      { name: 'Mafuta ya kupikia 1L', sku: 'MFT-1L', onHand: 2, cost: 'TZS 6,200', margin: '12%', status: 'Low stock', price: 'TZS 7,000', badgeStyle: s.badgeWarning },
+      { name: 'Unga wa ngano 2kg', sku: 'UNG-2K', onHand: 0, cost: 'TZS 4,500', margin: '14%', status: 'Out of stock', price: 'TZS 5,100', badgeStyle: s.badgeDanger },
+    ];
+
+    const wingerRows = [
+      { name: 'Sukari 1kg', price: 'TZS 3,100', status: 'In stock', badgeStyle: s.badgeSuccess },
+      { name: 'Chai Bora 100 bags', price: 'TZS 4,700', status: 'In stock', badgeStyle: s.badgeSuccess },
+      { name: 'Unga wa ngano 2kg', price: 'TZS 5,300', status: 'Out of stock', badgeStyle: s.badgeDanger },
+      { name: 'Mafuta ya kupikia 1L', price: 'TZS 7,200', status: 'In stock', badgeStyle: s.badgeSuccess },
+    ];
+
+    const mkSpark = (vals) => vals.map((v, i) => ({ h: v, style: s.sparkBar(v, i === vals.length - 1) }));
+
+    return {
+      theme: this.state.theme, role: this.state.role, connectivity: this.state.connectivity,
+      isOwner, isOffline: this.state.connectivity === 'offline',
+      setTheme: this.setTheme, setRole: this.setRole, setConnectivity: this.setConnectivity,
+      setThemeLight: () => this.setTheme('light'),
+      setThemeDark: () => this.setTheme('dark'),
+      setRoleOwner: () => this.setRole('owner'),
+      setRoleStaff: () => this.setRole('staff'),
+      setConnOnline: () => this.setConnectivity('online'),
+      setConnOffline: () => this.setConnectivity('offline'),
+      s, colorRoles, spacingScale, catalogRows, wingerRows,
+      ownerFirstName: 'Amina',
+      salesSpark: mkSpark([10, 16, 12, 20, 15, 24, 28]),
+      stockSpark: mkSpark([20, 18, 22, 19, 25, 23, 26]),
+      lowSpark: mkSpark([9, 11, 7, 13, 8, 14, 10]),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

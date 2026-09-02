@@ -38,6 +38,13 @@ Deliver catalog management and a stock movement ledger with derived on-hand, plu
 - [ ] T-0108 Mobile stock-in + adjustment flows
 - [ ] T-0109 Web catalog + stock + movements + CSV
 
+### Client foundation (unblocks T-0106–T-0109)
+
+- [x] T-0118 Web neumorphic design system foundation (tokens, theme provider, base component kit)
+- [x] T-0119 Mobile neumorphic design system foundation (token classes, ThemeData, base widget kit)
+- Design system of record: `docs/design/interfaces/ui-design-system.md` (adopts the
+  `design_handoff_neumorphic_system/` tokens + component rules; not its screen mockups).
+
 ## Acceptance Criteria
 
 - [ ] Recording `stock_in` of N increases on-hand by exactly N and writes one movement row.
