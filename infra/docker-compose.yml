@@ -92,6 +92,24 @@ services:
       timeout: 5s
       retries: 12
 
+  inventory:
+    build: { context: .., dockerfile: services/inventory/Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      INVENTORY_PORT: '3000'
+      INVENTORY_DATABASE_URL: postgresql://inventory_app:inventory_app@postgres:5432/pos_dev?schema=inventory
+      NATS_URL: nats://nats:4222
+      INTERNAL_CONTEXT_SECRET: ${INTERNAL_CONTEXT_SECRET:-dev-only-internal-context-secret-change-me}
+    depends_on:
+      postgres: { condition: service_healthy }
+      nats: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost:3000/readyz || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   kong:
     image: kong:3.7
     restart: unless-stopped
@@ -99,6 +117,7 @@ services:
       identity: { condition: service_started }
       tenancy: { condition: service_started }
       catalog: { condition: service_started }
+      inventory: { condition: service_started }
     environment:
       KONG_DATABASE: 'off'
       KONG_VAULTS: env
@@ -113,6 +132,7 @@ services:
       IDENTITY_URL: ${IDENTITY_URL:-http://identity:3000}
       TENANCY_URL: ${TENANCY_URL:-http://tenancy:3000}
       CATALOG_URL: ${CATALOG_URL:-http://catalog:3000}
+      INVENTORY_URL: ${INVENTORY_URL:-http://inventory:3000}
       TENANCY_MEMBERSHIP_URL: ${TENANCY_MEMBERSHIP_URL:-http://tenancy:3000/v1/internal/membership}
     ports:
       - '${KONG_PROXY_PORT:-8000}:8000'

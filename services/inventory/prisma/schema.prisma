@@ -1,0 +1,88 @@
+// inventory service — owns stock_item (cache), stock_movement (append-only ledger),
+// stock_reservation, in the `inventory` schema. Plus the transactional outbox +
+// idempotency tables from @pos/nest-common.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("INVENTORY_DATABASE_URL")
+}
+
+/// Cached on-hand per product (one row per product in MVP). Source of truth is
+/// the movement ledger; `quantity` is maintained in the same transaction.
+/// RLS: `business_id = current_setting('app.business_id')`.
+model StockItem {
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId       String   @map("business_id") @db.Uuid
+  productId        String   @map("product_id") @db.Uuid
+  quantity         Int      @default(0)
+  reorderThreshold Int      @default(0) @map("reorder_threshold")
+  productActive    Boolean  @default(true) @map("product_active")
+  lowStockOpen     Boolean  @default(false) @map("low_stock_open")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([businessId, productId])
+  @@index([businessId, productActive])
+  @@map("stock_item")
+}
+
+/// Append-only stock ledger. `quantity_delta` is signed.
+/// RLS: `business_id = current_setting('app.business_id')`.
+model StockMovement {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId     String   @map("business_id") @db.Uuid
+  productId      String   @map("product_id") @db.Uuid
+  type           String // stock_in | adjustment | sale | return | void_reversal
+  quantityDelta  Int      @map("quantity_delta")
+  reason         String?
+  referenceType  String?  @map("reference_type")
+  referenceId    String?  @map("reference_id") @db.Uuid
+  createdBy      String?  @map("created_by") @db.Uuid
+  idempotencyKey String?  @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([businessId, idempotencyKey])
+  @@index([businessId, productId, createdAt])
+  @@map("stock_movement")
+}
+
+/// Soft holds against on-hand, keyed by the caller-supplied `reservation_id`.
+/// RLS: `business_id = current_setting('app.business_id')`.
+model StockReservation {
+  id         String    @id @db.Uuid
+  businessId String    @map("business_id") @db.Uuid
+  status     String    @default("held") // held | committed | released
+  lines      Json // [{ product_id, quantity }]
+  saleId     String?   @map("sale_id") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  @@index([businessId, status])
+  @@map("stock_reservation")
+}
+
+model OutboxMessage {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  subject   String
+  payload   Json
+  headers   Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  attempts  Int       @default(0)
+  lastError String?   @map("last_error")
+
+  @@index([createdAt], map: "outbox_unsent_idx")
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  subject     String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_events")
+}

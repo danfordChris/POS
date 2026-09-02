@@ -19,5 +19,6 @@ resources:
   - identity.yaml
   - tenancy.yaml
   - catalog.yaml
-  # inventory / sales / winger / notifications are added by their phases
+  - inventory.yaml
+  # sales / winger / notifications are added by their phases
   # using examples/service.template.yaml as the starting point.
