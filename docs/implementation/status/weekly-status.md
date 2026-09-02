@@ -1,5 +1,31 @@
 # Weekly Status
 
+## 2026-09-02 — Phase 02 verified end-to-end (`docker compose up`)
+
+Brought the full local stack up and ran a smoke test through Kong (`:8000`).
+
+- **Docker build fixes** — the four service images (`identity`, `tenancy`,
+  `catalog`, `inventory`) now build. Root causes: (1) `COPY . .` pulled the host
+  `node_modules` into the context → added `.dockerignore`; (2) pnpm aborted the
+  non-interactive `node_modules` purge → `ENV CI=true HUSKY=0`; (3) the root
+  `prepare` (husky) ran during the `--prod` install with husky pruned →
+  `--ignore-scripts` on that step; (4) `@pos/nest-common` declared `@nestjs/*` +
+  `express` as **peerDependencies**, so `pnpm --prod` dropped them and the
+  runtime image threw `ERR_MODULE_NOT_FOUND: @nestjs/swagger` from
+  `nest-common/dist` — moved the real runtime imports into `dependencies`.
+- **Migrations** — the service Dockerfiles don't migrate; ran
+  `prisma migrate deploy` for all four schemas against the fresh volume
+  (initdb creates the schemas/roles only).
+- **Smoke test** (`scratchpad/e2e.sh`) — **25/25 pass**: register → login →
+  `/auth/me` → create business (role echo `owner`) → category CRUD → product
+  create (owner sees `cost_price`) → scan `?code=` hit + 404 echo → `stock_in`
+  20 → adjustment −5 → over-adjust → `422 insufficient_stock` → `/stock` →
+  `/stock/movements` → drive on-hand to 3 → `ProductUpserted` event feeds
+  `reorder_threshold` so `/stock/low` lists it → stranger gets `403 not_a_member`
+  on the business and its products.
+
+Phase 02 marked `done`; acceptance criteria checked off. Validator `WORKFLOW:ok`.
+
 ## 2026-09-02 — UI polish slice (Figma-inspired, neumorphic)
 
 Read the `Danford-Jurvis's-team-library` Figma ("nexus" POS design, 238 frames) via

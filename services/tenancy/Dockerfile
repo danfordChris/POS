@@ -1,13 +1,14 @@
 # Multi-stage build for the tenancy service. Build context = repo root.
 FROM node:24-alpine AS build
 RUN corepack enable
+ENV CI=true HUSKY=0
 WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile \
  && pnpm --filter @pos/contracts --filter @pos/nest-common build \
  && pnpm --filter @pos/tenancy exec prisma generate \
  && pnpm --filter @pos/tenancy build \
- && pnpm --filter @pos/tenancy... --prod install
+ && pnpm --filter @pos/tenancy... --prod --ignore-scripts install
 
 FROM node:24-alpine AS runtime
 RUN corepack enable && apk add --no-cache wget

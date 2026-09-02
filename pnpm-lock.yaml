@@ -39,16 +39,6 @@ importers:
 
   packages/nest-common:
     dependencies:
-      '@pos/contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      nats:
-        specifier: ^2.29.3
-        version: 2.29.3
-      zod:
-        specifier: ^4.5.4
-        version: 4.5.4
-    devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -61,6 +51,22 @@ importers:
       '@nestjs/swagger':
         specifier: ^12.0.1
         version: 12.0.1(@nestjs/common@12.0.1(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)
+      '@pos/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
+      nats:
+        specifier: ^2.29.3
+        version: 2.29.3
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      zod:
+        specifier: ^4.5.4
+        version: 4.5.4
+    devDependencies:
       '@pos/testing':
         specifier: workspace:*
         version: link:../testing
@@ -70,15 +76,9 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
-      express:
-        specifier: ^5.0.0
-        version: 5.2.1
       oxlint:
         specifier: ^1.58.0
         version: 1.81.0
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
       typescript:
         specifier: ^6.0.2
         version: 6.0.3

@@ -1,0 +1,31 @@
+# Keep the build context small and free of host-only artifacts.
+**/node_modules
+**/dist
+**/.next
+**/generated/prisma
+**/*.tsbuildinfo
+
+# `web` stays in the context — it's a pnpm-workspace member, so `pnpm install
+# --frozen-lockfile` needs its package.json. Its build output is excluded above.
+.git
+.github
+docs
+test
+mobile
+
+# Flutter / Dart
+**/.dart_tool
+**/build
+**/.flutter-plugins*
+
+# local env + editor
+.env
+.env.*
+!.env.example
+.idea
+.vscode
+.DS_Store
+
+# scratch
+**/coverage
+**/.turbo

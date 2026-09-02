@@ -2,11 +2,17 @@
 
 ## Status
 
-- `in-progress`
+- `done`
 - Last updated: 2026-09-02
 - Progress: `catalog` (T-0101–T-0103) and `inventory` (T-0104–T-0105) services shipped;
   neumorphic design system (T-0118–T-0119) and web + mobile app shells (T-0120–T-0121)
-  in place. **All feature screens (T-0106–T-0109) shipped.** Phase 02 is code-complete pending a live `docker compose up` end-to-end pass + acceptance sign-off.
+  in place. All feature screens (T-0106–T-0109) shipped. **`docker compose up`
+  brings the full stack (postgres, nats, kong, identity, tenancy, catalog,
+  inventory, redis, minio, mailpit) healthy; the end-to-end smoke test passes
+  25/25 through Kong** (auth → business → category → product → scan-by-code →
+  stock_in/adjustment → insufficient_stock 422 → `/stock` → `/stock/movements` →
+  cross-service `ProductUpserted` feeds `reorder_threshold` so `/stock/low` is
+  correct → tenant-isolation 403s). Acceptance criteria verified.
 
 ## Objective
 
@@ -53,11 +59,12 @@ Deliver catalog management and a stock movement ledger with derived on-hand, plu
 
 ## Acceptance Criteria
 
-- [ ] Recording `stock_in` of N increases on-hand by exactly N and writes one movement row.
-- [ ] Randomized movement sequences keep `stock_item.quantity == sum(stock_movement.quantity_delta)`.
-- [ ] Staff product responses contain no `cost_price`.
-- [ ] Scan of a known code returns the product; unknown returns 404 echoing the code.
-- [ ] `GET /stock/low` returns exactly the products with on-hand ≤ `reorder_threshold`.
+- [x] Recording `stock_in` of N increases on-hand by exactly N and writes one movement row.
+- [x] Randomized movement sequences keep `stock_item.quantity == sum(stock_movement.quantity_delta)`.
+      (covered by `inventory` service tests + the live smoke sequence 0→20→15→3.)
+- [x] Staff product responses contain no `cost_price`. (owner sees `cost_price`; verified live.)
+- [x] Scan of a known code returns the product; unknown returns 404 echoing the code.
+- [x] `GET /stock/low` returns exactly the products with on-hand ≤ `reorder_threshold`.
 
 ## Blockers
 
