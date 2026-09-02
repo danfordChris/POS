@@ -1,5 +1,46 @@
 # Weekly Status
 
+## 2026-09-02 — Neumorphic design system wired into both clients
+
+### Summary
+
+- **`web/` and `mobile/` now carry the neumorphic design system** from
+  `docs/design/interfaces/design_handoff_neumorphic_system/` — tokens (color roles,
+  elevation, radius, spacing, type) + per-component and accessibility rules. The
+  handoff's screen mockups are **not** adopted; screens are designed fresh from
+  `web-app-spec.md` / `mobile-app-spec.md`.
+
+### Completed
+
+- **T-0118 (web)** — `app/tokens.css` (OKLCH roles, light base + dark via
+  `[data-theme]` and `prefers-color-scheme`, elevation/radius/spacing/type),
+  `globals.css` Tailwind v4 `@theme` utility mapping, `lib/tokens.ts`,
+  `lib/theme.tsx` (`ThemeProvider`, localStorage-persisted, no-flash init script),
+  Nunito via `next/font`, and `components/ui/` (`Button`, `Card`/`Well`/`Panel`,
+  `TextField`, `Toggle`, `SegmentedControl`, `ErrorCard`, `ThemeToggle`) — tokens
+  only. `app/page.tsx` is a living component gallery. `pnpm --filter web lint` +
+  `build` pass.
+- **T-0119 (mobile)** — `theme/duka_colors.dart` (`DukaColors` ThemeExtension),
+  `theme/duka_tokens.dart` (radius/spacing/elevation), `theme/neu.dart` (`NeuBox`
+  raised + `NeuWell` inset via `CustomPainter`), `theme/duka_theme.dart`
+  (`buildDukaTheme(Brightness)` with a Nunito text theme), `widgets/` (`NeuButton`,
+  `NeuTextField`, `NeuToggle`, `SegmentedNeu`, `ErrorByCodeCard`), and a component
+  gallery `main.dart`. `flutter analyze` clean; `flutter test` (3) pass.
+- Design record: `docs/design/interfaces/ui-design-system.md`.
+
+### Design system rules baked in
+
+- One surface hue family — elevation via shadow only; no pure white/black surfaces.
+- Primary CTA is always a solid accent pill; destructive is `danger` + confirm.
+- Error-by-code component is the only surface for a failed request (title + code +
+  one action; never a stack trace / `devMessage`).
+- 2px accent focus ring; reduced-motion respected; touch targets ≥ 48 (mobile).
+
+### Next
+
+- App shells (nav / routing / auth) on both clients, then the Phase 02 screens
+  (T-0106–T-0109) built from this kit.
+
 ## 2026-09-02 — Phase 02 start (catalog service)
 
 ### Summary
