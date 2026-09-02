@@ -10,6 +10,8 @@ import 'package:pos_mobile/features/auth/providers/session_provider.dart';
 import 'package:pos_mobile/features/catalog/providers/catalog_provider.dart';
 import 'package:pos_mobile/features/catalog/widgets/product_row.dart';
 import 'package:pos_mobile/shared/widgets/error_by_code_card.dart';
+import 'package:pos_mobile/shared/widgets/neu_empty_state.dart';
+import 'package:pos_mobile/shared/widgets/neu_skeleton.dart';
 import 'package:pos_mobile/shared/widgets/neu_text_field.dart';
 
 class CatalogScreen extends StatefulWidget {
@@ -88,9 +90,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ),
                 )
               else if (catalog.isBusy && products.isEmpty)
-                const _LoadingList()
+                const _SkeletonList()
               else if (products.isEmpty)
-                _EmptyState(color: t.textSecondary)
+                NeuEmptyState(
+                  icon: Icons.inventory_2_outlined,
+                  title: _search.text.isEmpty
+                      ? 'No products yet'
+                      : 'Nothing matches “${_search.text}”',
+                  message: _search.text.isEmpty
+                      ? 'Add your first product to start tracking stock.'
+                      : 'Try a different name or SKU.',
+                  action: _search.text.isEmpty
+                      ? NeuEmptyAction(
+                          'New product',
+                          () => context.push(AppRoute.productNew.path),
+                        )
+                      : null,
+                )
               else
                 ...products.map(
                   (p) => Padding(
@@ -120,23 +136,44 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 }
 
-class _LoadingList extends StatelessWidget {
-  const _LoadingList();
-  @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.only(top: DukaSpacing.s8),
-    child: Center(child: CircularProgressIndicator()),
-  );
-}
+class _SkeletonList extends StatelessWidget {
+  const _SkeletonList();
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.color});
-  final Color color;
   @override
-  Widget build(BuildContext context) => NeuWell(
-    child: Text(
-      'No products yet. Tap “New product” to add one.',
-      style: TextStyle(color: color, fontSize: 16),
-    ),
-  );
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        6,
+        (_) => const Padding(
+          padding: EdgeInsets.only(bottom: DukaSpacing.s3),
+          child: NeuBox(
+            padding: EdgeInsets.all(DukaSpacing.s4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NeuSkeleton(width: 160, height: 15),
+                      SizedBox(height: 8),
+                      NeuSkeleton(width: 90, height: 12),
+                    ],
+                  ),
+                ),
+                SizedBox(width: DukaSpacing.s3),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    NeuSkeleton(width: 80, height: 14),
+                    SizedBox(height: 8),
+                    NeuSkeleton(width: 60, height: 12),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -3,6 +3,7 @@ import 'package:pos_mobile/core/theme/duka_colors.dart';
 import 'package:pos_mobile/core/theme/duka_tokens.dart';
 import 'package:pos_mobile/core/theme/neu.dart';
 import 'package:pos_mobile/models/catalog_models.dart';
+import 'package:pos_mobile/shared/widgets/neu_badge.dart';
 
 /// One product in the catalog list: name / SKU, on-hand (+ low badge), price.
 class ProductRow extends StatelessWidget {
@@ -39,9 +40,18 @@ class ProductRow extends StatelessWidget {
                     fontSize: 16,
                   ),
                 ),
-                Text(
-                  product.isActive ? product.sku : '${product.sku} · inactive',
-                  style: TextStyle(color: t.textSecondary, fontSize: 13),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      product.sku,
+                      style: TextStyle(color: t.textSecondary, fontSize: 13),
+                    ),
+                    if (!product.isActive) ...[
+                      const SizedBox(width: 6),
+                      const NeuBadge('inactive'),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -59,30 +69,14 @@ class ProductRow extends StatelessWidget {
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (stock?.lowStock ?? false)
-                    Container(
-                      margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: t.warning.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(DukaRadius.pill),
-                      ),
-                      child: Text(
-                        'low',
-                        style: TextStyle(
-                          color: t.warning,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
+                  if (stock?.lowStock ?? false) ...[
+                    const NeuBadge('low', tone: NeuBadgeTone.warning),
+                    const SizedBox(width: 6),
+                  ],
                   Text(
                     stock == null ? '— on hand' : '${stock!.onHand} on hand',
                     style: TextStyle(color: t.textSecondary, fontSize: 13),
