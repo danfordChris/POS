@@ -69,6 +69,12 @@ jobs:
               schema: inventory,
               url_var: INVENTORY_DATABASE_URL,
             }
+          - {
+              service: notifications,
+              dir: services/notifications,
+              schema: notifications,
+              url_var: NOTIFICATIONS_DATABASE_URL,
+            }
     services:
       postgres:
         image: postgres:18-alpine
@@ -98,6 +104,7 @@ jobs:
           TENANCY_DATABASE_URL: postgresql://tenancy_app:tenancy_app@localhost:5432/pos_dev?schema=tenancy
           CATALOG_DATABASE_URL: postgresql://catalog_app:catalog_app@localhost:5432/pos_dev?schema=catalog
           INVENTORY_DATABASE_URL: postgresql://inventory_app:inventory_app@localhost:5432/pos_dev?schema=inventory
+          NOTIFICATIONS_DATABASE_URL: postgresql://notifications_app:notifications_app@localhost:5432/pos_dev?schema=notifications
         run: pnpm exec prisma migrate deploy
       - name: lint / test / build
         working-directory: ${{ matrix.dir }}
@@ -107,6 +114,7 @@ jobs:
           TENANCY_DATABASE_URL: postgresql://tenancy_app:tenancy_app@localhost:5432/pos_dev?schema=tenancy
           CATALOG_DATABASE_URL: postgresql://catalog_app:catalog_app@localhost:5432/pos_dev?schema=catalog
           INVENTORY_DATABASE_URL: postgresql://inventory_app:inventory_app@localhost:5432/pos_dev?schema=inventory
+          NOTIFICATIONS_DATABASE_URL: postgresql://notifications_app:notifications_app@localhost:5432/pos_dev?schema=notifications
           JWT_ACCESS_SECRET: ci-only-access-secret-0123456789
           INTERNAL_CONTEXT_SECRET: ci-only-internal-context-secret-0123456789
           INTERNAL_API_KEY: ci-internal-api-key

@@ -14,12 +14,18 @@ export const businessCreatedPayload = z.object({
   currency: z.string(),
   locale: z.string(),
   owner_user_id: z.string().uuid(),
+  /** Owner contact fields for the notifications projection (additive, v1.1). */
+  owner_email: z.string().email().optional(),
+  owner_locale: z.string().optional(),
 });
 
 export const membershipCreatedPayload = z.object({
   business_id: z.string().uuid(),
   user_id: z.string().uuid(),
   role: z.enum(['owner', 'staff']),
+  /** Member contact fields for the notifications projection (additive, v1.1). */
+  email: z.string().email().optional(),
+  locale: z.string().optional(),
 });
 
 export const membershipSuspendedPayload = z.object({

@@ -1,5 +1,27 @@
 # Weekly Status
 
+## 2026-09-06 — T-0203 done: notifications service scaffold + contact projection
+
+- New `services/notifications` (worker; Nest + `@pos/nest-common`, Prisma on the
+  `notifications` schema, `/healthz` + `/readyz`, Dockerfile). Init migration
+  `20260906140000_init`: `notification`, `notification_contact`, `outbox`,
+  `processed_events`; forced RLS on the two tenant tables.
+- `ContactProjectionConsumer` builds `notification_contact` from
+  `BusinessCreated` / `MembershipCreated` / `MembershipSuspended` (idempotent on
+  `event_id`, DLQ). Recipient resolution can now stay projection-based.
+- `@pos/contracts` v1.1 (additive): optional `email`/`locale` on
+  `MembershipCreated`, optional `owner_email`/`owner_locale` on `BusinessCreated`
+  — optional so `tenancy`'s current emit still validates; tenancy enrichment is
+  a new backlog item (until then `notification_contact.email` is null and
+  `low_stock` has no owner recipients without `alert_config.recipients`).
+- infra: compose worker service, `k8s/base/notifications.yaml` (Deployment + PDB),
+  kustomization + secret example, CI matrix entry.
+- Tests: `contact-projection.e2e-spec.ts` (5). Backend suites green
+  (contracts 7, nest-common 16, testing 5, identity 7, tenancy 9, catalog 11,
+  inventory 22, notifications 5); `docker compose config` valid; contracts-compat
+  OK; validator `WORKFLOW:ok`.
+- Next: T-0204 (low-stock consumer + `EmailSender` + retry/backoff worker).
+
 ## 2026-09-06 — T-0202 done: low-stock alert state + edge payloads
 
 - `@pos/contracts` `SCHEMA_VERSION` `1.0.0 → 1.1.0`: `StockFellBelowThreshold`

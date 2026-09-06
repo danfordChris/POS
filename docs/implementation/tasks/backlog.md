@@ -19,6 +19,11 @@ Hold work not yet scheduled into a phase or written as a full task doc.
 - [ ] `GET /v1/auth/me` should compose `memberships` / `wingerAccounts` (identity calls
       tenancy `resolveMembership` / a new list RPC). Currently returns empty arrays.
 - [ ] Invitations capability in `services/tenancy` (ex T-0005) — schedule after T-0113
+- [ ] `tenancy` should enrich `BusinessCreated` / `MembershipCreated` with the
+      owner/member `email` + `locale` (via `identity.getUser`). The
+      `@pos/contracts` fields are optional as of v1.1 (T-0203); until tenancy
+      populates them, `notification_contact.email` is null and `low_stock`
+      emails have no owner recipients unless `alert_config.recipients` is set.
 - [~] Expand Phase 02–06 checklist items into full task docs when each phase is
       scheduled — Phase 02 done; Phase 03 done (T-0201–T-0207, 2026-09-06);
       Phases 04–06 pending

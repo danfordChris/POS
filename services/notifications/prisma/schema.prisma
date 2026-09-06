@@ -1,0 +1,73 @@
+// notifications service — owns `notification` (delivery record) and
+// `notification_contact` (read-only projection of tenancy membership) in the
+// `notifications` schema. Plus the transactional outbox + idempotency tables.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NOTIFICATIONS_DATABASE_URL")
+}
+
+/// One delivery record per (trigger, channel). `dedupe_key` collapses repeats of
+/// the same logical notification. RLS: `business_id = current_setting('app.business_id')`.
+model Notification {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String    @map("business_id") @db.Uuid
+  type       String // low_stock | invitation | winger_authorized
+  channel    String    @default("email")
+  payload    Json
+  status     String    @default("queued") // queued | sent | failed
+  dedupeKey  String?   @map("dedupe_key")
+  attempts   Int       @default(0)
+  lastError  String?   @map("last_error")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt     DateTime? @map("sent_at") @db.Timestamptz(6)
+
+  @@unique([businessId, dedupeKey])
+  @@index([businessId, status])
+  @@map("notification")
+}
+
+/// Read-only projection from `tenancy` events. Never written from anything but
+/// `BusinessCreated` / `MembershipCreated` / `MembershipSuspended`.
+/// RLS: `business_id = current_setting('app.business_id')`.
+model NotificationContact {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  role       String // owner | staff
+  email      String?
+  locale     String   @default("en")
+  active     Boolean  @default(true)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([businessId, userId])
+  @@index([businessId, role, active])
+  @@map("notification_contact")
+}
+
+model OutboxMessage {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  subject   String
+  payload   Json
+  headers   Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  attempts  Int       @default(0)
+  lastError String?   @map("last_error")
+
+  @@index([createdAt], map: "outbox_unsent_idx")
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  subject     String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_events")
+}

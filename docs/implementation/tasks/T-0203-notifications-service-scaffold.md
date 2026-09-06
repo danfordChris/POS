@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-06
 
 ## Linked Phase
@@ -60,6 +60,50 @@ Stand up `services/notifications` with the `notification` + `notification_contac
 
 ## Verification
 
-- `services/notifications/test/*` covers the projection matrix + idempotency.
-- `pnpm --filter @pos/notifications test` green; `pnpm -r build` green; `kubectl kustomize infra/k8s/base` renders; `docker compose config` valid.
+Delivered:
+
+- `services/notifications/` scaffold cloned from `catalog`/`inventory`: Nest app
+  (`main.ts`, `app.module.ts`), `config/env.ts` (`NOTIFICATIONS_PORT` 3007,
+  `NOTIFICATIONS_DATABASE_URL`, `NATS_URL`), `PlatformModule` (NATS `name:
+  'notifications'`), `PrismaModule`/`PrismaService`, `HealthModule`
+  (`/healthz` + `/readyz`), multi-stage `Dockerfile`, `vitest.config.ts`,
+  `oxlint.json`.
+- Prisma init migration `20260906140000_init`: `notification` (incl. `attempts`,
+  `last_error`, unique `(business_id, dedupe_key)`), `notification_contact`
+  (`role`, `email?`, `locale` default `en`, `active`, unique
+  `(business_id, user_id)`), `outbox`, `processed_events`; forced tenant RLS on
+  `notification` + `notification_contact`. Applied via `prisma migrate deploy`.
+- `ContactProjectionConsumer` + `ContactService`: `BusinessCreated` → upsert
+  owner contact (`role='owner'`, `active=true`, locale from `owner_locale ??
+  business locale`); `MembershipCreated` → upsert; `MembershipSuspended` →
+  `active=false`. Each `runIdempotent` on `event_id`, `subscribeWithDlq`
+  (`maxDeliver: 5`, `pos.dlq.tenancy.*`).
+- `@pos/contracts` (part of the v1.1 additive set): `membershipCreatedPayload`
+  gains optional `email` + `locale`; `businessCreatedPayload` gains optional
+  `owner_email` + `owner_locale`. Optional so `tenancy`'s current emit still
+  validates and `catalog`/`inventory` consumers keep parsing — `tenancy`
+  enrichment is a backlog item.
+- infra: `docker-compose.yml` `notifications` worker service;
+  `infra/k8s/base/notifications.yaml` (Deployment + PDB only, no Service/HPA);
+  added to `kustomization.yaml` + `secret.example.yaml`;
+  `.github/workflows/ci.yml` matrix entry + `NOTIFICATIONS_DATABASE_URL` in the
+  migrate + lint/test/build steps. No Kong route (worker). `notifications` role
+  + schema already in `infra/postgres/initdb/20-service-schemas.sql`.
+
+Evidence:
+
+- `pnpm --filter @pos/notifications test` → 5 passed
+  (`test/contact-projection.e2e-spec.ts`): owner seed from `BusinessCreated`;
+  `MembershipCreated` upsert keeps one row on role/email change; same
+  `event_id` twice → one `processed_events` row; suspend→deactivate then
+  re-create→reactivate; `BusinessCreated` without `owner_email` → `email: null`,
+  locale falls back to the business locale.
+- `pnpm --filter @pos/notifications build` + `lint` clean; `prettier` +
+  `prisma format` clean.
+- `docker compose -f infra/docker-compose.yml config` valid.
+  `kubectl kustomize` / `kong config parse` covered by the `edge` CI job
+  (kubectl not installed locally).
+- Backend suites green: contracts 7, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 22, notifications 5.
+- `node scripts/check-contracts-compat.mjs HEAD` → OK.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
