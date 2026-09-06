@@ -25,8 +25,8 @@ Hold work not yet scheduled into a phase or written as a full task doc.
       populates them, `notification_contact.email` is null and `low_stock`
       emails have no owner recipients unless `alert_config.recipients` is set.
 - [~] Expand Phase 02–06 checklist items into full task docs when each phase is
-      scheduled — Phase 02 done; Phase 03 done (T-0201–T-0207, 2026-09-06);
-      Phases 04–06 pending
+      scheduled — Phase 02 done; Phase 03 done (T-0201–T-0207); Phase 04 task
+      docs written (T-0301–T-0309, 2026-09-07); Phases 05–06 pending
 - [ ] Service mesh (mTLS) evaluation — Phase 06
 - [ ] Invitation resend endpoint
 - [ ] Mobile camera scanning (`mobile_scanner` + camera permission config) — the

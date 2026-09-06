@@ -3,23 +3,24 @@
 ## Status
 
 - `pending`
-- Last updated: 2026-09-01
+- Last updated: 2026-09-07
 
 ## Objective
 
-Record sales that decrement stock through the ledger, issue a public receipt link, and support void with full reversal.
+Record sales that decrement stock through the `inventory` ledger via the reserve → commit saga, issue a public receipt link, and support void with full reversal.
 
 ## Scope
 
-- `sale`, `sale_line`, `receipt` models + migration + RLS.
-- `POST /sales` (transactional: lines → `sale` type movements → on-hand); `422 insufficient_stock` when short.
-- Per-business `sale.number` sequence; price + name snapshots on lines.
-- `POST /sales/{id}/void` → `void_reversal` movements, receipt `void`.
-- `GET /r/{public_token}` public, unauthenticated.
-- `GET /sales` (Owner all, Staff own), `GET /sales/{id}`.
-- Mobile: sell flow, receipt screen (link + QR of link, share sheet).
+- New `services/sales` (`sale`, `sale_line`, `receipt`, `sale_number_counter`, `product_cache`) in the `sales` schema + RLS.
+- `POST /v1/businesses/{id}/sales` (Owner/Staff): `reserveStock` RPC → write `sale`/`sale_line`/`receipt` + `SaleCompleted` (outbox) in one tenant txn → `commitReservation` RPC. Any failure → `releaseReservation`, no sale rows. `Idempotency-Key` replays the original sale. `422 insufficient_stock` from `reserveStock` shortfalls.
+- The `sale` / `void_reversal` stock movements are written by **`inventory`** on `commitReservation` and on the `SaleVoided` consumer — `sales` never writes to the ledger.
+- Per-business `sale.number` from `sale_number_counter` (`FOR UPDATE`); price + name snapshots on `sale_line` (from `product_cache` when the client omits `unit_price`); business name/currency snapshot on `receipt`.
+- `POST /v1/businesses/{id}/sales/{id}/void` (Owner) → `receipt.status = void`, emit `SaleVoided`; `inventory` writes the equal-and-opposite `void_reversal` movements.
+- `GET /v1/r/{public_token}` — public, unauthenticated (Kong route without `pos-internal-context`); payload = business name, lines, totals, timestamp; no internal IDs. Unknown / void token → 404.
+- `GET /v1/businesses/{id}/sales` (Owner all, Staff own), `GET .../sales/{id}` (Owner; Staff own).
+- `@pos/contracts`: `SUBJECTS.sales.*`, `saleCompletedPayload` / `saleVoidedPayload`; `inventory` gains a `SaleVoided` consumer.
+- Mobile: sell flow (add lines by scan/pick, qty, line discount, running total, `422` inline), receipt screen (link + QR + share sheet).
 - Web: sales table, sale detail, void.
-- Idempotency-Key on `POST /sales`.
 
 ## Features
 
@@ -28,27 +29,29 @@ Record sales that decrement stock through the ledger, issue a public receipt lin
 
 ## Tasks
 
-- [ ] T-0301 Sale/line/receipt models + migration + RLS
-- [ ] T-0302 `POST /sales` transactional handler + idempotency
-- [ ] T-0303 Insufficient-stock path (422, no partial writes)
-- [ ] T-0304 Void handler + reversal movements
-- [ ] T-0305 Public receipt endpoint + token generation
-- [ ] T-0306 Sales read endpoints with role scoping
-- [ ] T-0307 Mobile sell flow + 422 handling
-- [ ] T-0308 Mobile receipt screen (link + QR + share)
-- [ ] T-0309 Web sales list/detail/void
+- [ ] T-0301 `sales` service scaffold + `sale` / `sale_line` / `receipt` / `sale_number_counter` / `product_cache` models + migration + RLS + `@pos/contracts` sale events
+- [ ] T-0302 `sales` — `POST /sales` reserve → write → commit saga + `Idempotency-Key` replay + `product_cache` consumers
+- [ ] T-0303 `sales` — insufficient-stock path (`422`, `releaseReservation`, no `sale`/`sale_line` rows)
+- [ ] T-0304 `sales` — `POST /sales/{id}/void` + `SaleVoided`; `inventory` — `SaleVoided` consumer writing `void_reversal` movements
+- [ ] T-0305 `sales` — public `GET /v1/r/{token}` + token generation + Kong route (no internal-context plugin)
+- [ ] T-0306 `sales` — `GET /sales` + `GET /sales/{id}` with Owner-all / Staff-own scoping
+- [ ] T-0307 Mobile — sell flow + `422 insufficient_stock` handling
+- [ ] T-0308 Mobile — receipt screen (link + QR + share)
+- [ ] T-0309 Web — sales list / detail / void
 
 ## Acceptance Criteria
 
-- [ ] Completing a sale decreases on-hand per line and writes `sale` movements atomically.
-- [ ] A sale exceeding on-hand returns 422 and creates no `sale` or `sale_line` rows.
-- [ ] Void restores on-hand to pre-sale values for every line and marks the receipt `void`.
-- [ ] `GET /r/{token}` returns 200 with no `Authorization` header; unknown/void token returns 404.
+- [ ] Completing a sale decreases on-hand per line and writes one `sale` movement per line (in `inventory`), atomically with the reservation commit.
+- [ ] A sale exceeding on-hand returns `422 insufficient_stock` and creates no `sale` or `sale_line` rows.
+- [ ] Void restores on-hand to pre-sale values for every line (`void_reversal` movements) and marks the receipt `void`.
+- [ ] `GET /v1/r/{token}` returns 200 with no `Authorization` header; unknown / void token returns 404.
 - [ ] Re-sending `POST /sales` with the same `Idempotency-Key` returns the original sale, not a duplicate.
+- [ ] Dropping `inventory` makes `POST /sales` fail cleanly with `503` and no partial sale (per internal-rpc acceptance).
 
 ## Blockers
 
-- Phase 02 stock ledger must be `done`.
+- Phase 02 stock ledger `done` (met); `inventory` reserve/commit/release RPC `done` (T-0105).
+- Phase 03 `done`.
 
 ## Linked Tasks
 

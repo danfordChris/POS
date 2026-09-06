@@ -1,5 +1,36 @@
 # Weekly Status
 
+## 2026-09-07 — Phase 04 planned: sales + digital receipts task docs
+
+Thinking pass — no service code.
+
+- `phase-04-sales-and-receipts.md` re-scoped to the reserve → write → commit
+  saga (stock movements written by `inventory` on commit / on `SaleVoided`,
+  never by `sales`).
+- Design gap-fills adopted (consistent with data-model + events-catalog, not
+  net-new behavior):
+  - `service-decomposition.md`: `sales` owns `product_cache`; consumes
+    `ProductUpserted` / `PriceChanged` / `BusinessCreated`. `inventory` consumes
+    `SaleVoided` (writes `void_reversal` movements).
+  - `events-catalog.md`: `SaleCompleted` carries `reservation_id` + `lines`
+    (`product_id`, `quantity`); `SaleVoided` carries `lines`.
+  - `data-model.md`: `sale_number_counter`, `product_cache`, `receipt`
+    `business_name_snapshot` + `currency`.
+- Task docs T-0301–T-0309 written, all `pending`:
+  - T-0301 `sales` scaffold + models + `SaleCompleted`/`SaleVoided` contracts
+  - T-0302 `POST /sales` reserve→write→commit saga + `Idempotency-Key` +
+    `product_cache` consumers
+  - T-0303 insufficient-stock path (`422`, no partial writes)
+  - T-0304 void handler + `inventory` `SaleVoided` consumer (`void_reversal`)
+  - T-0305 public `GET /v1/r/{token}` (no internal-context plugin)
+  - T-0306 `GET /sales` + `/sales/{id}` Owner-all / Staff-own
+  - T-0307 mobile sell flow + `422` handling
+  - T-0308 mobile receipt screen (link + QR + share)
+  - T-0309 web sales list / detail / void
+  - Chain: T-0301 → T-0302 → {T-0303, T-0304, T-0305, T-0306};
+    T-0307 after T-0302/03; T-0308 after T-0305/07; T-0309 after T-0304/06.
+- Validator `WORKFLOW:ok`.
+
 ## 2026-09-06 — T-0207 done: web /alerts screen — Phase 03 complete
 
 - `web/app/(shell)/alerts/` — Owner-only page (`getSession` → `<Forbidden />`

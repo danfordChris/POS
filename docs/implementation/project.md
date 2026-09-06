@@ -8,8 +8,9 @@
 
 ## Current Priorities
 
-1. Phase 04 — Sales + digital receipts (`sales`; stock saga with `inventory`).
-   Expand into task docs, then build the `sales` service + sell/receipt screens.
+1. Phase 04 — Sales + digital receipts. Task docs T-0301–T-0309 written; build
+   the `sales` service (reserve→write→commit saga, void, public receipt, reads)
+   + `inventory` `SaleVoided` consumer + mobile sell/receipt + web sales screens.
 2. Phase 05 — Winger portal (`winger` read model + portal API).
 3. Phase 06 — Hardening and MVP acceptance.
 
