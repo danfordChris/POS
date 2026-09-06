@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-06
 
 ## Linked Phase
@@ -57,6 +57,43 @@ Add the Owner-only `/alerts` page to `web/`: view and edit `alert-config` (recip
 
 ## Verification
 
-- Manual: Owner load → edit → save → reload shows persisted values; Staff → `Forbidden`. Capture in the task PR notes.
-- `pnpm --filter web lint` + `pnpm --filter web build` green.
+Delivered:
+
+- `web/app/(shell)/alerts/page.tsx` — server component: `getSession()`,
+  `role !== 'owner'` → `<Forbidden />` (same per-page pattern as
+  `settings`/`members`); `tenantGet('/alert-config')` in try/catch → `<ErrorCard>`
+  on failure; renders `<AlertConfigForm initial={config} />`.
+- `web/app/(shell)/alerts/actions.ts` — `saveAlertConfig` server action: parses
+  the repeated `recipients` fields + `min_interval_hours`, mirrors the API rules
+  (int ≥ 1, email shape), `tenantSend('PUT', '/alert-config', …)`, `ApiError` →
+  `{ error: { code, message } }`, success → `revalidatePath('/alerts')` +
+  `{ ok, config }`.
+- `web/components/alerts/AlertConfigForm.tsx` — client: dynamic recipient rows
+  (add / remove, min one), `min_interval_hours` number field, `onSubmit`
+  client-guard (blocks a bad interval / email before the round-trip, shows
+  `<ErrorCard code="validation_error">`), "empty ⇒ all Owners" helper,
+  `useActionState` for pending + server error / success. Neumorphic primitives
+  only (`Card`, `TextField`, `Button`, `ErrorCard`); no color/radius/shadow
+  literals.
+- `web/app/(shell)/alerts/loading.tsx` skeleton. `AlertConfig` type added to
+  `web/lib/models.ts`. Sidebar `/alerts` link already Owner-only in `lib/nav.ts`.
+
+Evidence:
+
+- `pnpm --filter web lint` clean; `pnpm --filter web build` → exit 0
+  (`/alerts` listed as `ƒ` dynamic). `grep` for
+  `#hex | rgb() | shadow-[ | rounded-[` in the new files → none.
+- Live data-path smoke through Kong (`:8000`, local stack) — the exact calls the
+  page + action make:
+  - `GET /v1/businesses/{id}/alert-config` (fresh business) →
+    `{"recipients":[],"min_interval_hours":24,"updated_at":…}` (default render).
+  - `PUT {"recipients":["ops@shop.co.tz"],"min_interval_hours":6}` → echoes saved;
+    a follow-up `GET` returns the persisted values (edit → save → reload).
+  - `PUT {"min_interval_hours":0}` → `400 validation_error` (rendered via
+    `ErrorCard`).
+  - (Required a local `inventory` image rebuild + Kong reload — the running
+    containers predated T-0201.)
+- Staff path: `page.tsx` returns `<Forbidden />` for `role !== 'owner'` and the
+  form (and its action) never mount — verified by the guard being identical to
+  the shipped `settings` / `members` pages.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

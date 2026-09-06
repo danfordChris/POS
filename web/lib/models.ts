@@ -42,6 +42,13 @@ export interface StockItem {
   updated_at: string;
 }
 
+export interface AlertConfig {
+  /** User-ids or email addresses. Empty ⇒ all active Owners. */
+  recipients: string[];
+  min_interval_hours: number;
+  updated_at: string;
+}
+
 export interface StockMovement {
   id: string;
   product_id: string;

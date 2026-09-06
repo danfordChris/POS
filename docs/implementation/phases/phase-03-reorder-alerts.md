@@ -2,8 +2,13 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-06
+- Progress: T-0201–T-0207 all `done`. `notifications` service live (contact +
+  digest-config projections, low-stock consumer, `EmailSender`, `DigestFlushJob`,
+  en/sw templates); `inventory` `alert_config` + `low_stock_alert_state` +
+  `AlertConfigChanged`; web Owner-only `/alerts`. Backend suites green
+  (102 tests); `/alert-config` verified live through Kong.
 
 ## Objective
 
@@ -25,22 +30,22 @@ Send a low-stock email to business alert recipients on the transition into the l
 
 ## Tasks
 
-- [ ] T-0201 `inventory` — `alert_config` model + `GET/PUT /alert-config` (Owner)
-- [ ] T-0202 `inventory` — `low_stock_alert_state` table + `opened_at`/`recipients` on the edge events + `@pos/contracts` payload additions
-- [ ] T-0203 `notifications` service scaffold + `notification` / `notification_contact` schema + contact-projection consumers
-- [ ] T-0204 `notifications` — low-stock consumer (`StockFellBelowThreshold` / `StockRecovered`) → deduped `notification` rows + `EmailSender` + retry/backoff worker
-- [ ] T-0205 `notifications` — digest batching within `min_interval_hours` (periodic flush)
-- [ ] T-0206 `notifications` — en/sw low-stock templates + `EmailSender` Mailpit capture test
-- [ ] T-0207 Web `/alerts` screen
+- [x] T-0201 `inventory` — `alert_config` model + `GET/PUT /alert-config` (Owner)
+- [x] T-0202 `inventory` — `low_stock_alert_state` table + `opened_at`/`recipients` on the edge events + `@pos/contracts` payload additions
+- [x] T-0203 `notifications` service scaffold + `notification` / `notification_contact` schema + contact-projection consumers
+- [x] T-0204 `notifications` — low-stock consumer (`StockFellBelowThreshold` / `StockRecovered`) → deduped `notification` rows + `EmailSender` + retry/backoff worker
+- [x] T-0205 `notifications` — digest batching within `min_interval_hours` (periodic flush)
+- [x] T-0206 `notifications` — en/sw low-stock templates + `EmailSender` Mailpit capture test
+- [x] T-0207 Web `/alerts` screen
 
 ## Acceptance Criteria
 
-- [ ] Repeated sub-threshold movements produce exactly one `low_stock` notification until on-hand rises above threshold.
-- [ ] On-hand recovering then dipping again fires a second notification (new `opened_at`, new `dedupe_key`).
-- [ ] `failed` send retried up to 3× and final state persisted (`attempts`, `last_error`).
-- [ ] Two products dipping within `min_interval_hours` produce one digest email listing both.
-- [ ] Email body language matches business locale for en and sw.
-- [ ] Removing `notifications` from the local stack leaves every other endpoint working (per service-decomposition acceptance).
+- [x] Repeated sub-threshold movements produce exactly one `low_stock` notification until on-hand rises above threshold.
+- [x] On-hand recovering then dipping again fires a second notification (new `opened_at`, new `dedupe_key`).
+- [x] `failed` send retried up to 3× and final state persisted (`attempts`, `last_error`).
+- [x] Two products dipping within `min_interval_hours` produce one digest email listing both.
+- [x] Email body language matches business locale for en and sw.
+- [x] Removing `notifications` from the local stack leaves every other endpoint working (per service-decomposition acceptance).
 
 ## Blockers
 

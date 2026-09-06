@@ -1,5 +1,25 @@
 # Weekly Status
 
+## 2026-09-06 — T-0207 done: web /alerts screen — Phase 03 complete
+
+- `web/app/(shell)/alerts/` — Owner-only page (`getSession` → `<Forbidden />`
+  for Staff, same pattern as `settings`/`members`), server `GET /alert-config`
+  via `tenant-api` (→ `<ErrorCard>` on failure), `saveAlertConfig` server action
+  (`PUT`, mirrors API validation, `ApiError` → error state,
+  `revalidatePath`). `AlertConfigForm` client component: add/remove recipient
+  rows, `min_interval_hours`, client-guard before round-trip, "empty ⇒ all
+  Owners" helper — neumorphic primitives only. `loading.tsx` skeleton;
+  `AlertConfig` type in `lib/models.ts`.
+- `pnpm --filter web lint` + `build` green; no color/radius/shadow literals in
+  the new files.
+- Live smoke through Kong (`:8000`): `GET` fresh → `{recipients:[],
+  min_interval_hours:24}`; `PUT {recipients:["ops@shop.co.tz"],
+  min_interval_hours:6}` → echoes; follow-up `GET` persisted; `PUT {…:0}` →
+  `400 validation_error`. (Needed a local `inventory` image rebuild + Kong
+  reload — running containers predated T-0201.)
+- **Phase 03 done** — T-0201–T-0207 complete; `phase-03` + `project.md`
+  updated; next priority is Phase 04 (Sales + digital receipts).
+
 ## 2026-09-06 — T-0206 done: localized low-stock templates
 
 - `notifications/src/templates/`: `TemplateRegistry.render('low_stock', locale,

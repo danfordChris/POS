@@ -8,17 +8,17 @@
 
 ## Current Priorities
 
-1. Phase 03 — Reorder alerts (`inventory` → `notifications`). Expand T-0201–T-0207
-   into task docs, then build the `notifications` service + web `/alerts`.
-2. Phase 04 — Sales + digital receipts (`sales`; stock saga with `inventory`).
-3. Phase 05 — Winger portal (`winger` read model + portal API).
+1. Phase 04 — Sales + digital receipts (`sales`; stock saga with `inventory`).
+   Expand into task docs, then build the `sales` service + sell/receipt screens.
+2. Phase 05 — Winger portal (`winger` read model + portal API).
+3. Phase 06 — Hardening and MVP acceptance.
 
 ## Active Phases
 
 - [x] Phase 00 — Foundations (monolith baseline: T-0001–T-0004 done; T-0005–T-0009 superseded by Phase 01)
 - [x] Phase 01 — Platform and Core Services
 - [x] Phase 02 — Inventory core (`catalog` + `inventory` services, neumorphic design system, web + mobile app shells, all feature screens; `docker compose up` e2e smoke 25/25 through Kong; acceptance verified 2026-09-02)
-- [ ] Phase 03 — Reorder alerts (`inventory` → `notifications`)
+- [x] Phase 03 — Reorder alerts (`inventory` `alert_config` + `low_stock_alert_state` + `AlertConfigChanged`; `notifications` service — projections, low-stock consumer, digest flush, en/sw templates; web `/alerts`; T-0201–T-0207 done 2026-09-06)
 - [ ] Phase 04 — Sales and digital receipts (`sales`; stock saga with `inventory`)
 - [ ] Phase 05 — Winger portal (`winger` read model + portal API)
 - [ ] Phase 06 — Hardening and MVP acceptance
