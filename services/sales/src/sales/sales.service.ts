@@ -66,12 +66,15 @@ export class SalesService {
       })),
     });
     if (!reserve.ok) {
+      // Nothing was reserved on a shortfall (inventory.reserveStock creates no
+      // reservation), so there is no hold to release here.
+      const wanted = new Map(lines.map((l) => [l.productId, l.quantity]));
       throw new UnprocessableEntityException({
         code: 'insufficient_stock',
         message: 'Not enough stock for one or more items.',
         details: reserve.shortfalls.map((s) => ({
           field: 'lines',
-          issue: `${s.product_id} short: available ${s.available}`,
+          issue: `${s.product_id}: requested ${wanted.get(s.product_id) ?? '?'}, available ${s.available}`,
         })),
       });
     }

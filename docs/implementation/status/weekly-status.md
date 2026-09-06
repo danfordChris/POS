@@ -1,5 +1,16 @@
 # Weekly Status
 
+## 2026-09-07 — T-0303 done: sales insufficient-stock path
+
+- `reserveStock` `{ ok: false }` → `422 insufficient_stock` with per-shortfall
+  `details` (`<product_id>: requested <n>, available <m>`), thrown before the
+  write txn; no `releaseReservation` (inventory holds nothing on a shortfall).
+- Tests: +2 in `sales.e2e-spec.ts` — full shortfall and a one-line-short
+  multi-line cart, each asserting `422`, zero `sale_line` rows, unchanged
+  `SaleCompleted` outbox, no release. `sales` suite → 9; backend green;
+  contracts-compat OK; validator `WORKFLOW:ok`.
+- Next: T-0304 (void + `inventory` `SaleVoided` consumer).
+
 ## 2026-09-07 — T-0302 done: POST /sales reserve→write→commit saga
 
 - `sales`: `InventoryClient` (RPC to `reserveStock`/`commitReservation`/

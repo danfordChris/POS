@@ -242,6 +242,61 @@ describe('sales — POST /sales', () => {
     expect(res.body.error.code).toBe('validation_error');
   });
 
+  it('422 insufficient_stock — full shortfall, zero writes, no release', async () => {
+    const p = uuidv7();
+    await seedProduct(bizA, p, 'Maharage', 3000);
+    inv.reserveStock.mockResolvedValueOnce({
+      ok: false,
+      shortfalls: [{ product_id: p, available: 2 }],
+    } as never);
+    const outboxBefore = (await outboxSaleCompleted(bizA)).length;
+
+    const res = await http
+      .post(salesUrl(bizA))
+      .set(ctx(bizA))
+      .send({ lines: [{ product_id: p, quantity: 10 }] })
+      .expect(422);
+    expect(res.body.error.code).toBe('insufficient_stock');
+    expect(res.body.error.details[0].issue).toContain(p);
+    expect(res.body.error.details[0].issue).toContain('requested 10');
+
+    const rows = await prisma.runInTenantContext(bizA, async (tx) => ({
+      lines: await tx.saleLine.count({ where: { productId: p } }),
+      receipts: await tx.receipt.count(),
+    }));
+    expect(rows.lines).toBe(0);
+    expect((await outboxSaleCompleted(bizA)).length).toBe(outboxBefore);
+    expect(inv.releaseReservation).not.toHaveBeenCalled();
+  });
+
+  it('422 when only one line of a multi-line cart is short — still zero writes', async () => {
+    const ok = uuidv7();
+    const short = uuidv7();
+    await seedProduct(bizA, ok, 'Sabuni', 800);
+    await seedProduct(bizA, short, 'Mafuta', 6000);
+    inv.reserveStock.mockResolvedValueOnce({
+      ok: false,
+      shortfalls: [{ product_id: short, available: 1 }],
+    } as never);
+
+    await http
+      .post(salesUrl(bizA))
+      .set(ctx(bizA))
+      .send({
+        lines: [
+          { product_id: ok, quantity: 1 },
+          { product_id: short, quantity: 5 },
+        ],
+      })
+      .expect(422);
+
+    const n = await prisma.runInTenantContext(bizA, (tx) =>
+      tx.saleLine.count({ where: { productId: { in: [ok, short] } } }),
+    );
+    expect(n).toBe(0);
+    expect(inv.releaseReservation).not.toHaveBeenCalled();
+  });
+
   it('503 when reserveStock is unavailable — no sale rows, no release', async () => {
     const p = uuidv7();
     await seedProduct(bizA, p, 'Soda', 1500);

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -51,6 +51,22 @@ Make `POST /sales` reject an over-quantity sale with `422 insufficient_stock` an
 
 ## Verification
 
-- `services/sales/test/*` asserts `422 insufficient_stock`, zero rows, no `releaseReservation`.
-- `pnpm --filter @pos/sales test` green; `pnpm -r build` green.
+Delivered:
+
+- `SalesService.createSale` maps `reserveStock` `{ ok: false }` →
+  `UnprocessableEntityException` `code: 'insufficient_stock'` with per-shortfall
+  `details` (`<product_id>: requested <n>, available <m>`). The throw is before
+  the write transaction, and no `releaseReservation` is issued (inventory
+  creates no reservation on a shortfall).
+
+Evidence:
+
+- `pnpm --filter @pos/sales test` → 9 passed (2 new in `sales.e2e-spec.ts`):
+  full shortfall → `422 insufficient_stock`, `details` name the product +
+  `requested 10`, zero `sale_line` rows, `SaleCompleted` outbox count
+  unchanged, `releaseReservation` not called; a multi-line cart with one short
+  line → `422`, zero rows, no release.
+- Backend suites green: contracts 10, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 23, sales 9, notifications 22.
+- `pnpm --filter @pos/sales build` + `lint` clean; contracts-compat OK.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
