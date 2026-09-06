@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:pos_mobile/core/router/router.dart';
 import 'package:pos_mobile/core/theme/duka_colors.dart';
 import 'package:pos_mobile/core/theme/duka_tokens.dart';
 import 'package:pos_mobile/features/auth/providers/session_provider.dart';
@@ -44,13 +48,9 @@ class _SellScreenState extends State<SellScreen> {
     final sell = context.read<SellProvider>();
     final sale = await sell.submit(_bizId);
     if (!mounted || sale == null) return;
-    await context.read<CatalogProvider>().load(_bizId); // refresh on-hand
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Sale #${sale.number} completed')),
-    );
+    unawaited(context.read<CatalogProvider>().load(_bizId)); // refresh on-hand
     sell.clear();
-    // TODO(T-0308): context.go to the receipt screen with `sale`.
+    context.push(AppRoute.receipt.path, extra: sale);
   }
 
   @override

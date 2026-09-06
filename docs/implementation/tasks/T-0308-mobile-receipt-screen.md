@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -55,6 +55,30 @@ Add the Receipt screen reached after a completed sale: summary + shareable link 
 
 ## Verification
 
-- `mobile/test/*` — receipt widget test + `receiptUrl` unit test.
-- `cd mobile && flutter analyze` → no issues; `flutter test` green.
+Delivered:
+
+- `mobile/pubspec.yaml` — `qr_flutter: ^4.1.0`, `share_plus: ^10.1.4`.
+- `lib/core/receipt_url.dart` — `receiptUrl(token)` = `$kApiBaseUrl/v1/r/{token}`
+  (the one place `/v1/r/...` is built).
+- `lib/features/sell/screens/receipt_screen.dart` — `ReceiptArgs { sale? , saleId? }`.
+  Renders the big total, timestamp, line list (`name  ×qty` + line total),
+  subtotal / discount / total, a `QrImageView` of `receiptUrl(public_token)`,
+  the selectable link, **Share link** (`Share.share(url, subject: 'Receipt #N')`)
+  and **New sale** (`context.go(AppRoute.sell.path)`). Opened with only a
+  `saleId` → `SalesService.getSale`; a fetch failure shows an
+  `ErrorByCodeCard` with a Retry action.
+- Router: `AppRoute.receipt('/sell/receipt')` + a root-navigator `GoRoute` whose
+  builder accepts `ReceiptArgs`, a bare `Sale`, or a `String` saleId via
+  `state.extra`.
+- `sell_screen._complete`: on `201` → `sell.clear()` then
+  `context.push(AppRoute.receipt.path, extra: sale)` (replaces the T-0307
+  SnackBar/TODO); catalog on-hand refresh is fire-and-forget.
+
+Evidence:
+
+- `cd mobile && flutter analyze` → **No issues found**.
+- `flutter test` → all pass (10): `test/receipt_screen_test.dart` —
+  `receiptUrl` builds `$kApiBaseUrl/v1/r/tok-abc`; the screen renders the total,
+  a line row, a `QrImageView`, the link text, and the Share / New-sale buttons.
+  Existing `sell_provider_test.dart` (5) + `widget_test.dart` (3) still green.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

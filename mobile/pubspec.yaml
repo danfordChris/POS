@@ -50,6 +50,10 @@ dependencies:
   # Plays the hand-authored splash entrance animation (assets/animations).
   lottie: ^3.1.2
 
+  # Receipt screen: QR of the public link + the platform share sheet.
+  qr_flutter: ^4.1.0
+  share_plus: ^10.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

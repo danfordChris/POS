@@ -11,11 +11,13 @@ import 'package:pos_mobile/features/dev/screens/gallery_screen.dart';
 import 'package:pos_mobile/features/home/screens/home_screen.dart';
 import 'package:pos_mobile/features/more/screens/more_screen.dart';
 import 'package:pos_mobile/features/scan/screens/scan_screen.dart';
+import 'package:pos_mobile/features/sell/screens/receipt_screen.dart';
 import 'package:pos_mobile/features/sell/screens/sell_screen.dart';
 import 'package:pos_mobile/features/shell/screens/app_shell.dart';
 import 'package:pos_mobile/features/splash/screens/splash_screen.dart';
 import 'package:pos_mobile/features/stock/screens/record_movement_screen.dart';
 import 'package:pos_mobile/models/catalog_models.dart';
+import 'package:pos_mobile/models/sale_models.dart';
 
 /// Single source of truth for every path. Never inline a path string.
 enum AppRoute {
@@ -35,6 +37,7 @@ enum AppRoute {
   productDetail('/catalog/detail'),
   productEdit('/catalog/edit'),
   recordMovement('/stock/record'),
+  receipt('/sell/receipt'),
   gallery('/more/gallery');
 
   const AppRoute(this.path);
@@ -129,6 +132,19 @@ GoRouter createRouter(SessionProvider session) {
               ? state.extra as RecordMovementArgs
               : const RecordMovementArgs();
           return RecordMovementScreen(args: args);
+        },
+      ),
+      GoRoute(
+        path: AppRoute.receipt.path,
+        parentNavigatorKey: NavigationKeys.root,
+        builder: (_, state) {
+          final extra = state.extra;
+          final args = extra is ReceiptArgs
+              ? extra
+              : extra is Sale
+              ? ReceiptArgs(sale: extra)
+              : ReceiptArgs(saleId: extra as String);
+          return ReceiptScreen(args: args);
         },
       ),
       StatefulShellRoute.indexedStack(
