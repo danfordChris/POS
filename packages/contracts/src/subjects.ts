@@ -46,6 +46,10 @@ export const SUBJECTS = {
     saleCompleted: evtSubject('sales', 'SaleCompleted'),
     saleVoided: evtSubject('sales', 'SaleVoided'),
   },
+  winger: {
+    wingerAuthorized: evtSubject('winger', 'WingerAuthorized'),
+    wingerSuspended: evtSubject('winger', 'WingerSuspended'),
+  },
   notifications: {
     notificationSent: evtSubject('notifications', 'NotificationSent'),
     notificationFailed: evtSubject('notifications', 'NotificationFailed'),

@@ -129,6 +129,25 @@ services:
       timeout: 5s
       retries: 12
 
+  winger:
+    build: { context: .., dockerfile: services/winger/Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      WINGER_PORT: '3000'
+      WINGER_DATABASE_URL: postgresql://winger_app:winger_app@postgres:5432/pos_dev?schema=winger
+      NATS_URL: nats://nats:4222
+      INTERNAL_CONTEXT_SECRET: ${INTERNAL_CONTEXT_SECRET:-dev-only-internal-context-secret-change-me}
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:3000}
+    depends_on:
+      postgres: { condition: service_healthy }
+      nats: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost:3000/readyz || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   notifications:
     build: { context: .., dockerfile: services/notifications/Dockerfile }
     restart: unless-stopped
@@ -161,6 +180,7 @@ services:
       catalog: { condition: service_started }
       inventory: { condition: service_started }
       sales: { condition: service_started }
+      winger: { condition: service_started }
     environment:
       KONG_DATABASE: 'off'
       KONG_VAULTS: env
@@ -177,6 +197,7 @@ services:
       CATALOG_URL: ${CATALOG_URL:-http://catalog:3000}
       INVENTORY_URL: ${INVENTORY_URL:-http://inventory:3000}
       SALES_URL: ${SALES_URL:-http://sales:3000}
+      WINGER_URL: ${WINGER_URL:-http://winger:3000}
       TENANCY_MEMBERSHIP_URL: ${TENANCY_MEMBERSHIP_URL:-http://tenancy:3000/v1/internal/membership}
     ports:
       - '${KONG_PROXY_PORT:-8000}:8000'

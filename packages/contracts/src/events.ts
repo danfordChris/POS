@@ -138,6 +138,21 @@ export const saleVoidedPayload = z.object({
   lines: z.array(saleLineRef).min(1),
 });
 
+export const wingerAuthorizedPayload = z.object({
+  business_id: z.string().uuid(),
+  winger_account_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  /** Absolute URL the reseller opens to reach their portal. */
+  portal_url: z.string().url(),
+  email: z.string().email(),
+  locale: z.string(),
+});
+
+export const wingerSuspendedPayload = z.object({
+  business_id: z.string().uuid(),
+  winger_account_id: z.string().uuid(),
+});
+
 export const notificationSentPayload = z.object({
   business_id: z.string().uuid(),
   notification_id: z.string().uuid(),
@@ -170,6 +185,8 @@ export const EVENT_PAYLOADS = {
   StockRecovered: stockRecoveredPayload,
   SaleCompleted: saleCompletedPayload,
   SaleVoided: saleVoidedPayload,
+  WingerAuthorized: wingerAuthorizedPayload,
+  WingerSuspended: wingerSuspendedPayload,
   NotificationSent: notificationSentPayload,
   NotificationFailed: notificationFailedPayload,
 } as const;

@@ -22,5 +22,4 @@ resources:
   - inventory.yaml
   - notifications.yaml
   - sales.yaml
-  # winger is added by its phase
-  # using examples/service.template.yaml as the starting point.
+  - winger.yaml

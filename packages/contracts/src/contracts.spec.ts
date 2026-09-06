@@ -138,6 +138,27 @@ describe('@pos/contracts', () => {
     expect(EVENT_PAYLOADS.SaleVoided.parse(voided)).toEqual(voided);
   });
 
+  it('builds winger subjects and round-trips its event payloads', () => {
+    expect(SUBJECTS.winger.wingerAuthorized).toBe('pos.evt.winger.WingerAuthorized');
+    expect(SUBJECTS.winger.wingerSuspended).toBe('pos.evt.winger.WingerSuspended');
+
+    const authorized = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      winger_account_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d61',
+      user_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d62',
+      portal_url: 'https://app.example.com/winger',
+      email: 'reseller@example.com',
+      locale: 'sw',
+    };
+    expect(EVENT_PAYLOADS.WingerAuthorized.parse(authorized)).toEqual(authorized);
+
+    const suspended = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      winger_account_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d61',
+    };
+    expect(EVENT_PAYLOADS.WingerSuspended.parse(suspended)).toEqual(suspended);
+  });
+
   it('round-trips AlertConfigChanged', () => {
     expect(SUBJECTS.inventory.alertConfigChanged).toBe('pos.evt.inventory.AlertConfigChanged');
     const v = {

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -61,10 +61,45 @@ Stand up `services/winger` with the `winger_account` + `winger_catalog_projectio
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `pnpm --filter @pos/winger build && pnpm --filter @pos/winger test` — health endpoints + forced-RLS scoping spec green.
-- `pnpm --filter @pos/winger exec prisma migrate deploy` against a local `winger` schema.
-- `pnpm --filter @pos/contracts test` — winger payload round-trips; `node scripts/check-contracts-compat.mjs HEAD` → OK.
-- `docker compose -f infra/docker-compose.yml config`; `kubectl kustomize infra/k8s/base | grep winger`.
+- `services/winger/` scaffold cloned from `services/sales`: Nest app, `config/env.ts`
+  (`WINGER_PORT` 3006, `WINGER_DATABASE_URL`, `NATS_URL`, `INTERNAL_CONTEXT_SECRET`,
+  `WEB_BASE_URL`), `PlatformModule` (NATS `name: 'winger'`), `PrismaModule` /
+  `PrismaService`, `OutboxRelayService`, `WingerModule` (empty — feature wiring
+  point for T-0402/03/04), `HealthModule` (`/healthz` + `/readyz`), `src/tenant/*`
+  (`TenantGuard` / `RolesGuard` / `InternalContextGuard`), multi-stage `Dockerfile`,
+  `vitest.config.ts`, `oxlint.json`.
+- Prisma init migration `20260908120000_init`: `winger_account` (unique
+  `(business_id, user_id)`, indexes on `(business_id, status)` + `(user_id, status)`),
+  `winger_catalog_projection` (composite PK `(business_id, product_id)`, nullable
+  `image_url` / `sell_price` / `winger_price` / `currency`, `on_hand` default 0,
+  `is_active` default true), `outbox`, `processed_events`. Forced tenant RLS on
+  `winger_account` + `winger_catalog_projection`. Applied via `prisma migrate deploy`.
+- `@pos/contracts` (additive, `SCHEMA_VERSION` 1.1.0 → 1.2.0):
+  `SUBJECTS.winger = { wingerAuthorized, wingerSuspended }`; `wingerAuthorizedPayload`
+  (`business_id`, `winger_account_id`, `user_id`, `portal_url`, `email`, `locale`)
+  and `wingerSuspendedPayload` (`business_id`, `winger_account_id`) in
+  `EVENT_PAYLOADS` + round-trip test.
+- infra: `docker-compose.yml` `winger` service + `WINGER_URL` on Kong + Kong
+  `depends_on`; `infra/k8s/base/winger.yaml` (Deployment + Service + HPA + PDB) +
+  `kustomization.yaml` + `secret.example.yaml`; `.github/workflows/ci.yml` matrix
+  entry + `WINGER_DATABASE_URL`. `WINGER_PORT` in `.env.example`. `winger` schema +
+  `winger_app` role already in `infra/postgres/initdb/20-service-schemas.sql`.
+
+Evidence:
+
+- `pnpm --filter @pos/winger test` → 2 passed (`test/scaffold.e2e-spec.ts`):
+  `/healthz` + `/readyz` respond; scoped write to `winger_account` /
+  `winger_catalog_projection` succeeds while an unscoped `count()` returns 0
+  (forced RLS).
+- `pnpm --filter @pos/winger build` + `lint` clean; `prettier` + `prisma format`
+  clean; `prisma migrate deploy` applied `20260908120000_init` to the `winger`
+  schema.
+- `pnpm --filter @pos/contracts test` → 11 (incl. `WingerAuthorized` /
+  `WingerSuspended` round-trips); `node scripts/check-contracts-compat.mjs HEAD` → OK.
+- `docker compose -f infra/docker-compose.yml config` valid with the `winger`
+  service; `kubectl kustomize infra/k8s/base` renders `winger`.
+- Backend suites green: contracts 11, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 24, sales 20, notifications 22, winger 2.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

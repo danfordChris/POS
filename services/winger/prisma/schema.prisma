@@ -1,0 +1,72 @@
+// winger service — owns winger_account and the winger_catalog_projection read
+// model in the `winger` schema, plus the transactional outbox + idempotency
+// tables. No cross-schema access: catalog / inventory data arrives as events.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("WINGER_DATABASE_URL")
+}
+
+/// One reseller ("winger") bound to exactly one business. A user row here has no
+/// `membership` in the same business (enforced at authorize time via
+/// `tenancy.resolveMembership`). RLS: `business_id = current_setting('app.business_id')`.
+model WingerAccount {
+  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId   String   @map("business_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  status       String   @default("active") // active | suspended
+  authorizedBy String   @map("authorized_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([businessId, userId])
+  @@index([businessId, status])
+  @@index([userId, status])
+  @@map("winger_account")
+}
+
+/// Read-only projection rebuilt from catalog `ProductUpserted` / `PriceChanged` /
+/// `ProductDeactivated` and inventory `StockLevelChanged`. Serves the winger
+/// catalog read (fixed whitelist). RLS: `business_id = current_setting('app.business_id')`.
+model WingerCatalogProjection {
+  businessId  String   @map("business_id") @db.Uuid
+  productId   String   @map("product_id") @db.Uuid
+  name        String
+  imageUrl    String?  @map("image_url")
+  sellPrice   Int?     @map("sell_price")
+  wingerPrice Int?     @map("winger_price")
+  currency    String?
+  onHand      Int      @default(0) @map("on_hand")
+  isActive    Boolean  @default(true) @map("is_active")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([businessId, productId])
+  @@index([businessId, isActive])
+  @@map("winger_catalog_projection")
+}
+
+model OutboxMessage {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  subject   String
+  payload   Json
+  headers   Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  attempts  Int       @default(0)
+  lastError String?   @map("last_error")
+
+  @@index([createdAt], map: "outbox_unsent_idx")
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  subject     String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_events")
+}
