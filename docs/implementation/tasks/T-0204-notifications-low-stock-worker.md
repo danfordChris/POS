@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-06
 
 ## Linked Phase
@@ -58,6 +58,54 @@ Consume `StockFellBelowThreshold` / `StockRecovered` in `services/notifications`
 
 ## Verification
 
-- `services/notifications/test/*` covers dedupe, recipient resolution, send success, 3× retry then terminal `failed`, and event emission.
-- `pnpm --filter @pos/notifications test` green; `pnpm -r build` green.
+Delivered:
+
+- `@pos/contracts` (v1.1): `NotificationSent` / `NotificationFailed` payloads +
+  `SUBJECTS.notifications.*` + round-trip test.
+- `src/email/`: `EmailSender` interface (`EMAIL_SENDER` token), `SmtpEmailSender`
+  (nodemailer → Mailpit), `CaptureEmailSender` (tests), `EmailModule` factory
+  keyed on `EMAIL_PROVIDER` (`smtp` | `capture`). Provider swap is config-only.
+- `LowStockConsumer` (`StockFellBelowThreshold` / `StockRecovered`), idempotent on
+  `event_id`, `subscribeWithDlq`. `NotificationService.recordLowStock` creates one
+  `queued` `low_stock` row per window — deduped on
+  `dedupe_key = low_stock:{b}:{p}:{opened_at}` (P2002 → no-op).
+  `closeLowStock` sets `status='superseded'` for the still-`queued` row of a
+  recovered window.
+- Recipient resolver: event `recipients` when non-empty (emails as-is; uuids via
+  the `notification_contact` projection), else active-owner emails.
+- `SendWorker.tick()`: drains `queued` + retryable `failed` (`attempts < 3`),
+  sends via `EmailSender` with a placeholder body (T-0206 replaces), records
+  `sent`/`sentAt` or `failed`/`attempts`/`lastError`, emits
+  `NotificationSent` / `NotificationFailed` via the outbox
+  (`OutboxRelayService` wired). Timer-driven in prod
+  (`SEND_WORKER_POLL_MS`, 5s), `tick()` for tests.
+
+Design decisions (per task note):
+
+- **Product name**: the MVP email references the product by `product_id` + a
+  catalog deep link (`WEB_BASE_URL/catalog/{product_id}`). No `catalog` call and
+  no `ProductUpserted` projection — a product-name projection is a follow-up
+  (candidate for T-0206 or backlog).
+- **`notification` RLS**: migration `20260906150000_notification_worker_rls`
+  relaxes the *USING* clause so the unscoped `SendWorker` scan sees all tenants;
+  *WITH CHECK* stays strict so every write is tenant-scoped. `notifications`
+  exposes no HTTP tenant routes.
+- **Backoff**: `failed` rows retry on each tick; the poll interval is the backoff
+  floor. Exponential backoff deferred.
+- **No recipients resolved** → terminal `failed` (`attempts = 3`), not retried,
+  `NotificationFailed` emitted. Tracks the same `tenancy`-enrichment backlog item
+  from T-0203.
+
+Evidence:
+
+- `pnpm --filter @pos/notifications test` → 12 passed
+  (`test/low-stock.e2e-spec.ts`, 7 new): window dedupe (event_id + dedupe_key),
+  event recipients, owner-projection fallback, `StockRecovered` → `superseded`
+  (no send), send success + `NotificationSent`, 3× retry → terminal `failed` +
+  `NotificationFailed` + no 4th attempt, no-recipients terminal fail.
+- Backend suites green: contracts 8, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 22, notifications 12.
+- `pnpm --filter @pos/notifications build` + `lint` clean; `prettier` +
+  `prisma format` clean; `docker compose config` valid;
+  `node scripts/check-contracts-compat.mjs HEAD` → OK.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

@@ -118,9 +118,15 @@ services:
       NOTIFICATIONS_PORT: '3000'
       NOTIFICATIONS_DATABASE_URL: postgresql://notifications_app:notifications_app@postgres:5432/pos_dev?schema=notifications
       NATS_URL: nats://nats:4222
+      EMAIL_PROVIDER: smtp
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
+      MAIL_FROM: ${MAIL_FROM:-POS Platform <no-reply@pos.local>}
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:3000}
     depends_on:
       postgres: { condition: service_healthy }
       nats: { condition: service_healthy }
+      mailpit: { condition: service_healthy }
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O - http://localhost:3000/readyz || exit 1']
       interval: 10s

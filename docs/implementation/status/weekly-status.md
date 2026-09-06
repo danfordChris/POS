@@ -1,5 +1,29 @@
 # Weekly Status
 
+## 2026-09-06 — T-0204 done: low-stock consumer + email send worker
+
+- `@pos/contracts` v1.1: `NotificationSent` / `NotificationFailed` payloads +
+  `SUBJECTS.notifications.*`.
+- `notifications/src/email/`: `EmailSender` interface + `SmtpEmailSender`
+  (nodemailer → Mailpit) + `CaptureEmailSender`; `EmailModule` picks impl from
+  `EMAIL_PROVIDER` (config-only swap).
+- `LowStockConsumer` turns `StockFellBelowThreshold` / `StockRecovered` into
+  `queued` / `superseded` `low_stock` notifications — idempotent on `event_id`,
+  deduped on `dedupe_key = low_stock:{b}:{p}:{opened_at}`. Recipients = event
+  list (emails, or uuids via the contact projection) else active-owner emails.
+- `SendWorker.tick()` drains `queued` + retryable `failed` (`attempts < 3`),
+  sends via `EmailSender`, sets `sent`/`failed`, emits
+  `NotificationSent`/`NotificationFailed` via the outbox. Prod runs it on a
+  timer (`SEND_WORKER_POLL_MS`).
+- Migration `20260906150000_notification_worker_rls`: relax the `notification`
+  RLS *read* path so the unscoped worker scans all tenants; *writes* stay
+  strictly scoped.
+- MVP email references the product by `product_id` + `WEB_BASE_URL/catalog/{id}`
+  deep link — no `catalog` call (product-name projection is a follow-up).
+- Tests: `low-stock.e2e-spec.ts` (7). Backend suites green (…, notifications 12);
+  contracts-compat OK; `docker compose config` valid; validator `WORKFLOW:ok`.
+- Next: T-0205 (digest batching within `min_interval_hours`).
+
 ## 2026-09-06 — T-0203 done: notifications service scaffold + contact projection
 
 - New `services/notifications` (worker; Nest + `@pos/nest-common`, Prisma on the

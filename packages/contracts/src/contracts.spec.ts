@@ -109,4 +109,17 @@ describe('@pos/contracts', () => {
     };
     expect(EVENT_PAYLOADS.StockRecovered.parse(recovered)).toEqual(recovered);
   });
+
+  it('builds notification subjects and round-trips its event payloads', () => {
+    expect(SUBJECTS.notifications.notificationSent).toBe('pos.evt.notifications.NotificationSent');
+    const sent = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      notification_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d61',
+      type: 'low_stock',
+      channel: 'email',
+    };
+    expect(EVENT_PAYLOADS.NotificationSent.parse(sent)).toEqual(sent);
+    const failed = { ...sent, error: 'smtp timeout' };
+    expect(EVENT_PAYLOADS.NotificationFailed.parse(failed)).toEqual(failed);
+  });
 });

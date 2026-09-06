@@ -112,6 +112,21 @@ export const stockRecoveredPayload = z.object({
   opened_at: z.string().datetime(),
 });
 
+export const notificationSentPayload = z.object({
+  business_id: z.string().uuid(),
+  notification_id: z.string().uuid(),
+  type: z.string(),
+  channel: z.string(),
+});
+
+export const notificationFailedPayload = z.object({
+  business_id: z.string().uuid(),
+  notification_id: z.string().uuid(),
+  type: z.string(),
+  channel: z.string(),
+  error: z.string(),
+});
+
 export const EVENT_PAYLOADS = {
   UserRegistered: userRegisteredPayload,
   BusinessCreated: businessCreatedPayload,
@@ -126,4 +141,6 @@ export const EVENT_PAYLOADS = {
   StockLevelChanged: stockLevelChangedPayload,
   StockFellBelowThreshold: stockFellBelowThresholdPayload,
   StockRecovered: stockRecoveredPayload,
+  NotificationSent: notificationSentPayload,
+  NotificationFailed: notificationFailedPayload,
 } as const;

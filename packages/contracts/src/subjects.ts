@@ -41,4 +41,8 @@ export const SUBJECTS = {
     stockFellBelowThreshold: evtSubject('inventory', 'StockFellBelowThreshold'),
     stockRecovered: evtSubject('inventory', 'StockRecovered'),
   },
+  notifications: {
+    notificationSent: evtSubject('notifications', 'NotificationSent'),
+    notificationFailed: evtSubject('notifications', 'NotificationFailed'),
+  },
 } as const;
