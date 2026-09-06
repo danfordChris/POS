@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pos_mobile/features/auth/providers/session_provider.dart';
+import 'package:pos_mobile/core/app_info.dart';
 import 'package:pos_mobile/core/network/api_exception.dart';
 import 'package:pos_mobile/core/theme/duka_colors.dart';
 import 'package:pos_mobile/core/theme/duka_tokens.dart';
@@ -62,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Duka Stock',
+                    AppInfo.name,
                     style: TextStyle(
                       color: t.textPrimary,
                       fontWeight: FontWeight.w800,

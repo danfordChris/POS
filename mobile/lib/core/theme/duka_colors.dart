@@ -1,4 +1,4 @@
-// Duka Stock — neumorphic color roles for Flutter.
+// Stoki — neumorphic color roles for Flutter.
 // sRGB conversions of the canonical OKLCH tokens in
 // docs/design/interfaces/design_handoff_neumorphic_system/tokens.json.
 // Do not hard-code these values in widgets — read them from `DukaColors.of(context)`.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:pos_mobile/core/app_info.dart';
 import 'package:pos_mobile/core/router/router.dart';
 import 'package:pos_mobile/core/theme/duka_theme.dart';
 import 'package:pos_mobile/features/auth/providers/session_provider.dart';
@@ -33,7 +34,7 @@ class _PosAppState extends State<PosApp> {
   Widget build(BuildContext context) {
     final mode = context.select<AppProvider, ThemeMode>((p) => p.themeMode);
     return MaterialApp.router(
-      title: 'Duka Stock',
+      title: AppInfo.name,
       debugShowCheckedModeBanner: false,
       theme: buildDukaTheme(Brightness.light),
       darkTheme: buildDukaTheme(Brightness.dark),

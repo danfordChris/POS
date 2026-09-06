@@ -1,4 +1,4 @@
-// Duka Stock — neumorphic non-color tokens (radius / spacing / elevation / type).
+// Stoki — neumorphic non-color tokens (radius / spacing / elevation / type).
 // Canonical values: docs/design/interfaces/design_handoff_neumorphic_system/tokens.json.
 import 'package:flutter/widgets.dart';
 import 'package:pos_mobile/core/theme/duka_colors.dart';
