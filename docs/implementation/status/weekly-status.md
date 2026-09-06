@@ -1,5 +1,29 @@
 # Weekly Status
 
+## 2026-09-07 — Phase 05 planned: winger portal task docs T-0401–T-0407
+
+- **Design gap-fills** (`docs(design):`): `winger_catalog_projection` columns in
+  `data-model.md`; `image_url?` on `ProductUpserted` (`events-catalog.md`);
+  `identity.getUser` gains `create?` and `winger` calls `tenancy.resolveMembership`
+  (`internal-rpc.md` + `service-decomposition.md`); `/v1/winger/*` authorized in
+  the `winger` service, not by Kong membership (`api-contract.md`). All consistent
+  with existing data-model/events truth — no proposal needed.
+- **`phase-05-winger-portal.md`** re-scoped (Last updated 2026-09-07): 7 tasks,
+  10 acceptance criteria, gap-fill notes recorded.
+- **Task docs**: T-0401 `winger` service scaffold + `winger_account` +
+  `winger_catalog_projection` + winger contracts; T-0402 Owner winger-account
+  endpoints + `identity.getUser { create }` + member/winger mutual exclusion +
+  `WingerAuthorized`/`WingerSuspended`; T-0403 projection consumers +
+  `image_url` on `ProductUpserted` (catalog emits on image change); T-0404
+  winger catalog endpoints + whitelist DTO + scope/suspension `403` + Kong
+  `/v1/winger/*` route; T-0405 web `/wingers` (authorize, suspend, winger price,
+  image upload); T-0406 mobile winger catalog + business switcher (restricted
+  routing); T-0407 `notifications` `WingerAuthorized` consumer + `winger_authorized`
+  en/sw email.
+- Backlog note added: `identity` resolve-or-create user RPC also serves the
+  future `tenancy` invitations flow.
+- Validator `WORKFLOW:ok`. No code yet — build starts at T-0401.
+
 ## 2026-09-07 — T-0307/08/09 done: sales clients — Phase 04 complete
 
 - **T-0307 mobile sell flow** (`main` `970ad1b`): `sale_models.dart`,

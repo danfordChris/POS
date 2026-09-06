@@ -8,11 +8,12 @@
 
 ## Current Priorities
 
-1. Phase 05 — Winger portal (`winger` read model + portal API). Expand into
-   task docs, then build the `winger` service + portal screens.
+1. Phase 05 — Winger portal. Task docs T-0401–T-0407 written (2026-09-07);
+   next: build `services/winger` (T-0401) then work through T-0402–T-0407.
 2. Phase 06 — Hardening and MVP acceptance.
 3. Backlog: mobile offline banner/connectivity provider; `tenancy` event
-   enrichment for `notification_contact`; low-stock email product-name.
+   enrichment for `notification_contact`; low-stock email product-name;
+   `identity` resolve-or-create user RPC also covers `tenancy` invitations.
 
 ## Active Phases
 
