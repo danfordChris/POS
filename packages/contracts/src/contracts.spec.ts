@@ -96,7 +96,17 @@ describe('@pos/contracts', () => {
       product_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d60',
       on_hand: 2,
       threshold: 6,
+      opened_at: '2026-09-06T12:00:00.000Z',
+      recipients: ['owner@example.com'],
     };
     expect(EVENT_PAYLOADS.StockFellBelowThreshold.parse(below)).toEqual(below);
+
+    const recovered = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      product_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d60',
+      on_hand: 7,
+      opened_at: '2026-09-06T12:00:00.000Z',
+    };
+    expect(EVENT_PAYLOADS.StockRecovered.parse(recovered)).toEqual(recovered);
   });
 });

@@ -10,7 +10,7 @@ import {
   INTERNAL_CONTEXT_SIGNATURE_HEADER,
   MESSAGE_BUS,
 } from '@pos/nest-common';
-import { makeEnvelope } from '@pos/contracts';
+import { SUBJECTS, makeEnvelope } from '@pos/contracts';
 import { InMemoryBus } from '@pos/testing';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -26,6 +26,7 @@ let http: ReturnType<typeof request>;
 const secret = process.env.INTERNAL_CONTEXT_SECRET as string;
 const bizA = uuidv7();
 const bizB = uuidv7();
+const bizC = uuidv7();
 const ownerId = uuidv7();
 
 function ctx(businessId: string | null, kind: 'user' | 'operator' = 'user') {
@@ -89,10 +90,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const b of [bizA, bizB]) {
+  for (const b of [bizA, bizB, bizC]) {
     await prisma.runInTenantContext(b, async (tx) => {
       await tx.stockMovement.deleteMany({});
       await tx.stockReservation.deleteMany({});
+      await tx.lowStockAlertState.deleteMany({});
+      await tx.alertConfig.deleteMany({});
       await tx.stockItem.deleteMany({});
     });
   }
@@ -237,6 +240,159 @@ describe('inventory — low stock', () => {
     const ids = res.body.data.map((r: { product_id: string }) => r.product_id);
     expect(ids).toContain(low);
     expect(ids).not.toContain(ok);
+  });
+});
+
+describe('inventory — low-stock alert edge', () => {
+  const clearOutbox = () => prisma.$executeRawUnsafe('DELETE FROM outbox');
+
+  type EdgePayload = {
+    product_id: string;
+    on_hand: number;
+    threshold?: number;
+    opened_at: string;
+    recipients?: string[];
+  };
+  const emitted = async (subject: string, productId: string) => {
+    const rows = await prisma.outboxMessage.findMany({ where: { subject } });
+    return rows
+      .map((r) => (r.payload as { payload: EdgePayload }).payload)
+      .filter((p) => p.product_id === productId);
+  };
+  const edgeRow = (productId: string) =>
+    prisma.runInTenantContext(bizA, (tx) =>
+      tx.lowStockAlertState.findUnique({
+        where: { businessId_productId: { businessId: bizA, productId } },
+      }),
+    );
+
+  it('opens the edge in-transaction with opened_at + alert-config recipients', async () => {
+    const productId = uuidv7();
+    await consumer.onUpserted(
+      upsertEnvelope(bizA, productId, { threshold: 5 }),
+    );
+    await http
+      .put(`/v1/businesses/${bizA}/alert-config`)
+      .set(owA())
+      .send({ recipients: ['ops@a.com'], min_interval_hours: 12 })
+      .expect(200);
+    await clearOutbox();
+
+    await http
+      .post(movementsUrl)
+      .set(owA())
+      .send({ product_id: productId, type: 'stock_in', quantity_delta: 3 })
+      .expect(201);
+
+    const state = await edgeRow(productId);
+    expect(state?.isOpen).toBe(true);
+    expect(state?.openedAt).toBeInstanceOf(Date);
+
+    const fell = await emitted(
+      SUBJECTS.inventory.stockFellBelowThreshold,
+      productId,
+    );
+    expect(fell).toHaveLength(1);
+    expect(fell[0].opened_at).toBe(state!.openedAt!.toISOString());
+    expect(fell[0].threshold).toBe(5);
+    expect(fell[0].recipients).toEqual(['ops@a.com']);
+  });
+
+  it('does not re-emit while the window stays open', async () => {
+    const productId = uuidv7();
+    await consumer.onUpserted(
+      upsertEnvelope(bizA, productId, { threshold: 5 }),
+    );
+    await http
+      .post(movementsUrl)
+      .set(owA())
+      .send({ product_id: productId, type: 'stock_in', quantity_delta: 4 })
+      .expect(201);
+    await clearOutbox();
+
+    await http
+      .post(movementsUrl)
+      .set(owA())
+      .send({ product_id: productId, type: 'adjustment', quantity_delta: -1 })
+      .expect(201);
+
+    expect(
+      await emitted(SUBJECTS.inventory.stockFellBelowThreshold, productId),
+    ).toHaveLength(0);
+    expect((await edgeRow(productId))?.isOpen).toBe(true);
+  });
+
+  it('recovers with the matching opened_at, then re-opens with a fresh one', async () => {
+    const productId = uuidv7();
+    await consumer.onUpserted(
+      upsertEnvelope(bizA, productId, { threshold: 5 }),
+    );
+    await http
+      .post(movementsUrl)
+      .set(owA())
+      .send({ product_id: productId, type: 'stock_in', quantity_delta: 3 })
+      .expect(201);
+    const firstOpenedAt = (await edgeRow(productId))!.openedAt!.toISOString();
+    await clearOutbox();
+
+    // Recover: on-hand 3 -> 13 (> 5).
+    await http
+      .post(movementsUrl)
+      .set(owA())
+      .send({ product_id: productId, type: 'stock_in', quantity_delta: 10 })
+      .expect(201);
+
+    const closed = await edgeRow(productId);
+    expect(closed?.isOpen).toBe(false);
+    expect(closed?.closedAt).toBeInstanceOf(Date);
+    const recovered = await emitted(
+      SUBJECTS.inventory.stockRecovered,
+      productId,
+    );
+    expect(recovered).toHaveLength(1);
+    expect(recovered[0].opened_at).toBe(firstOpenedAt);
+    await clearOutbox();
+
+    // Dip again: 13 -> 2. New window, new opened_at.
+    await http
+      .post(movementsUrl)
+      .set(owA())
+      .send({ product_id: productId, type: 'adjustment', quantity_delta: -11 })
+      .expect(201);
+
+    const reopened = await edgeRow(productId);
+    expect(reopened?.isOpen).toBe(true);
+    const fell = await emitted(
+      SUBJECTS.inventory.stockFellBelowThreshold,
+      productId,
+    );
+    expect(fell).toHaveLength(1);
+    expect(fell[0].opened_at).toBe(reopened!.openedAt!.toISOString());
+    expect(fell[0].opened_at).not.toBe(firstOpenedAt);
+  });
+
+  it('emits recipients: [] when the business has no alert-config', async () => {
+    const productId = uuidv7();
+    await consumer.onUpserted(
+      upsertEnvelope(bizC, productId, { threshold: 4 }),
+    );
+    await clearOutbox();
+
+    await http
+      .post(`/v1/businesses/${bizC}/stock/movements`)
+      .set(ctx(bizC))
+      .send({ product_id: productId, type: 'stock_in', quantity_delta: 2 })
+      .expect(201);
+
+    const fell = (
+      await prisma.outboxMessage.findMany({
+        where: { subject: SUBJECTS.inventory.stockFellBelowThreshold },
+      })
+    )
+      .map((r) => (r.payload as { payload: EdgePayload }).payload)
+      .filter((p) => p.product_id === productId);
+    expect(fell).toHaveLength(1);
+    expect(fell[0].recipients).toEqual([]);
   });
 });
 

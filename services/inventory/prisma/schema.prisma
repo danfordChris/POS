@@ -22,7 +22,6 @@ model StockItem {
   quantity         Int      @default(0)
   reorderThreshold Int      @default(0) @map("reorder_threshold")
   productActive    Boolean  @default(true) @map("product_active")
-  lowStockOpen     Boolean  @default(false) @map("low_stock_open")
   updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([businessId, productId])
@@ -52,6 +51,24 @@ model StockMovement {
 
 /// Soft holds against on-hand, keyed by the caller-supplied `reservation_id`.
 /// RLS: `business_id = current_setting('app.business_id')`.
+/// Low-stock alert edge state, one row per product. `is_open` flips true when
+/// on-hand first drops to ≤ `reorder_threshold` (active product) and false when
+/// it rises above again. `opened_at` is stamped on the false→true edge and is
+/// carried on both `StockFellBelowThreshold` and the matching `StockRecovered`
+/// (forms the notification dedupe key). Source of truth for the edge.
+/// RLS: `business_id = current_setting('app.business_id')`.
+model LowStockAlertState {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String    @map("business_id") @db.Uuid
+  productId  String    @map("product_id") @db.Uuid
+  isOpen     Boolean   @default(false) @map("is_open")
+  openedAt   DateTime? @map("opened_at") @db.Timestamptz(6)
+  closedAt   DateTime? @map("closed_at") @db.Timestamptz(6)
+
+  @@unique([businessId, productId])
+  @@map("low_stock_alert_state")
+}
+
 model StockReservation {
   id         String    @id @db.Uuid
   businessId String    @map("business_id") @db.Uuid

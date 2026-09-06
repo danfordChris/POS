@@ -92,12 +92,18 @@ export const stockFellBelowThresholdPayload = z.object({
   product_id: z.string().uuid(),
   on_hand: z.number().int(),
   threshold: z.number().int(),
+  /** When this low-stock window opened. Forms the notification dedupe key. */
+  opened_at: z.string().datetime(),
+  /** Emails / user-ids from `alert_config`; empty ⇒ resolve owners downstream. */
+  recipients: z.array(z.string()),
 });
 
 export const stockRecoveredPayload = z.object({
   business_id: z.string().uuid(),
   product_id: z.string().uuid(),
   on_hand: z.number().int(),
+  /** `opened_at` of the window this event closes (matches the open edge). */
+  opened_at: z.string().datetime(),
 });
 
 export const EVENT_PAYLOADS = {

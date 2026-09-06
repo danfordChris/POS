@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-06
 
 ## Linked Phase
@@ -58,6 +58,37 @@ Introduce `low_stock_alert_state` in `services/inventory`, drop `stock_item.low_
 
 ## Verification
 
-- `services/inventory/test/inventory.e2e-spec.ts` asserts the edge state row, dedupe, recover with matching `opened_at`, re-open with new `opened_at`, and `recipients` passthrough.
-- `pnpm --filter @pos/contracts test` + `pnpm --filter @pos/inventory test` green; `pnpm -r build` green; contracts-compat green.
+Delivered:
+
+- `@pos/contracts`: `stockFellBelowThresholdPayload` gains `opened_at`
+  (`z.string().datetime()`) + `recipients` (`z.array(z.string())`);
+  `stockRecoveredPayload` gains `opened_at`; `SCHEMA_VERSION` `1.0.0 → 1.1.0`;
+  round-trip tests updated (`StockFellBelowThreshold` + new `StockRecovered`).
+- Prisma: `LowStockAlertState` model (`is_open`, `opened_at?`, `closed_at?`,
+  unique `(business_id, product_id)`, RLS) in migration
+  `20260906130000_low_stock_alert_state`, which also `DROP COLUMN
+  stock_item.low_stock_open`. Applied via `prisma migrate deploy`.
+- `StockService.applyToItem`: reads `low_stock_alert_state` for the prior edge,
+  stamps `opened_at = now()` on the false→true edge (upsert `is_open=true`),
+  sets `is_open=false` + `closed_at=now()` on true→false, and carries the
+  window's `opened_at` on both edge events; reads `alert_config.recipients`
+  (same schema) for `StockFellBelowThreshold.recipients` (empty array when
+  unset). `stock_item` write no longer touches `low_stock_open`.
+
+Evidence:
+
+- `pnpm --filter @pos/contracts test` → 7 passed; `node scripts/check-contracts-compat.mjs HEAD` → `Contracts backward-compat: OK`.
+- `pnpm --filter @pos/inventory test` → 22 passed (+4 new in
+  `test/inventory.e2e-spec.ts` › "inventory — low-stock alert edge"): edge opens
+  in-transaction with `opened_at` + alert-config recipients; no re-emit while
+  open; recover carries the matching `opened_at`, close sets `closed_at`; re-dip
+  stamps a fresh `opened_at`; `recipients: []` when the business has no
+  alert-config.
+- Backend suites green: contracts 7, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 22.
+- `pnpm --filter @pos/inventory build` + `pnpm --filter @pos/contracts build`
+  + `pnpm --filter web build` each exit 0. (`pnpm -r build` has a pre-existing
+  intermittent `web` `/_global-error` prerender flake under parallel runs,
+  reproducible on the untouched T-0201 tree — unrelated to this task.)
+- `pnpm --filter @pos/inventory lint` clean; `prettier` + `prisma format` clean.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

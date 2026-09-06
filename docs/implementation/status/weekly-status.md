@@ -1,5 +1,24 @@
 # Weekly Status
 
+## 2026-09-06 — T-0202 done: low-stock alert state + edge payloads
+
+- `@pos/contracts` `SCHEMA_VERSION` `1.0.0 → 1.1.0`: `StockFellBelowThreshold`
+  gains `opened_at` + `recipients[]`, `StockRecovered` gains `opened_at`
+  (additive; `contracts-compat` green).
+- `inventory`: new `low_stock_alert_state` table (migration
+  `20260906130000_low_stock_alert_state`, RLS) is the edge source of truth;
+  `stock_item.low_stock_open` column dropped. `applyToItem` stamps `opened_at`
+  on the false→true edge, carries it on the matching `StockRecovered`, and reads
+  `alert_config.recipients` onto `StockFellBelowThreshold` (`[]` when unset).
+- Tests: 4 new inventory e2e (edge opens in-tx with `opened_at`+recipients, no
+  re-emit while open, recover with matching `opened_at`, re-dip fresh
+  `opened_at`, `recipients: []` without config). `pnpm --filter @pos/inventory
+  test` → 22; contracts 7; backend suites green; validator `WORKFLOW:ok`.
+- `pnpm -r build` has a pre-existing intermittent `web` `/_global-error`
+  prerender flake under parallel runs (reproduces on the untouched T-0201 tree);
+  standalone `web` / `inventory` / `contracts` builds pass.
+- Next: T-0203 (`notifications` service scaffold + contact projection).
+
 ## 2026-09-06 — T-0201 done: inventory alert-config
 
 - `alert_config` table in the `inventory` schema (migration

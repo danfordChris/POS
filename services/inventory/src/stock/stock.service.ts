@@ -374,7 +374,8 @@ export class StockService {
     });
   }
 
-  /** Persist the new quantity + low-stock edge and emit the stock events. */
+  /** Persist the new quantity, move the low-stock edge state, and emit the
+   * stock events. `low_stock_alert_state` is the edge source of truth. */
   private async applyToItem(
     tx: Tx,
     businessId: string,
@@ -389,8 +390,36 @@ export class StockService {
 
     await tx.stockItem.update({
       where: { businessId_productId: { businessId, productId } },
-      data: { quantity: newQty, lowStockOpen: nowOpen },
+      data: { quantity: newQty },
     });
+
+    const edge = await tx.lowStockAlertState.findUnique({
+      where: { businessId_productId: { businessId, productId } },
+    });
+    const wasOpen = edge?.isOpen ?? false;
+
+    // Timestamp of the window an edge event refers to: the one we open now, or
+    // the one we are closing.
+    let windowOpenedAt: Date | undefined;
+    if (nowOpen && !wasOpen) {
+      windowOpenedAt = new Date();
+      await tx.lowStockAlertState.upsert({
+        where: { businessId_productId: { businessId, productId } },
+        create: {
+          businessId,
+          productId,
+          isOpen: true,
+          openedAt: windowOpenedAt,
+        },
+        update: { isOpen: true, openedAt: windowOpenedAt, closedAt: null },
+      });
+    } else if (!nowOpen && wasOpen) {
+      windowOpenedAt = edge?.openedAt ?? new Date();
+      await tx.lowStockAlertState.update({
+        where: { businessId_productId: { businessId, productId } },
+        data: { isOpen: false, closedAt: new Date() },
+      });
+    }
 
     const envelope = (payload: unknown) =>
       makeEnvelope({
@@ -419,7 +448,11 @@ export class StockService {
       }),
     });
 
-    if (nowOpen && !before.lowStockOpen) {
+    if (nowOpen && !wasOpen) {
+      const cfg = await tx.alertConfig.findUnique({ where: { businessId } });
+      const recipients = Array.isArray(cfg?.recipients)
+        ? (cfg.recipients as string[])
+        : [];
       await outbox.write(tx, {
         subject: SUBJECTS.inventory.stockFellBelowThreshold,
         payload: envelope({
@@ -427,15 +460,18 @@ export class StockService {
           product_id: productId,
           on_hand: newQty,
           threshold,
+          opened_at: windowOpenedAt!.toISOString(),
+          recipients,
         }),
       });
-    } else if (!nowOpen && before.lowStockOpen) {
+    } else if (!nowOpen && wasOpen) {
       await outbox.write(tx, {
         subject: SUBJECTS.inventory.stockRecovered,
         payload: envelope({
           business_id: businessId,
           product_id: productId,
           on_hand: newQty,
+          opened_at: windowOpenedAt!.toISOString(),
         }),
       });
     }
