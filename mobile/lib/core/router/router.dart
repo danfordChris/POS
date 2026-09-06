@@ -13,11 +13,13 @@ import 'package:pos_mobile/features/more/screens/more_screen.dart';
 import 'package:pos_mobile/features/scan/screens/scan_screen.dart';
 import 'package:pos_mobile/features/sell/screens/sell_screen.dart';
 import 'package:pos_mobile/features/shell/screens/app_shell.dart';
+import 'package:pos_mobile/features/splash/screens/splash_screen.dart';
 import 'package:pos_mobile/features/stock/screens/record_movement_screen.dart';
 import 'package:pos_mobile/models/catalog_models.dart';
 
 /// Single source of truth for every path. Never inline a path string.
 enum AppRoute {
+  splash('/splash'),
   // auth
   login('/login'),
   register('/register'),
@@ -42,16 +44,30 @@ enum AppRoute {
   String appendId(String id) => '$path/$id';
 }
 
+/// Minimum time the splash screen stays up, regardless of how fast
+/// [SessionProvider.bootstrap] resolves — gives the entrance animation and
+/// logo room to be seen instead of flashing past on a fast network.
+const _splashMinDuration = Duration(seconds: 3);
+
 GoRouter createRouter(SessionProvider session) {
-  return GoRouter(
+  var splashElapsed = false;
+  late final GoRouter router;
+  Future.delayed(_splashMinDuration, () {
+    splashElapsed = true;
+    router.refresh();
+  });
+  router = GoRouter(
     navigatorKey: NavigationKeys.root,
-    initialLocation: AppRoute.home.path,
+    initialLocation: AppRoute.splash.path,
     refreshListenable: session,
     redirect: (context, state) {
       final loc = state.matchedLocation;
+      if (!splashElapsed) {
+        return loc == AppRoute.splash.path ? null : AppRoute.splash.path;
+      }
       switch (session.status) {
         case SessionStatus.loading:
-          return null;
+          return loc == AppRoute.splash.path ? null : AppRoute.splash.path;
         case SessionStatus.signedOut:
           return (loc == AppRoute.login.path || loc == AppRoute.register.path)
               ? null
@@ -61,11 +77,15 @@ GoRouter createRouter(SessionProvider session) {
               ? null
               : AppRoute.onboarding.path;
         case SessionStatus.ready:
-          const authOnly = {'/login', '/register', '/onboarding'};
+          const authOnly = {'/login', '/register', '/onboarding', '/splash'};
           return authOnly.contains(loc) ? AppRoute.home.path : null;
       }
     },
     routes: [
+      GoRoute(
+        path: AppRoute.splash.path,
+        builder: (_, _) => const SplashScreen(),
+      ),
       GoRoute(
         path: AppRoute.login.path,
         builder: (_, _) => const LoginScreen(),
@@ -158,4 +178,5 @@ GoRouter createRouter(SessionProvider session) {
       ),
     ],
   );
+  return router;
 }

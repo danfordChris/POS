@@ -24,6 +24,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(_app());
+    await tester.pump(const Duration(seconds: 4)); // clear the splash gate
     await tester.pumpAndSettle();
 
     expect(find.text('Sign in to your account.'), findsOneWidget);
@@ -34,6 +35,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(_app());
+    await tester.pump(const Duration(seconds: 4)); // clear the splash gate
     await tester.pumpAndSettle();
 
     expect(find.text('Email'), findsOneWidget);

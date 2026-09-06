@@ -44,6 +44,12 @@ dependencies:
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.2
 
+  # Renders the vector brand mark crisply at any size.
+  flutter_svg: ^2.0.10+1
+
+  # Plays the hand-authored splash entrance animation (assets/animations).
+  lottie: ^3.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -65,6 +71,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/branding/logo1.png
+    - assets/branding/logo1.svg
+    - assets/animations/brand_blocks.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:
