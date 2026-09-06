@@ -12,9 +12,9 @@
 
 | Subject | Caller | Request | Response | Notes |
 |---|---|---|---|---|
-| `pos.rpc.identity.getUser` | tenancy, winger | `{ email? , phone? , user_id? }` | `{ user_id, name, email?, phone?, disabled }` or `not_found` | resolve/lookup a user identity |
+| `pos.rpc.identity.getUser` | tenancy, winger | `{ email? , phone? , user_id? , create? }` | `{ user_id, name, email?, phone?, disabled }` or `not_found` | resolve/lookup a user identity; with `create: true` and an `email`/`phone` that matches nobody, provisions a passwordless shell user and returns it |
 | `pos.rpc.identity.verifyToken` | gateway (fallback only) | `{ access_token }` | `{ valid, sub, aud, typ }` | gateway normally verifies locally with the shared key |
-| `pos.rpc.tenancy.resolveMembership` | gateway | `{ business_id, user_id }` | `{ found, role, status }` | per data-plane request; gateway caches 30–60s; busted by `MembershipSuspended` |
+| `pos.rpc.tenancy.resolveMembership` | gateway, winger | `{ business_id, user_id }` | `{ found, role, status }` | per data-plane request; gateway caches 30–60s; busted by `MembershipSuspended`; `winger` calls it once when authorizing a winger to enforce member/winger mutual exclusion |
 | `pos.rpc.inventory.reserveStock` | sales | `{ business_id, reservation_id, lines: [{ product_id, quantity }] }` | `{ ok }` or `{ ok:false, shortfalls: [...] }` | idempotent on `reservation_id` |
 | `pos.rpc.inventory.commitReservation` | sales | `{ business_id, reservation_id, sale_id }` | `{ ok }` | also driven by `SaleCompleted` as backstop |
 | `pos.rpc.inventory.releaseReservation` | sales | `{ business_id, reservation_id }` | `{ ok }` | saga compensation; idempotent |

@@ -37,6 +37,7 @@
 | `receipt` | id, business_id, sale_id, public_token (unique), business_name_snapshot, currency, status (`issued`\|`void`), issued_at | token is unguessable (≥128-bit); `/r/{token}` needs no auth so the name is snapshotted, not joined |
 | `product_cache` | business_id, product_id, name, sell_price, currency | `sales` schema; read-only projection from `ProductUpserted` / `PriceChanged`; fills line snapshots when the client omits `unit_price` |
 | `winger_account` | id, business_id, user_id, status (`active`\|`suspended`), authorized_by, created_at | unique (business_id, user_id); a user row here has no `membership` |
+| `winger_catalog_projection` | business_id, product_id, name, image_url (nullable), sell_price, winger_price (nullable), currency, on_hand (default 0), is_active, updated_at | `winger` schema; read-only projection from `ProductUpserted` / `PriceChanged` / `ProductDeactivated` / `StockLevelChanged`; unique (business_id, product_id); serves the winger catalog read |
 | `alert_config` | id, business_id, recipients (json: user_ids or emails), min_interval_hours (default 24) | one per business; defaults to all owners |
 | `notification` | id, business_id, type (`low_stock`\|`invitation`\|`winger_authorized`), channel (`email`), payload (json), status (`queued`\|`sent`\|`failed`), dedupe_key (nullable), attempts (default 0), last_error (nullable), created_at, sent_at | `notifications` schema |
 | `notification_contact` | id, business_id, user_id, role (`owner`\|`staff`), email, locale, active (bool) | `notifications` schema; read-only projection from `BusinessCreated` / `MembershipCreated` / `MembershipSuspended`; unique (business_id, user_id) |
@@ -52,6 +53,7 @@
 - `product` 1–1 `stock_item` (MVP), 1–N `stock_movement`, 1–N `sale_line`.
 - `sale` 1–N `sale_line`, 1–1 `receipt`.
 - `user` N–N `business` via `membership`; `user` 1–N `winger_account`.
+- `business` 1–N `winger_catalog_projection` (one row per active product; rebuilt from catalog + inventory events; read fields are a fixed whitelist).
 
 ### Invariants
 

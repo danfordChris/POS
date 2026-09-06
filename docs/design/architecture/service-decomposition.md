@@ -17,7 +17,7 @@
 | `catalog` | `category`, `product` | `/v1/businesses/{id}/categories`, `/v1/businesses/{id}/products` | `ProductUpserted`, `ProductDeactivated`, `PriceChanged`, `CategoryUpserted` | `BusinessCreated` | — |
 | `inventory` | `stock_item`, `stock_movement`, `alert_config`, `low_stock_alert_state` | `/v1/businesses/{id}/stock/*`, `/v1/businesses/{id}/alert-config` | `StockLevelChanged`, `StockMovementRecorded`, `StockFellBelowThreshold`, `StockRecovered`, `AlertConfigChanged` | `ProductUpserted` (seed `stock_item`), `ProductDeactivated`, `SaleVoided` (write `void_reversal` movements) | serves `reserveStock`, `commitReservation`, `releaseReservation` |
 | `sales` | `sale`, `sale_line`, `receipt`, `product_cache` | `/v1/businesses/{id}/sales/*`, `/v1/r/{token}` | `SaleCompleted`, `SaleVoided` | `ProductUpserted` (name cache), `PriceChanged` (price cache), `BusinessCreated` (name/currency for the receipt) | `inventory.reserveStock` / `commitReservation` / `releaseReservation` |
-| `winger` | `winger_account`, `winger_catalog_projection` | `/v1/businesses/{id}/winger-accounts`, `/v1/winger/*` | `WingerAuthorized`, `WingerSuspended` | `ProductUpserted`, `PriceChanged`, `ProductDeactivated`, `StockLevelChanged` | `identity.getUser` (resolve winger by email/phone) |
+| `winger` | `winger_account`, `winger_catalog_projection` | `/v1/businesses/{id}/winger-accounts`, `/v1/winger/*` | `WingerAuthorized`, `WingerSuspended` | `ProductUpserted`, `PriceChanged`, `ProductDeactivated`, `StockLevelChanged` | `identity.getUser` (resolve/create winger by email/phone), `tenancy.resolveMembership` (member/winger mutual exclusion) |
 | `notifications` | `notification`, `notification_contact`, `digest_config`, `notification_business` | — | `NotificationSent`, `NotificationFailed` | `InvitationCreated`, `WingerAuthorized`, `StockFellBelowThreshold`, `StockRecovered`, `AlertConfigChanged`, `BusinessCreated`, `MembershipCreated`, `MembershipSuspended` | — |
 
 ### Transport rules
@@ -27,6 +27,7 @@
   - Kong `pos-internal-context` → `tenancy` internal membership HTTP (per data-plane request; cached 30–60s in the plugin). `tenancy` also exposes `pos.rpc.tenancy.resolveMembership` for service-to-service use.
   - `sales → inventory.reserve/commit/release` (saga steps).
   - `tenancy/winger → identity.getUser` (resolve/create a user by email/phone).
+  - `winger → tenancy.resolveMembership` (reject authorizing a user who is already a `membership` in that business).
 - **No** service calls another service's database. **No** shared ORM models across services.
 - Subjects: `pos.evt.<context>.<Event>` (events), `pos.rpc.<context>.<Method>` (request/reply). Constants in `@pos/contracts`.
 

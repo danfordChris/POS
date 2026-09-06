@@ -33,7 +33,7 @@ Consumers are durable, per (service, event). Ack policy explicit; max-deliver wi
 | `InvitationCreated` | tenancy | `business_id`, `invitation_id`, `email`, `role`, `accept_url`, `expires_at` | notifications |
 | `InvitationAccepted` | tenancy | `business_id`, `invitation_id`, `user_id` | — |
 | `CategoryUpserted` | catalog | `business_id`, `category_id`, `name` | — |
-| `ProductUpserted` | catalog | `business_id`, `product_id`, `sku`, `name`, `unit`, `is_active`, `reorder_threshold` | inventory (seed `stock_item`, low-stock threshold), sales (name cache), winger |
+| `ProductUpserted` | catalog | `business_id`, `product_id`, `sku`, `name`, `unit`, `is_active`, `reorder_threshold`, `image_url?` | inventory (seed `stock_item`, low-stock threshold), sales (name cache), winger (catalog projection — name + image) |
 | `PriceChanged` | catalog | `business_id`, `product_id`, `sell_price`, `winger_price?`, `currency` | sales, winger |
 | `ProductDeactivated` | catalog | `business_id`, `product_id` | inventory, winger |
 | `StockMovementRecorded` | inventory | `business_id`, `product_id`, `type`, `quantity_delta`, `movement_id` | — |

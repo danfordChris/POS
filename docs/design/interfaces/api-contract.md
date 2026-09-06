@@ -110,6 +110,15 @@
 | GET | `/winger/businesses` | Winger — businesses the caller is an active winger for |
 | GET | `/winger/businesses/{businessId}/products` | Winger — `{ name, image_url, price, currency, in_stock }` only; 403 if not authorized |
 
+`/v1/winger/*` carries a verified user context but no membership scope; the `winger`
+service authorizes each call against its own `winger_account` (`active`) rows —
+`business_id` in the path with no matching active account → `403 winger_scope_denied`,
+and a `suspended` account → `403` on every winger route. `price = winger_price ?? sell_price`;
+`in_stock = on_hand > 0` (the number is never exposed). `POST /businesses/{id}/winger-accounts`
+with an `email`/`phone` that matches no user provisions a passwordless shell user via
+`identity.getUser { create: true }`; a user who already holds a `membership` in that
+business → `409 conflict`.
+
 #### Alerts
 
 | Method | Path | Role |
