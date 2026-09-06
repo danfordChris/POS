@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:pos_mobile/core/extensions/build_context_extensions.dart';
+import 'package:pos_mobile/core/extensions/text_theme_extension.dart';
 import 'package:pos_mobile/core/theme/duka_colors.dart';
 import 'package:pos_mobile/core/theme/duka_tokens.dart';
 import 'package:pos_mobile/core/theme/neu.dart';
 
-/// Inset-well text field. The well recesses into the sunken surface.
-///
-/// Box model mirrors the `Username Input` component in the `nexus` Figma
-/// (file `PfedZg92GeuFEYieHfQF24`, node `411:2`): 54dp field height, 16dp
-/// corner radius, 16dp horizontal / 18dp vertical inner padding, an 8dp gap
-/// from the label and a 4dp gap to the helper/error line. Colours stay on the
-/// neumorphic token layer — the Figma amber/cream palette is not adopted.
 class NeuTextField extends StatelessWidget {
   const NeuTextField({
     super.key,
@@ -37,7 +32,7 @@ class NeuTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
 
   /// Figma `Container` height for the field row.
-  static const double fieldHeight = 54;
+  static const double fieldHeight = 32;
 
   /// Figma `Input` inner padding (paddingLeft/Right 16, paddingTop/Bottom 18).
   static const EdgeInsets _fieldPadding = EdgeInsets.symmetric(
@@ -62,11 +57,8 @@ class NeuTextField extends StatelessWidget {
             padding: _sideMargin,
             child: Text(
               label!,
-              style: TextStyle(
-                color: t.textSecondary,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                height: 20 / 14,
+              style: context.labelMedium.copyWith(
+                color: context.colorScheme.onSurface,
               ),
             ),
           ),
@@ -74,55 +66,51 @@ class NeuTextField extends StatelessWidget {
         ],
         DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(DukaRadius.control),
+            borderRadius: BorderRadius.circular(DukaRadius.small),
             border: hasError ? Border.all(color: t.danger, width: 1) : null,
           ),
           child: NeuWell(
             padding: _fieldPadding,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minHeight: fieldHeight - 18 * 2,
-              ),
-              child: Row(
-                children: [
-                  if (prefix != null) ...[
-                    DefaultTextStyle.merge(
-                      style: TextStyle(color: t.textSecondary),
-                      child: prefix!,
+            radius: DukaRadius.small,
+            child: Row(
+              children: [
+                if (prefix != null) ...[
+                  DefaultTextStyle.merge(
+                    style: TextStyle(color: t.textSecondary),
+                    child: prefix!,
+                  ),
+                  const SizedBox(width: DukaSpacing.s3),
+                ],
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: keyboardType,
+                    obscureText: obscureText,
+                    onChanged: onChanged,
+                    style: TextStyle(
+                      color: t.textPrimary,
+                      fontSize: 14,
+                      height: 21 / 14,
                     ),
-                    const SizedBox(width: DukaSpacing.s2),
-                  ],
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      keyboardType: keyboardType,
-                      obscureText: obscureText,
-                      onChanged: onChanged,
-                      style: TextStyle(
-                        color: t.textPrimary,
+                    cursorColor: t.accent,
+                    decoration: InputDecoration(
+                      isCollapsed: true,
+                      border: InputBorder.none,
+                      hintText: hint,
+                      hintStyle: TextStyle(
+                        color: t.textDisabled,
                         fontSize: 14,
                         height: 21 / 14,
                       ),
-                      cursorColor: t.accent,
-                      decoration: InputDecoration(
-                        isCollapsed: true,
-                        border: InputBorder.none,
-                        hintText: hint,
-                        hintStyle: TextStyle(
-                          color: t.textDisabled,
-                          fontSize: 14,
-                          height: 21 / 14,
-                        ),
-                        contentPadding: EdgeInsets.zero,
-                      ),
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                  if (suffix != null) ...[
-                    const SizedBox(width: DukaSpacing.s2),
-                    suffix!,
-                  ],
+                ),
+                if (suffix != null) ...[
+                  const SizedBox(width: DukaSpacing.s2),
+                  suffix!,
                 ],
-              ),
+              ],
             ),
           ),
         ),

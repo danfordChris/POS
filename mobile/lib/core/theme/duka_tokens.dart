@@ -5,6 +5,7 @@ import 'package:pos_mobile/core/theme/duka_colors.dart';
 
 class DukaRadius {
   DukaRadius._();
+  static const double small = 12;
   static const double control = 16;
   static const double card = 22;
   static const double sheet = 28;
@@ -40,8 +41,8 @@ class DukaElevation {
   static List<BoxShadow> lg(DukaColors t) => _raised(t, 10, 18);
 
   /// Offset/blur for the inset well painter.
-  static const double insetXY = 3;
-  static const double insetBlur = 6;
+  static const double insetXY = 1.5;
+  static const double insetBlur = 3;
 }
 
 /// Nunito, loaded at runtime via `google_fonts` in `duka_theme.dart`.
