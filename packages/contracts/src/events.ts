@@ -56,6 +56,8 @@ export const productUpsertedPayload = z.object({
   unit: z.string(),
   is_active: z.boolean(),
   reorder_threshold: z.number().int().nonnegative(),
+  /** Product image URL. Nullable; also fires this event on image change. Additive (v1.2). */
+  image_url: z.string().nullable().optional(),
 });
 
 export const priceChangedPayload = z.object({

@@ -74,6 +74,9 @@ describe('@pos/contracts', () => {
       reorder_threshold: 6,
     };
     expect(EVENT_PAYLOADS.ProductUpserted.parse(product)).toEqual(product);
+    // image_url is additive + optional — a payload with it round-trips too.
+    const withImage = { ...product, image_url: 'https://cdn.example.com/p.jpg' };
+    expect(EVENT_PAYLOADS.ProductUpserted.parse(withImage)).toEqual(withImage);
 
     const price = {
       business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',

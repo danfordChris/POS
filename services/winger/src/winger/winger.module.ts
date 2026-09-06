@@ -5,10 +5,11 @@ import { IdentityClient } from '../rpc/identity-client.js';
 import { TenancyClient } from '../rpc/tenancy-client.js';
 import { WingerAccountsService } from './winger-accounts.service.js';
 import { WingerAccountsController } from './winger-accounts.controller.js';
+import { CatalogProjectionConsumer } from './consumers/catalog-projection.consumer.js';
 
 /**
- * Winger feature module. The catalog projection consumers (T-0403) and the
- * winger reader endpoints (T-0404) register their providers here.
+ * Winger feature module. The winger reader endpoints (T-0404) register their
+ * providers here.
  */
 @Module({
   imports: [TenantModule],
@@ -17,8 +18,9 @@ import { WingerAccountsController } from './winger-accounts.controller.js';
     WingerAccountsService,
     IdentityClient,
     TenancyClient,
+    CatalogProjectionConsumer,
     OutboxRelayService,
   ],
-  exports: [WingerAccountsService],
+  exports: [WingerAccountsService, CatalogProjectionConsumer],
 })
 export class WingerModule {}

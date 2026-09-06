@@ -312,6 +312,7 @@ export class CatalogService {
         unit: product.unit,
         is_active: product.isActive,
         reorder_threshold: product.reorderThreshold,
+        image_url: product.imageUrl ?? null,
       }),
     });
   }

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -60,9 +60,33 @@ Populate `winger_catalog_projection` from catalog and inventory events so a wing
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `pnpm --filter @pos/contracts test`; `node scripts/check-contracts-compat.mjs HEAD` → OK.
-- `pnpm --filter @pos/catalog test` — image upload emits `ProductUpserted` with `image_url`.
-- `pnpm --filter @pos/winger test` — projection population + idempotency + deactivation + DLQ + RLS specs.
+- `@pos/contracts`: `productUpsertedPayload.image_url` (nullable, optional,
+  additive v1.2) + round-trip test.
+- `services/catalog`: `emitProductUpserted` now includes `image_url:
+  product.imageUrl ?? null`. The image-upload path (`setProductImage`) already
+  emitted `ProductUpserted`, so a new/cleared image now propagates.
+- `services/winger`: `CatalogProjectionConsumer` — one class, four
+  `subscribeWithDlq` subscriptions (`catalog.ProductUpserted` /
+  `catalog.PriceChanged` / `catalog.ProductDeactivated` /
+  `inventory.StockLevelChanged`), each idempotent on `event_id` via
+  `PrismaIdempotencyStore` + `runIdempotent`, each with its own
+  `dlqSubject`. Handlers upsert `winger_catalog_projection` `(business_id,
+  product_id)`: `ProductUpserted` → `name` / `image_url` / `is_active`;
+  `PriceChanged` → `sell_price` / `winger_price` / `currency`;
+  `ProductDeactivated` → `is_active = false`; `StockLevelChanged` → `on_hand`.
+  Registered in `WingerModule`.
+
+Evidence:
+
+- `pnpm --filter @pos/contracts test` → 12; `node scripts/check-contracts-compat.mjs HEAD` → OK.
+- `pnpm --filter @pos/catalog test` → 11 (green with the enriched payload).
+- `pnpm --filter @pos/winger test` → 16 (`catalog-projection` spec +5): full
+  row built from the three events; idempotent replay makes no second change;
+  `ProductDeactivated` flips `is_active`; a null `image_url` clears the stored
+  image; writes are tenant-scoped (unscoped `count()` = 0, no cross-tenant
+  leak). DLQ wiring is `subscribeWithDlq` (covered by `@pos/nest-common`).
+- Backend suites green: contracts 12, nest-common 16, testing 5, identity 8,
+  tenancy 9, catalog 11, inventory 24, sales 20, notifications 22, winger 16.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
