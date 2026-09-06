@@ -65,6 +65,21 @@ model StockReservation {
   @@map("stock_reservation")
 }
 
+/// Per-business low-stock alert settings. One row per business (lazily created on
+/// first read). `recipients` is a JSON array of user-ids or email strings; empty
+/// means "all active owners", resolved downstream by `notifications`.
+/// RLS: `business_id = current_setting('app.business_id')`.
+model AlertConfig {
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId       String   @unique @map("business_id") @db.Uuid
+  recipients       Json     @default("[]")
+  minIntervalHours Int      @default(24) @map("min_interval_hours")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("alert_config")
+}
+
 model OutboxMessage {
   id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   subject   String

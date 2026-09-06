@@ -1,5 +1,22 @@
 # Weekly Status
 
+## 2026-09-06 — T-0201 done: inventory alert-config
+
+- `alert_config` table in the `inventory` schema (migration
+  `20260906120000_add_alert_config`, unique `business_id`, forced tenant RLS).
+- `GET` / `PUT /v1/businesses/{id}/alert-config` (Owner-only) on
+  `services/inventory` — lazy get-or-create default (`recipients: []`,
+  `min_interval_hours: 24`), P2002-safe; `PutAlertConfigDto` validates
+  `recipients` as an email/uuid list and `min_interval_hours` as int 1..8760.
+- Kong edge route `~/v1/businesses/[^/]+/alert-config` added to `inventory-tenant`
+  (`infra/kong/kong.yml` + `infra/k8s/base/kong-config.yaml`).
+- Tests: `services/inventory/test/alert-config.e2e-spec.ts` (7) — get-or-create +
+  persistence, PUT→GET round-trip, Staff `role_forbidden`, path/context mismatch
+  `not_a_member`, operator denied, `400 validation_error` cases, tenant
+  isolation. `pnpm --filter @pos/inventory test` → 18 passed; `pnpm -r build`
+  exit 0; validator `WORKFLOW:ok`.
+- Next: T-0202 (`low_stock_alert_state` + edge-event payloads + `@pos/contracts`).
+
 ## 2026-09-06 — Phase 03 planned: design refinement adopted + task docs
 
 Thinking pass only — no service code.

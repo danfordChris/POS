@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-06
 
 ## Linked Phase
@@ -57,6 +57,31 @@ Add the `alert_config` table and `GET`/`PUT /v1/businesses/{businessId}/alert-co
 
 ## Verification
 
-- `services/inventory/test/*` covers the criteria above (new `alert-config.e2e-spec.ts` or an added block).
-- `pnpm --filter @pos/inventory test` green; `pnpm -r build` green.
+Delivered:
+
+- Prisma model `AlertConfig` + migration `20260906120000_add_alert_config`
+  (`alert_config` table, unique `business_id`, `enable_tenant_rls`), applied via
+  `prisma migrate deploy`.
+- `services/inventory/src/alert-config/` — `AlertConfigService` (get-or-create
+  default, P2002-safe; upsert), `AlertConfigController` (`GET` + `PUT`, class-level
+  `@Roles('owner')` behind `InternalContextGuard` + `TenantGuard` + `RolesGuard`),
+  `PutAlertConfigDto` (`recipients` = email|uuid list, max 50, unique;
+  `min_interval_hours` int 1..8760), `toAlertConfigView`. Registered in
+  `app.module.ts`.
+- Kong edge route: `~/v1/businesses/[^/]+/alert-config` added to the
+  `inventory-tenant` route in `infra/kong/kong.yml` and `infra/k8s/base/kong-config.yaml`.
+
+Evidence:
+
+- `pnpm --filter @pos/inventory test` → 18 passed (11 existing + 7 new in
+  `services/inventory/test/alert-config.e2e-spec.ts`): default get-or-create +
+  persistence, PUT→GET round-trip, Staff `role_forbidden` on GET & PUT,
+  business/path mismatch `not_a_member`, operator `operator_data_access_denied`,
+  `400 validation_error` on `min_interval_hours: 0` and a non-email recipient,
+  tenant isolation (business B never sees A's recipients).
+- `pnpm -r build` → exit 0 (all packages, services, web).
+- Backend suite green: contracts 7, nest-common 16, testing 5, identity 7 (one
+  pre-existing outbox-relay timing flake, passes on re-run), tenancy 9,
+  catalog 11, inventory 18.
+- `pnpm --filter @pos/inventory lint` clean; `prettier` clean on new files.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
