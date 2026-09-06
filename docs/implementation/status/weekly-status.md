@@ -1,5 +1,21 @@
 # Weekly Status
 
+## 2026-09-07 — T-0301 done: sales service scaffold
+
+- New `services/sales` (Nest + `@pos/nest-common`, Prisma on the `sales`
+  schema, `OutboxRelayService`, `/healthz` + `/readyz`, Dockerfile). Init
+  migration `20260907120000_init`: `sale`, `sale_line`, `receipt`,
+  `sale_number_counter`, `product_cache`, `outbox`, `processed_events`; forced
+  RLS on the five tenant tables.
+- `@pos/contracts` (additive): `SUBJECTS.sales.*`, `saleCompletedPayload`
+  (`reservation_id` + `lines`), `saleVoidedPayload` (`lines`).
+- infra: compose `sales` service, `k8s/base/sales.yaml` (Deployment + Service +
+  HPA + PDB), kustomization + secret example, CI matrix entry, `SALES_PORT`.
+- Tests: `scaffold.e2e-spec.ts` (2 — health + RLS). Backend suites green
+  (contracts 10 … sales 2, notifications 22); contracts-compat OK; `docker
+  compose config` valid; validator `WORKFLOW:ok`.
+- Next: T-0302 (`POST /sales` reserve→write→commit saga).
+
 ## 2026-09-07 — Phase 04 planned: sales + digital receipts task docs
 
 Thinking pass — no service code.

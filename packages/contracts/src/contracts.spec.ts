@@ -110,6 +110,34 @@ describe('@pos/contracts', () => {
     expect(EVENT_PAYLOADS.StockRecovered.parse(recovered)).toEqual(recovered);
   });
 
+  it('builds sales subjects and round-trips its event payloads', () => {
+    expect(SUBJECTS.sales.saleCompleted).toBe('pos.evt.sales.SaleCompleted');
+    expect(SUBJECTS.sales.saleVoided).toBe('pos.evt.sales.SaleVoided');
+
+    const lines = [
+      {
+        product_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d60',
+        quantity: 3,
+      },
+    ];
+    const completed = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      sale_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d61',
+      reservation_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d62',
+      lines,
+      total: 3000,
+      currency: 'TZS',
+    };
+    expect(EVENT_PAYLOADS.SaleCompleted.parse(completed)).toEqual(completed);
+
+    const voided = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      sale_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d61',
+      lines,
+    };
+    expect(EVENT_PAYLOADS.SaleVoided.parse(voided)).toEqual(voided);
+  });
+
   it('round-trips AlertConfigChanged', () => {
     expect(SUBJECTS.inventory.alertConfigChanged).toBe('pos.evt.inventory.AlertConfigChanged');
     const v = {

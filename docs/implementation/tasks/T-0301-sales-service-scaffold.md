@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -62,6 +62,43 @@ Stand up `services/sales` with the `sale` / `sale_line` / `receipt` / `sale_numb
 
 ## Verification
 
-- `pnpm --filter @pos/sales test` (scaffold smoke) + `pnpm --filter @pos/contracts test` green.
-- `pnpm -r build` (sales + contracts standalone if `-r` flakes on web).
+Delivered:
+
+- `services/sales/` scaffold cloned from `inventory`: Nest app, `config/env.ts`
+  (`SALES_PORT` 3005, `SALES_DATABASE_URL`, `NATS_URL`,
+  `INTERNAL_CONTEXT_SECRET`, `WEB_BASE_URL`), `PlatformModule` (NATS
+  `name: 'sales'`), `PrismaModule`/`PrismaService`, `OutboxRelayService`,
+  `HealthModule` (`/healthz` + `/readyz`), multi-stage `Dockerfile`,
+  `vitest.config.ts`, `oxlint.json`.
+- Prisma init migration `20260907120000_init`: `sale` (unique
+  `(business_id, number)` + `(business_id, idempotency_key)`), `sale_line`
+  (FK → `sale` cascade), `receipt` (unique `sale_id` + `public_token`,
+  `business_name_snapshot` + `currency`), `sale_number_counter`
+  (`business_id` pk), `product_cache` (unique `(business_id, product_id)`),
+  `outbox`, `processed_events`. Forced tenant RLS on the five tenant tables.
+  Applied via `prisma migrate deploy`.
+- `@pos/contracts` (additive): `SUBJECTS.sales = { saleCompleted, saleVoided }`;
+  `saleCompletedPayload` (`business_id`, `sale_id`, `reservation_id`,
+  `lines: [{ product_id, quantity }]`, `total`, `currency`) and
+  `saleVoidedPayload` (`business_id`, `sale_id`, `lines`) in `EVENT_PAYLOADS`
+  + round-trip test.
+- infra: `docker-compose.yml` `sales` service; `infra/k8s/base/sales.yaml`
+  (Deployment + Service + HPA + PDB); `kustomization.yaml` +
+  `secret.example.yaml`; `.github/workflows/ci.yml` matrix entry +
+  `SALES_DATABASE_URL`. `SALES_PORT` in `.env.example`. `sales` schema + role
+  already in `infra/postgres/initdb/20-service-schemas.sql`.
+
+Evidence:
+
+- `pnpm --filter @pos/sales test` → 2 passed (`test/scaffold.e2e-spec.ts`):
+  `/healthz` + `/readyz` respond; scoped write to `product_cache` /
+  `sale_number_counter` succeeds while an unscoped `count()` returns 0
+  (forced RLS).
+- `pnpm --filter @pos/contracts test` → 10 (incl. `SaleCompleted` / `SaleVoided`
+  round-trips); `node scripts/check-contracts-compat.mjs HEAD` → OK.
+- `pnpm --filter @pos/sales build` + `lint` clean; `prettier` + `prisma format`
+  clean; `docker compose -f infra/docker-compose.yml config` valid.
+- Backend suites green: contracts 10, nest-common 16, testing 5, identity 7
+  (one pre-existing outbox-relay timing flake, passes on re-run), tenancy 9,
+  catalog 11, inventory 23, sales 2, notifications 22.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

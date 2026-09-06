@@ -1,0 +1,73 @@
+# sales service — HTTP API (Deployment + Service + HPA + PDB). Behind Kong at
+# /v1/businesses/{id}/sales/* and the public /v1/r/{token}.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sales
+  labels:
+    app.kubernetes.io/name: sales
+    app.kubernetes.io/part-of: pos-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sales
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sales
+    spec:
+      containers:
+        - name: sales
+          image: ghcr.io/pos/sales:latest
+          ports:
+            - { name: http, containerPort: 3000 }
+          envFrom:
+            - configMapRef: { name: pos-shared }
+            - secretRef: { name: pos-secrets }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 3000 }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 3000 }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sales
+  labels:
+    app.kubernetes.io/name: sales
+spec:
+  selector:
+    app.kubernetes.io/name: sales
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sales
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sales
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sales
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sales

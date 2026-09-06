@@ -118,6 +118,26 @@ export const stockRecoveredPayload = z.object({
   opened_at: z.string().datetime(),
 });
 
+export const saleLineRef = z.object({
+  product_id: z.string().uuid(),
+  quantity: z.number().int().positive(),
+});
+
+export const saleCompletedPayload = z.object({
+  business_id: z.string().uuid(),
+  sale_id: z.string().uuid(),
+  reservation_id: z.string().uuid(),
+  lines: z.array(saleLineRef).min(1),
+  total: z.number().int(),
+  currency: z.string(),
+});
+
+export const saleVoidedPayload = z.object({
+  business_id: z.string().uuid(),
+  sale_id: z.string().uuid(),
+  lines: z.array(saleLineRef).min(1),
+});
+
 export const notificationSentPayload = z.object({
   business_id: z.string().uuid(),
   notification_id: z.string().uuid(),
@@ -148,6 +168,8 @@ export const EVENT_PAYLOADS = {
   StockLevelChanged: stockLevelChangedPayload,
   StockFellBelowThreshold: stockFellBelowThresholdPayload,
   StockRecovered: stockRecoveredPayload,
+  SaleCompleted: saleCompletedPayload,
+  SaleVoided: saleVoidedPayload,
   NotificationSent: notificationSentPayload,
   NotificationFailed: notificationFailedPayload,
 } as const;

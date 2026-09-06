@@ -42,6 +42,10 @@ export const SUBJECTS = {
     stockFellBelowThreshold: evtSubject('inventory', 'StockFellBelowThreshold'),
     stockRecovered: evtSubject('inventory', 'StockRecovered'),
   },
+  sales: {
+    saleCompleted: evtSubject('sales', 'SaleCompleted'),
+    saleVoided: evtSubject('sales', 'SaleVoided'),
+  },
   notifications: {
     notificationSent: evtSubject('notifications', 'NotificationSent'),
     notificationFailed: evtSubject('notifications', 'NotificationFailed'),
