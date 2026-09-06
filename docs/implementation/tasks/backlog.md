@@ -19,7 +19,9 @@ Hold work not yet scheduled into a phase or written as a full task doc.
 - [ ] `GET /v1/auth/me` should compose `memberships` / `wingerAccounts` (identity calls
       tenancy `resolveMembership` / a new list RPC). Currently returns empty arrays.
 - [ ] Invitations capability in `services/tenancy` (ex T-0005) — schedule after T-0113
-- [ ] Expand Phase 02–06 checklist items into full task docs when each phase is scheduled
+- [~] Expand Phase 02–06 checklist items into full task docs when each phase is
+      scheduled — Phase 02 done; Phase 03 done (T-0201–T-0207, 2026-09-06);
+      Phases 04–06 pending
 - [ ] Service mesh (mTLS) evaluation — Phase 06
 - [ ] Invitation resend endpoint
 - [ ] Mobile camera scanning (`mobile_scanner` + camera permission config) — the

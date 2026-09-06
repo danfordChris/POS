@@ -1,5 +1,43 @@
 # Weekly Status
 
+## 2026-09-06 — Phase 03 planned: design refinement adopted + task docs
+
+Thinking pass only — no service code.
+
+- **Design refinement adopted** (proposal `0004`, drafted then merged into
+  `docs/design/`, removed from `proposed/`):
+  - `notifications` gains a `notification_contact` projection fed by
+    `BusinessCreated` / `MembershipCreated` / `MembershipSuspended`; it resolves
+    low-stock recipients from that, not a `tenancy` sync call.
+  - `low_stock_alert_state` (in `inventory`) is the low-stock edge source of
+    truth and supersedes the shipped `stock_item.low_stock_open` column;
+    `opened_at` is carried on `StockFellBelowThreshold` / `StockRecovered` and
+    forms `notification.dedupe_key`.
+  - Additive `@pos/contracts` payload fields: `opened_at` + `recipients[]` on the
+    edge events; `email` / `locale` on `MembershipCreated` / `WingerAuthorized`;
+    `owner_email` / `owner_locale` on `BusinessCreated`.
+  - `notification` creation restated for the schema-per-service reality (atomic
+    outbox on producer, exactly-once on consumer); digest flush mechanism
+    specified.
+  - Edits: `service-decomposition.md`, `events-catalog.md`, `data-model.md`,
+    `integrations/notifications.md`.
+- **Phase 03 task docs written** — `phase-03-reorder-alerts.md` re-scoped;
+  T-0201–T-0207 created, all `pending`:
+  - T-0201 `inventory` `alert_config` + `GET/PUT /alert-config` (Owner)
+  - T-0202 `inventory` `low_stock_alert_state` + `opened_at`/`recipients` on the
+    edge events + contract additions
+  - T-0203 `notifications` service scaffold + `notification` /
+    `notification_contact` + contact-projection consumers
+  - T-0204 `notifications` low-stock consumer + `EmailSender` + retry/backoff
+    worker
+  - T-0205 `notifications` digest batching within `min_interval_hours`
+  - T-0206 `notifications` en/sw templates + Mailpit capture test
+  - T-0207 web `/alerts` screen
+  - Dependency order: T-0201 → T-0202 → T-0203 → T-0204 → T-0205 → T-0206;
+    T-0207 after T-0201.
+
+Validator `WORKFLOW:ok`.
+
 ## 2026-09-06 — Mobile brand + splash + e2e test; plan bookkeeping
 
 No phase work. Mobile polish landed since the 2026-09-02 entries, plus a
