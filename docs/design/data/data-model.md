@@ -36,8 +36,9 @@
 | `receipt` | id, business_id, sale_id, public_token (unique), status (`issued`\|`void`), issued_at | token is unguessable (≥128-bit) |
 | `winger_account` | id, business_id, user_id, status (`active`\|`suspended`), authorized_by, created_at | unique (business_id, user_id); a user row here has no `membership` |
 | `alert_config` | id, business_id, recipients (json: user_ids or emails), min_interval_hours (default 24) | one per business; defaults to all owners |
-| `notification` | id, business_id, type (`low_stock`\|`invitation`\|`winger_authorized`), channel (`email`), payload (json), status (`queued`\|`sent`\|`failed`), dedupe_key (nullable), created_at, sent_at | |
-| `low_stock_alert_state` | id, business_id, product_id, is_open (bool), opened_at, closed_at | one per product; prevents repeat alerts |
+| `notification` | id, business_id, type (`low_stock`\|`invitation`\|`winger_authorized`), channel (`email`), payload (json), status (`queued`\|`sent`\|`failed`), dedupe_key (nullable), attempts (default 0), last_error (nullable), created_at, sent_at | `notifications` schema |
+| `notification_contact` | id, business_id, user_id, role (`owner`\|`staff`), email, locale, active (bool) | `notifications` schema; read-only projection from `BusinessCreated` / `MembershipCreated` / `MembershipSuspended`; unique (business_id, user_id) |
+| `low_stock_alert_state` | id, business_id, product_id, is_open (bool), opened_at, closed_at | `inventory` schema; one per product; source of truth for the low-stock edge (supersedes any `stock_item` flag) |
 | `audit_log` | id, business_id (nullable for control-plane), actor_id, actor_type (`user`\|`operator`\|`system`), action, target_type, target_id, metadata (json), created_at | |
 | `support_access_grant` | id, business_id, operator_id, reason, approved_by (owner user_id), granted_at, expires_at, revoked_at | max lifetime 24h |
 
@@ -69,6 +70,12 @@
 - Cached `stock_item.quantity` alongside the ledger for read speed; ledger is source of truth.
 - Money as integer minor units + explicit currency, even though TZS is effectively integer, to keep the model portable.
 - `low_stock_alert_state` table rather than scanning notifications for dedupe.
+- `opened_at` from `low_stock_alert_state` is carried on `StockFellBelowThreshold` /
+  `StockRecovered` and forms `notification.dedupe_key = low_stock:{business_id}:{product_id}:{opened_at}`.
+- `notifications` cannot read `tenancy` tables; it resolves recipients from its own
+  `notification_contact` projection (default `low_stock` recipients = active owners)
+  unless `alert_config.recipients` is set, in which case `inventory` passes the
+  explicit list on the event.
 
 ## Contracts
 

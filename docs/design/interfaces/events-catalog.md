@@ -27,9 +27,9 @@ Consumers are durable, per (service, event). Ack policy explicit; max-deliver wi
 | Event | Producer | Key payload fields | Consumers |
 |---|---|---|---|
 | `UserRegistered` | identity | `user_id`, `email?`, `phone?` | tenancy (optional) |
-| `BusinessCreated` | tenancy | `business_id`, `name`, `currency`, `locale`, `owner_user_id` | catalog, inventory (bootstrap) |
-| `MembershipCreated` | tenancy | `business_id`, `user_id`, `role` | — |
-| `MembershipSuspended` | tenancy | `business_id`, `user_id` | edge membership-cache bust |
+| `BusinessCreated` | tenancy | `business_id`, `name`, `currency`, `locale`, `owner_user_id`, `owner_email`, `owner_locale` | catalog, inventory (bootstrap), notifications (contact projection) |
+| `MembershipCreated` | tenancy | `business_id`, `user_id`, `role`, `email`, `locale` | notifications (contact projection) |
+| `MembershipSuspended` | tenancy | `business_id`, `user_id` | edge membership-cache bust; notifications (contact projection) |
 | `InvitationCreated` | tenancy | `business_id`, `invitation_id`, `email`, `role`, `accept_url`, `expires_at` | notifications |
 | `InvitationAccepted` | tenancy | `business_id`, `invitation_id`, `user_id` | — |
 | `CategoryUpserted` | catalog | `business_id`, `category_id`, `name` | — |
@@ -38,11 +38,11 @@ Consumers are durable, per (service, event). Ack policy explicit; max-deliver wi
 | `ProductDeactivated` | catalog | `business_id`, `product_id` | inventory, winger |
 | `StockMovementRecorded` | inventory | `business_id`, `product_id`, `type`, `quantity_delta`, `movement_id` | — |
 | `StockLevelChanged` | inventory | `business_id`, `product_id`, `on_hand` | winger |
-| `StockFellBelowThreshold` | inventory | `business_id`, `product_id`, `on_hand`, `threshold` | notifications |
-| `StockRecovered` | inventory | `business_id`, `product_id`, `on_hand` | notifications (closes digest state) |
+| `StockFellBelowThreshold` | inventory | `business_id`, `product_id`, `on_hand`, `threshold`, `opened_at`, `recipients[]` (emails/user-ids from `alert_config`; empty ⇒ consumer falls back to owner projection) | notifications |
+| `StockRecovered` | inventory | `business_id`, `product_id`, `on_hand`, `opened_at` (value from the matching open edge) | notifications (closes digest state) |
 | `SaleCompleted` | sales | `business_id`, `sale_id`, `lines[]`, `total`, `currency` | inventory (commit reservation) |
 | `SaleVoided` | sales | `business_id`, `sale_id` | inventory (reverse) |
-| `WingerAuthorized` | winger | `business_id`, `winger_account_id`, `user_id`, `portal_url` | notifications |
+| `WingerAuthorized` | winger | `business_id`, `winger_account_id`, `user_id`, `portal_url`, `email`, `locale` | notifications |
 | `WingerSuspended` | winger | `business_id`, `winger_account_id` | edge membership-cache bust |
 | `NotificationSent` / `NotificationFailed` | notifications | `business_id`, `notification_id`, `type`, `channel` | — |
 
