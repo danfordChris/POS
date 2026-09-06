@@ -5,6 +5,7 @@ import {
   evtSubject,
   internalContextSchema,
   messageEnvelopeSchema,
+  getUserRequest,
   resolveMembershipResponse,
   rpcSubject,
 } from './index.js';
@@ -44,6 +45,14 @@ describe('@pos/contracts', () => {
       found: false,
       role: null,
       status: null,
+    });
+  });
+
+  it('accepts a getUser request with and without create', () => {
+    expect(getUserRequest.parse({ email: 'r@example.com' })).toEqual({ email: 'r@example.com' });
+    expect(getUserRequest.parse({ email: 'r@example.com', create: true })).toEqual({
+      email: 'r@example.com',
+      create: true,
     });
   });
 

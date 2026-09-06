@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -62,10 +62,53 @@ Ship `POST/GET/PATCH /v1/businesses/{businessId}/winger-accounts` (Owner) so an 
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `pnpm --filter @pos/winger test` — authorize/list/suspend/reactivate specs incl. `409` mutual exclusion, idempotent authorize, `503` on RPC outage.
-- `pnpm --filter @pos/identity test` — `getUser { create }` provisioning spec.
-- `pnpm --filter @pos/contracts test`; `node scripts/check-contracts-compat.mjs HEAD` → OK.
-- Live smoke through Kong (rebuilt `winger` + `identity` containers): `POST /v1/businesses/{id}/winger-accounts` → `GET` → `PATCH` suspend → `PATCH` reactivate; confirm events on `pos.evt.winger.>`.
+- `@pos/contracts` (additive, `SCHEMA_VERSION` still 1.2.0 from T-0401):
+  `getUserRequest.create?`; `getUserResponse.locale?` (found variant);
+  `wingerAuthorizedPayload.email` relaxed to optional (absent when authorized by
+  phone only). Round-trip tests for the `create` request.
+- `services/identity`: `AuthService.findUserForRpc` takes `create?`; on an
+  `email`/`phone` miss it calls `createShellUser` — inserts a user with the
+  sentinel `password_hash` `'!unclaimed'` (unusable, so login stays `401`) and
+  emits `UserRegistered` in the same transaction. `IdentityRpc.getUser` returns
+  `locale`.
+- `services/winger`: `IdentityClient` + `TenancyClient` (RPC wrappers, transport
+  failure → `503 upstream_unavailable`). `WingerAccountsService`:
+  - `authorize` — exactly-one-of email/phone (`400` otherwise);
+    `identity.getUser { create: true }`; `tenancy.resolveMembership` → `409
+    already_a_member` when `found`; upsert `winger_account` `(business_id,
+    user_id)` `active` + `WingerAuthorized` to the outbox in one tenant txn;
+    re-authorizing an `active` account is a no-op with no event.
+  - `list` — business's accounts (RLS-scoped), email/name hydrated per row via
+    `identity.getUser`.
+  - `setStatus` — `suspended` → `WingerSuspended`; `active` → `WingerAuthorized`;
+    unchanged status is a no-op; unknown id → `404`.
+  - `WingerAccountsController` — `POST/GET/PATCH
+    /v1/businesses/:businessId/winger-accounts`, `@Roles('owner')` behind
+    `InternalContextGuard` + `TenantGuard` + `RolesGuard`.
+- Kong: `winger` service + `winger-accounts-tenant` route
+  (`~/v1/businesses/[^/]+/winger-accounts`, `require_business_scope: true`) in
+  `infra/kong/kong.yml` and `infra/k8s/base/kong-config.yaml`.
+
+Evidence:
+
+- `pnpm --filter @pos/winger test` → 11 passed (`scaffold` 2 + `winger-accounts`
+  9): authorize-by-email emits one `WingerAuthorized`; idempotent re-authorize;
+  `409` on membership collision (no row, no event); `400` on email+phone; `403`
+  for staff; list is business-scoped; suspend→`WingerSuspended`, no-op repeat,
+  reactivate→`WingerAuthorized`; unknown id `404`; identity outage → `503`,
+  nothing written.
+- `pnpm --filter @pos/identity test` → 8 passed (incl. `getUser { create }`
+  provisions a passwordless user, idempotent, login `401`, `UserRegistered`
+  emitted).
+- `pnpm --filter @pos/contracts test` → 12; `node scripts/check-contracts-compat.mjs HEAD` → OK.
+- Backend suites green: contracts 12, nest-common 16, testing 5, identity 8,
+  tenancy 9, catalog 11, inventory 24, sales 20, notifications 22, winger 11.
+- `docker compose config` valid; `kubectl kustomize infra/k8s/base` renders;
+  `kong config parse` → `parse successful`.
+- Live smoke through Kong (rebuilt `winger` + `identity`): `POST` (unknown email
+  → user provisioned, account `active`) → `GET` (lists it) → `PATCH` suspend →
+  `PATCH` reactivate; `pos.evt.winger.WingerAuthorized` ×2 +
+  `pos.evt.winger.WingerSuspended` ×1 observed.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

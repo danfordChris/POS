@@ -144,7 +144,8 @@ export const wingerAuthorizedPayload = z.object({
   user_id: z.string().uuid(),
   /** Absolute URL the reseller opens to reach their portal. */
   portal_url: z.string().url(),
-  email: z.string().email(),
+  /** Reseller email for the notification. Absent when authorized by phone only. */
+  email: z.string().email().optional(),
   locale: z.string(),
 });
 

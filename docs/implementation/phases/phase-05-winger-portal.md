@@ -42,7 +42,7 @@ Let an Owner authorize resellers ("wingers") who then see a fixed-whitelist cata
 ## Tasks
 
 - [x] T-0401 `winger` service scaffold + `winger_account` model + migration + RLS + winger contracts
-- [ ] T-0402 Owner winger-account endpoints + user resolve-or-create + `identity.getUser { create }` + mutual-exclusion check + `WingerAuthorized` / `WingerSuspended`
+- [x] T-0402 Owner winger-account endpoints + user resolve-or-create + `identity.getUser { create }` + mutual-exclusion check + `WingerAuthorized` / `WingerSuspended`
 - [ ] T-0403 `winger_catalog_projection` + catalog/inventory event consumers + `image_url` on `ProductUpserted` + catalog emits on image change
 - [ ] T-0404 Winger catalog endpoints + whitelist DTO + schema test + scope/suspension enforcement + Kong `/v1/winger/*` route
 - [ ] T-0405 Web `/wingers` management + per-product winger price + product image upload

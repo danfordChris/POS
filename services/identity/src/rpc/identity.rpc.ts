@@ -37,6 +37,7 @@ export class IdentityRpc implements OnApplicationBootstrap {
         email: user.email,
         phone: user.phone,
         disabled: user.disabledAt !== null,
+        locale: user.locale,
       };
     });
 

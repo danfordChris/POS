@@ -122,6 +122,26 @@ services:
         regex_priority: 100
         strip_path: false
 
+  - name: winger
+    url: http://winger:3000
+    routes:
+      # Owner-managed winger accounts — business-scoped like any other tenant route.
+      - name: winger-accounts-tenant
+        paths:
+          - ~/v1/businesses/[^/]+/winger-accounts
+        regex_priority: 100
+        strip_path: false
+        plugins:
+          - name: pos-internal-context
+            config:
+              jwt_secret: '{vault://env/JWT_ACCESS_SECRET}'
+              internal_context_secret: '{vault://env/INTERNAL_CONTEXT_SECRET}'
+              internal_context_ttl: 60
+              require_business_scope: true
+              tenancy_membership_url: http://tenancy:3000/v1/internal/membership
+              internal_api_key: '{vault://env/INTERNAL_API_KEY}'
+              membership_cache_ttl: 30
+
 plugins:
   - name: cors
     config:

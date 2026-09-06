@@ -239,6 +239,44 @@ describe('identity — NATS RPC', () => {
     expect(miss).toEqual({ found: false });
   });
 
+  it('getUser with create provisions a passwordless shell user', async () => {
+    const e = email('shell');
+
+    const miss = await bus.request(SUBJECTS.identity.getUser, { email: e });
+    expect(miss).toEqual({ found: false });
+
+    const made = (await bus.request(SUBJECTS.identity.getUser, {
+      email: e,
+      create: true,
+    })) as { found: boolean; user_id: string; disabled: boolean };
+    expect(made).toMatchObject({ found: true, email: e, disabled: false });
+
+    // Idempotent: a second create resolves the same user.
+    const again = (await bus.request(SUBJECTS.identity.getUser, {
+      email: e,
+      create: true,
+    })) as { user_id: string };
+    expect(again.user_id).toBe(made.user_id);
+
+    // The shell user cannot sign in — no password set.
+    await http
+      .post('/v1/auth/login')
+      .send({ email: e, password: 'password12345' })
+      .expect(401);
+
+    // UserRegistered was emitted for the provisioned user.
+    const rows = await prisma.outboxMessage.findMany({
+      where: { subject: SUBJECTS.identity.userRegistered },
+    });
+    expect(
+      rows.some(
+        (r) =>
+          (r.payload as { payload: { user_id: string } }).payload.user_id ===
+          made.user_id,
+      ),
+    ).toBe(true);
+  });
+
   it('verifyToken validates a real access token and rejects junk', async () => {
     const e = email('vt');
     await http

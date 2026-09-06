@@ -23,6 +23,10 @@ import { RefreshDto } from './dto/refresh.dto.js';
 
 const outbox = new OutboxWriter();
 
+/** Sentinel `password_hash` for a provisioned-but-unclaimed user. Not a valid
+ * argon2 encoded string, so `verifyPassword` returns false for any input. */
+const UNCLAIMED_PASSWORD_HASH = '!unclaimed';
+
 export interface PublicUser {
   id: string;
   name: string;
@@ -263,14 +267,64 @@ export class AuthService {
     user_id?: string;
     email?: string;
     phone?: string;
+    create?: boolean;
   }): Promise<User | null> {
     if (query.user_id)
       return this.prisma.user.findUnique({ where: { id: query.user_id } });
-    if (query.email)
-      return this.prisma.user.findUnique({ where: { email: query.email } });
-    if (query.phone)
-      return this.prisma.user.findUnique({ where: { phone: query.phone } });
+    if (query.email) {
+      const byEmail = await this.prisma.user.findUnique({
+        where: { email: query.email },
+      });
+      if (byEmail || !query.create) return byEmail;
+      return this.createShellUser({ email: query.email });
+    }
+    if (query.phone) {
+      const byPhone = await this.prisma.user.findUnique({
+        where: { phone: query.phone },
+      });
+      if (byPhone || !query.create) return byPhone;
+      return this.createShellUser({ phone: query.phone });
+    }
     return null;
+  }
+
+  /**
+   * Provision a passwordless user that cannot sign in until a password is set
+   * (the stored hash is a sentinel that `verifyPassword` always rejects). Used
+   * when an Owner authorizes a winger by an email/phone that has never
+   * registered. Emits `UserRegistered` in the same transaction.
+   */
+  private async createShellUser(identifier: {
+    email?: string;
+    phone?: string;
+  }): Promise<User> {
+    const name = identifier.email
+      ? identifier.email.split('@')[0]
+      : (identifier.phone ?? 'user');
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email: identifier.email ?? null,
+          phone: identifier.phone ?? null,
+          passwordHash: UNCLAIMED_PASSWORD_HASH,
+        },
+      });
+      await outbox.write(tx, {
+        subject: SUBJECTS.identity.userRegistered,
+        payload: makeEnvelope({
+          producer: 'identity',
+          businessId: null,
+          schemaVersion: SCHEMA_VERSION,
+          payload: {
+            user_id: user.id,
+            email: user.email,
+            phone: user.phone,
+          },
+        }),
+      });
+      return user;
+    });
   }
 
   private async issueSession(

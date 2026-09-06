@@ -6,6 +6,12 @@ export const getUserRequest = z.object({
   user_id: z.string().uuid().optional(),
   email: z.string().email().optional(),
   phone: z.string().optional(),
+  /**
+   * When true and an `email`/`phone` matches no user, identity provisions a
+   * passwordless shell user and returns it (`found: true`). Used by the winger
+   * service when an Owner authorizes a reseller who has not registered yet.
+   */
+  create: z.boolean().optional(),
 });
 export const getUserResponse = z.union([
   z.object({
@@ -15,6 +21,8 @@ export const getUserResponse = z.union([
     email: z.string().email().nullable(),
     phone: z.string().nullable(),
     disabled: z.boolean(),
+    /** BCP-47 locale for outbound notifications. Additive (v1.2). */
+    locale: z.string().optional(),
   }),
   z.object({ found: z.literal(false) }),
 ]);
