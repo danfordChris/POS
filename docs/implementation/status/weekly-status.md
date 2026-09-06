@@ -1,5 +1,31 @@
 # Weekly Status
 
+## 2026-09-07 — T-0307/08/09 done: sales clients — Phase 04 complete
+
+- **T-0307 mobile sell flow** (`main` `970ad1b`): `sale_models.dart`,
+  `sales_service.dart` (`createSale` sets `Idempotency-Key`; `ApiClient.post`
+  gained a `headers` param). `SellProvider` — cart + live totals (line total
+  ≥ 0), one idempotency key per cart version held across retries; `submit()` →
+  `422 insufficient_stock` marks the short lines, keeps the cart.
+  `sell_screen.dart` replaces the stub (picker + `NeuStepper` rows + total bar +
+  Complete button + `ErrorByCodeCard`). Offline banner scoped out (no
+  connectivity provider in `mobile/` yet — backlog).
+- **T-0308 mobile receipt** (`main` `032159d`): `qr_flutter` + `share_plus`;
+  `lib/core/receipt_url.dart` (`$kApiBaseUrl/v1/r/{token}`); `receipt_screen.dart`
+  (total, lines, `QrImageView`, link, Share / New-sale) + `AppRoute.receipt`;
+  sell-flow success now pushes the receipt route.
+- **T-0309 web sales screens**: `/sales` list (table + status badge + cursor
+  "Load more" + empty state), `/sales/[id]` detail (line table + totals +
+  "View public receipt ↗" + Owner-only `<VoidSaleButton>` with a `confirm`),
+  `sales/actions.ts` `voidSale`. `web/lib/models.ts` sale types.
+- Evidence: `flutter analyze` clean, `flutter test` green (mobile);
+  `pnpm --filter web lint` + `build` green; **live smoke through Kong** (rebuilt
+  `sales` container): `POST /sales` → `GET /sales` → `GET /sales/{id}` →
+  `GET /v1/r/{token}` → `POST .../void` → `GET /v1/r/{token}` `404`. Validator
+  `WORKFLOW:ok`.
+- **Phase 04 done** — T-0301–T-0309 complete; `phase-04` + `project.md` updated.
+  Next priority: Phase 05 (Winger portal).
+
 ## 2026-09-07 — T-0306 done: sales list + detail with role scoping
 
 - `sales`: `GET /businesses/:id/sales` + `GET .../:id` (Owner/Staff). Staff

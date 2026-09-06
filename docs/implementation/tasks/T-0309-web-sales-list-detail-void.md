@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -55,6 +55,40 @@ Add `/sales` (list) and `/sales/[id]` (detail + void) to `web/`.
 
 ## Verification
 
-- Manual: Owner list → detail → void → reload shows `voided`; Staff sees no void button; public-receipt link opens `/v1/r/{token}`. Capture in the task PR notes.
-- `pnpm --filter web lint` + `pnpm --filter web build` green.
+Delivered:
+
+- `web/lib/models.ts` — `SaleLine`, `SaleSummary`, `Sale`.
+- `web/app/(shell)/sales/page.tsx` (replaces the stub) + `loading.tsx` —
+  server `tenantGet('/sales', { cursor, limit: 25 })`; table (number → link,
+  date, line count, total, status `Badge`); `EmptyState` when none; cursor
+  "Load more" via a `Link` query param; `ErrorCard` on load failure.
+- `web/app/(shell)/sales/[id]/page.tsx` — server `tenantGet('/sales/{id}')`;
+  header (number + status badge, timestamp, customer label, voided-at); line
+  table (item, unit, qty, discount, line total) + subtotal / discount / total;
+  "View public receipt ↗" → `${API_BASE_URL}/v1/r/{public_token}` (new tab);
+  Owner-only `<VoidSaleButton>`. `GET` 404 → `ErrorCard`.
+- `web/components/sales/VoidSaleButton.tsx` — client; `useActionState(voidSale
+  .bind(null, id))`, native `confirm()` guard, disabled when already `voided`,
+  `ErrorCard` on a server error.
+- `web/app/(shell)/sales/actions.ts` — `voidSale(id, prev, fd)` →
+  `tenantSend('POST', '/sales/{id}/void')`; `ApiError` → error state; success →
+  `revalidatePath('/sales' , '/sales/{id}')`.
+
+Evidence:
+
+- `pnpm --filter web lint` clean; `pnpm --filter web build` → exit 0
+  (`/sales` and `/sales/[id]` listed as `ƒ` dynamic). `grep` for
+  `#hex | rgb() | shadow-[ | rounded-[` in the new files → none.
+- Live smoke through Kong (`:8000`, local stack with the rebuilt `sales`
+  container) — the exact calls the pages make:
+  - `POST /sales` (qty 2 × 1500) → sale #1, `total 3000`, receipt token.
+  - `GET /sales` → 1 row `{ number:1, status:'completed', total:3000,
+    line_count:1, created_at }`.
+  - `GET /sales/{id}` → full detail (1 line, receipt present).
+  - `GET /v1/r/{token}` → public payload (business name + lines + totals).
+  - `POST /sales/{id}/void` → `status:'voided'`, `receipt.status:'void'`;
+    a follow-up `GET /v1/r/{token}` → `404`.
+- Staff path: the void button is only rendered for `session?.role === 'owner'`
+  (same guard as the other Owner-only controls); the `voidSale` action returns
+  `role_forbidden` from the server if invoked otherwise.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Objective
@@ -29,24 +29,24 @@ Record sales that decrement stock through the `inventory` ledger via the reserve
 
 ## Tasks
 
-- [ ] T-0301 `sales` service scaffold + `sale` / `sale_line` / `receipt` / `sale_number_counter` / `product_cache` models + migration + RLS + `@pos/contracts` sale events
-- [ ] T-0302 `sales` — `POST /sales` reserve → write → commit saga + `Idempotency-Key` replay + `product_cache` consumers
-- [ ] T-0303 `sales` — insufficient-stock path (`422`, `releaseReservation`, no `sale`/`sale_line` rows)
-- [ ] T-0304 `sales` — `POST /sales/{id}/void` + `SaleVoided`; `inventory` — `SaleVoided` consumer writing `void_reversal` movements
-- [ ] T-0305 `sales` — public `GET /v1/r/{token}` + token generation + Kong route (no internal-context plugin)
-- [ ] T-0306 `sales` — `GET /sales` + `GET /sales/{id}` with Owner-all / Staff-own scoping
-- [ ] T-0307 Mobile — sell flow + `422 insufficient_stock` handling
-- [ ] T-0308 Mobile — receipt screen (link + QR + share)
-- [ ] T-0309 Web — sales list / detail / void
+- [x] T-0301 `sales` service scaffold + `sale` / `sale_line` / `receipt` / `sale_number_counter` / `product_cache` models + migration + RLS + `@pos/contracts` sale events
+- [x] T-0302 `sales` — `POST /sales` reserve → write → commit saga + `Idempotency-Key` replay + `product_cache` consumers
+- [x] T-0303 `sales` — insufficient-stock path (`422`, `releaseReservation`, no `sale`/`sale_line` rows)
+- [x] T-0304 `sales` — `POST /sales/{id}/void` + `SaleVoided`; `inventory` — `SaleVoided` consumer writing `void_reversal` movements
+- [x] T-0305 `sales` — public `GET /v1/r/{token}` + token generation + Kong route (no internal-context plugin)
+- [x] T-0306 `sales` — `GET /sales` + `GET /sales/{id}` with Owner-all / Staff-own scoping
+- [x] T-0307 Mobile — sell flow + `422 insufficient_stock` handling
+- [x] T-0308 Mobile — receipt screen (link + QR + share)
+- [x] T-0309 Web — sales list / detail / void
 
 ## Acceptance Criteria
 
-- [ ] Completing a sale decreases on-hand per line and writes one `sale` movement per line (in `inventory`), atomically with the reservation commit.
-- [ ] A sale exceeding on-hand returns `422 insufficient_stock` and creates no `sale` or `sale_line` rows.
-- [ ] Void restores on-hand to pre-sale values for every line (`void_reversal` movements) and marks the receipt `void`.
-- [ ] `GET /v1/r/{token}` returns 200 with no `Authorization` header; unknown / void token returns 404.
-- [ ] Re-sending `POST /sales` with the same `Idempotency-Key` returns the original sale, not a duplicate.
-- [ ] Dropping `inventory` makes `POST /sales` fail cleanly with `503` and no partial sale (per internal-rpc acceptance).
+- [x] Completing a sale decreases on-hand per line and writes one `sale` movement per line (in `inventory`), atomically with the reservation commit.
+- [x] A sale exceeding on-hand returns `422 insufficient_stock` and creates no `sale` or `sale_line` rows.
+- [x] Void restores on-hand to pre-sale values for every line (`void_reversal` movements) and marks the receipt `void`.
+- [x] `GET /v1/r/{token}` returns 200 with no `Authorization` header; unknown / void token returns 404.
+- [x] Re-sending `POST /sales` with the same `Idempotency-Key` returns the original sale, not a duplicate.
+- [x] Dropping `inventory` makes `POST /sales` fail cleanly with `503` and no partial sale (per internal-rpc acceptance).
 
 ## Blockers
 

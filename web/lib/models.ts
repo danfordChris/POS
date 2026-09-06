@@ -49,6 +49,40 @@ export interface AlertConfig {
   updated_at: string;
 }
 
+export interface SaleLine {
+  product_id: string;
+  name: string;
+  unit_price: number;
+  quantity: number;
+  discount: number;
+  line_total: number;
+}
+
+export interface SaleSummary {
+  id: string;
+  number: number;
+  status: 'completed' | 'voided';
+  total: number;
+  currency: string;
+  line_count: number;
+  created_at: string;
+}
+
+export interface Sale {
+  id: string;
+  number: number;
+  status: 'completed' | 'voided';
+  subtotal: number;
+  discount_total: number;
+  total: number;
+  currency: string;
+  customer_label: string | null;
+  created_at: string;
+  voided_at: string | null;
+  lines: SaleLine[];
+  receipt: { public_token: string; status: string } | null;
+}
+
 export interface StockMovement {
   id: string;
   product_id: string;

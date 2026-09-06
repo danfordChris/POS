@@ -8,11 +8,11 @@
 
 ## Current Priorities
 
-1. Phase 04 — Sales + digital receipts. Task docs T-0301–T-0309 written; build
-   the `sales` service (reserve→write→commit saga, void, public receipt, reads)
-   + `inventory` `SaleVoided` consumer + mobile sell/receipt + web sales screens.
-2. Phase 05 — Winger portal (`winger` read model + portal API).
-3. Phase 06 — Hardening and MVP acceptance.
+1. Phase 05 — Winger portal (`winger` read model + portal API). Expand into
+   task docs, then build the `winger` service + portal screens.
+2. Phase 06 — Hardening and MVP acceptance.
+3. Backlog: mobile offline banner/connectivity provider; `tenancy` event
+   enrichment for `notification_contact`; low-stock email product-name.
 
 ## Active Phases
 
@@ -20,7 +20,7 @@
 - [x] Phase 01 — Platform and Core Services
 - [x] Phase 02 — Inventory core (`catalog` + `inventory` services, neumorphic design system, web + mobile app shells, all feature screens; `docker compose up` e2e smoke 25/25 through Kong; acceptance verified 2026-09-02)
 - [x] Phase 03 — Reorder alerts (`inventory` `alert_config` + `low_stock_alert_state` + `AlertConfigChanged`; `notifications` service — projections, low-stock consumer, digest flush, en/sw templates; web `/alerts`; T-0201–T-0207 done 2026-09-06)
-- [ ] Phase 04 — Sales and digital receipts (`sales`; stock saga with `inventory`)
+- [x] Phase 04 — Sales and digital receipts (`sales` service — reserve→write→commit saga, `422` path, void + `inventory` `SaleVoided` reversal, public `/v1/r/{token}`, list/detail; mobile sell + receipt; web sales screens; T-0301–T-0309 done 2026-09-07)
 - [ ] Phase 05 — Winger portal (`winger` read model + portal API)
 - [ ] Phase 06 — Hardening and MVP acceptance
 
