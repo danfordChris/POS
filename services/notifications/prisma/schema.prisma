@@ -50,6 +50,17 @@ model NotificationContact {
   @@map("notification_contact")
 }
 
+/// Per-business digest cadence, projected from inventory's `AlertConfigChanged`.
+/// Internal worker config — no RLS, no HTTP surface.
+model DigestConfig {
+  businessId       String   @id @map("business_id") @db.Uuid
+  minIntervalHours Int      @default(24) @map("min_interval_hours")
+  recipients       Json     @default("[]")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("digest_config")
+}
+
 model OutboxMessage {
   id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   subject   String

@@ -110,6 +110,16 @@ describe('@pos/contracts', () => {
     expect(EVENT_PAYLOADS.StockRecovered.parse(recovered)).toEqual(recovered);
   });
 
+  it('round-trips AlertConfigChanged', () => {
+    expect(SUBJECTS.inventory.alertConfigChanged).toBe('pos.evt.inventory.AlertConfigChanged');
+    const v = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      min_interval_hours: 6,
+      recipients: ['owner@example.com'],
+    };
+    expect(EVENT_PAYLOADS.AlertConfigChanged.parse(v)).toEqual(v);
+  });
+
   it('builds notification subjects and round-trips its event payloads', () => {
     expect(SUBJECTS.notifications.notificationSent).toBe('pos.evt.notifications.NotificationSent');
     const sent = {

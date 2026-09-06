@@ -7,6 +7,7 @@ import { PlatformModule } from './platform/platform.module.js';
 import { EmailModule } from './email/email.module.js';
 import { ContactsModule } from './contacts/contacts.module.js';
 import { LowStockModule } from './low-stock/low-stock.module.js';
+import { DigestModule } from './digest/digest.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LowStockModule } from './low-stock/low-stock.module.js';
     EmailModule,
     ContactsModule,
     LowStockModule,
+    DigestModule,
     HealthModule.forRootAsync({
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => ({

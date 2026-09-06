@@ -38,6 +38,7 @@ Consumers are durable, per (service, event). Ack policy explicit; max-deliver wi
 | `ProductDeactivated` | catalog | `business_id`, `product_id` | inventory, winger |
 | `StockMovementRecorded` | inventory | `business_id`, `product_id`, `type`, `quantity_delta`, `movement_id` | — |
 | `StockLevelChanged` | inventory | `business_id`, `product_id`, `on_hand` | winger |
+| `AlertConfigChanged` | inventory | `business_id`, `min_interval_hours`, `recipients[]` | notifications (digest cadence projection) |
 | `StockFellBelowThreshold` | inventory | `business_id`, `product_id`, `on_hand`, `threshold`, `opened_at`, `recipients[]` (emails/user-ids from `alert_config`; empty ⇒ consumer falls back to owner projection) | notifications |
 | `StockRecovered` | inventory | `business_id`, `product_id`, `on_hand`, `opened_at` (value from the matching open edge) | notifications (closes digest state) |
 | `SaleCompleted` | sales | `business_id`, `sale_id`, `lines[]`, `total`, `currency` | inventory (commit reservation) |

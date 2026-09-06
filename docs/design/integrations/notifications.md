@@ -51,13 +51,19 @@
 
 ### Digest flush
 
-- `notifications` runs a periodic flush (interval = min active
-  `alert_config.min_interval_hours`, default hourly). Per business with an open
-  digest window and ≥1 `queued` low-stock `notification`: send one digest email
-  listing every product whose `low_stock_alert_state.is_open` is still true, mark
-  those rows `sent`, and stamp the window.
-- A lone dip still sends at the next flush; it is not held a full interval when
-  the window is already open.
+- `notifications` runs a periodic flush job. A business's window opens with its
+  oldest `queued` low-stock `notification` and is **due** once
+  `now - opened_at >= min_interval_hours`, where the interval comes from
+  `digest_config` (projected from `AlertConfigChanged`; default when absent).
+- On a due window the job claims the business's `queued` rows atomically
+  (`queued → sending` in one tenant transaction, so concurrent flushes send
+  once), emails one digest listing every claimed product, marks them `sent`, and
+  emits `NotificationSent` per row. A recovered product's row is already
+  `superseded` (see Low-stock rules) and is not claimed.
+- A lone dip still sends at the next due flush; the next window opens naturally
+  once all rows are `sent`/`superseded`.
+- A failed digest send returns the claimed rows to `queued` with `attempts++`
+  (terminal `failed` + `NotificationFailed` at 3).
 
 ### Localization
 

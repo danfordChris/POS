@@ -8,7 +8,8 @@ import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { LowStockConsumer } from '../src/low-stock/low-stock.consumer.js';
 import { ContactProjectionConsumer } from '../src/contacts/contact-projection.consumer.js';
-import { SendWorker } from '../src/low-stock/send-worker.js';
+import { DigestConfigConsumer } from '../src/digest/digest-config.consumer.js';
+import { DigestFlushJob } from '../src/digest/digest-flush.job.js';
 import { EMAIL_SENDER } from '../src/email/email-sender.js';
 import { CaptureEmailSender } from '../src/email/capture-email-sender.js';
 
@@ -16,21 +17,23 @@ let app: INestApplication;
 let prisma: PrismaService;
 let consumer: LowStockConsumer;
 let contacts: ContactProjectionConsumer;
-let worker: SendWorker;
+let digestConfig: DigestConfigConsumer;
+let job: DigestFlushJob;
 const email = new CaptureEmailSender();
 
 const T = '2026-09-06T12:00:00.000Z';
+const HOUR = 3_600_000;
+const dueLater = () => new Date(Date.now() + 25 * HOUR);
 
 const fellBelow = (over: Record<string, unknown> = {}) => {
-  const biz = uuidv7();
-  const product = uuidv7();
+  const biz = (over.business_id as string) ?? uuidv7();
   return makeEnvelope({
     producer: 'inventory',
     businessId: biz,
     schemaVersion: '1.1.0',
     payload: {
       business_id: biz,
-      product_id: product,
+      product_id: uuidv7(),
       on_hand: 2,
       threshold: 5,
       opened_at: T,
@@ -39,6 +42,19 @@ const fellBelow = (over: Record<string, unknown> = {}) => {
     },
   });
 };
+
+const recoveredFor = (fell: ReturnType<typeof fellBelow>) =>
+  makeEnvelope({
+    producer: 'inventory',
+    businessId: fell.payload.business_id,
+    schemaVersion: '1.1.0',
+    payload: {
+      business_id: fell.payload.business_id,
+      product_id: fell.payload.product_id,
+      on_hand: 9,
+      opened_at: fell.payload.opened_at,
+    },
+  });
 
 const notifsFor = (businessId: string) =>
   prisma.runInTenantContext(businessId, (tx) =>
@@ -62,13 +78,15 @@ beforeAll(async () => {
   prisma = app.get(PrismaService);
   consumer = app.get(LowStockConsumer);
   contacts = app.get(ContactProjectionConsumer);
-  worker = app.get(SendWorker);
+  digestConfig = app.get(DigestConfigConsumer);
+  job = app.get(DigestFlushJob);
 });
 
 afterEach(async () => {
   email.reset();
   await prisma.$executeRawUnsafe('DELETE FROM notification');
   await prisma.$executeRawUnsafe('DELETE FROM notification_contact');
+  await prisma.$executeRawUnsafe('DELETE FROM digest_config');
   await prisma.$executeRawUnsafe('DELETE FROM outbox');
   await prisma.$executeRawUnsafe('DELETE FROM processed_events');
 });
@@ -103,7 +121,6 @@ describe('notifications — low-stock consumer', () => {
 
   it('falls back to active-owner emails when recipients is empty', async () => {
     const biz = uuidv7();
-    const owner = uuidv7();
     await contacts.onBusinessCreated(
       makeEnvelope({
         producer: 'tenancy',
@@ -114,26 +131,12 @@ describe('notifications — low-stock consumer', () => {
           name: 'Shop',
           currency: 'TZS',
           locale: 'en',
-          owner_user_id: owner,
+          owner_user_id: uuidv7(),
           owner_email: 'owner@shop.co.tz',
         },
       }),
     );
-    await consumer.onFellBelow(
-      makeEnvelope({
-        producer: 'inventory',
-        businessId: biz,
-        schemaVersion: '1.1.0',
-        payload: {
-          business_id: biz,
-          product_id: uuidv7(),
-          on_hand: 1,
-          threshold: 4,
-          opened_at: T,
-          recipients: [],
-        },
-      }),
-    );
+    await consumer.onFellBelow(fellBelow({ business_id: biz, recipients: [] }));
     const [row] = await notifsFor(biz);
     expect((row.payload as any).recipients).toEqual(['owner@shop.co.tz']);
   });
@@ -141,64 +144,127 @@ describe('notifications — low-stock consumer', () => {
   it('StockRecovered supersedes the still-queued notification for that window', async () => {
     const evt = fellBelow();
     await consumer.onFellBelow(evt);
-    await consumer.onRecovered(
-      makeEnvelope({
-        producer: 'inventory',
-        businessId: evt.payload.business_id,
-        schemaVersion: '1.1.0',
-        payload: {
-          business_id: evt.payload.business_id,
-          product_id: evt.payload.product_id,
-          on_hand: 9,
-          opened_at: T,
-        },
-      }),
-    );
+    await consumer.onRecovered(recoveredFor(evt));
     const [row] = await notifsFor(evt.payload.business_id);
     expect(row.status).toBe('superseded');
 
-    await worker.tick();
+    await job.tick(dueLater());
     expect(email.sent).toHaveLength(0);
   });
 });
 
-describe('notifications — send worker', () => {
-  it('sends a queued notification, marks it sent, emits NotificationSent', async () => {
-    const evt = fellBelow();
-    await consumer.onFellBelow(evt);
+describe('notifications — digest flush', () => {
+  it('batches every currently-low product of a business into one due digest', async () => {
+    const biz = uuidv7();
+    const a = fellBelow({ business_id: biz });
+    const b = fellBelow({ business_id: biz });
+    await consumer.onFellBelow(a);
+    await consumer.onFellBelow(b);
 
-    const touched = await worker.tick();
-    expect(touched).toBe(1);
+    expect(await job.tick(new Date())).toBe(0); // window not yet due
+    expect(email.sent).toHaveLength(0);
+
+    expect(await job.tick(dueLater())).toBe(1);
     expect(email.sent).toHaveLength(1);
     expect(email.sent[0].to).toEqual(['ops@shop.co.tz']);
+    expect(email.sent[0].text).toContain(a.payload.product_id);
+    expect(email.sent[0].text).toContain(b.payload.product_id);
 
-    const [row] = await notifsFor(evt.payload.business_id);
-    expect(row.status).toBe('sent');
-    expect(row.sentAt).toBeInstanceOf(Date);
+    const rows = await notifsFor(biz);
+    expect(rows.every((r) => r.status === 'sent')).toBe(true);
     expect(
       await outboxFor(SUBJECTS.notifications.notificationSent),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
 
-  it('retries a failing send up to 3×, then stays failed and emits NotificationFailed', async () => {
-    email.failNext = 10;
-    const evt = fellBelow();
-    await consumer.onFellBelow(evt);
-    const biz = evt.payload.business_id;
+  it('drops a recovered product from the digest and leaves it superseded', async () => {
+    const biz = uuidv7();
+    const keep = fellBelow({ business_id: biz });
+    const gone = fellBelow({ business_id: biz });
+    await consumer.onFellBelow(keep);
+    await consumer.onFellBelow(gone);
+    await consumer.onRecovered(recoveredFor(gone));
 
-    await worker.tick();
+    await job.tick(dueLater());
+
+    const rows = await notifsFor(biz);
+    const goneRow = rows.find(
+      (r) => (r.payload as any).product_id === gone.payload.product_id,
+    );
+    const keepRow = rows.find(
+      (r) => (r.payload as any).product_id === keep.payload.product_id,
+    );
+    expect(goneRow?.status).toBe('superseded');
+    expect(keepRow?.status).toBe('sent');
+    expect(email.sent[0].text).not.toContain(gone.payload.product_id);
+  });
+
+  it('opens a fresh window after a flush', async () => {
+    const biz = uuidv7();
+    await consumer.onFellBelow(fellBelow({ business_id: biz }));
+    await job.tick(dueLater());
+    expect(email.sent).toHaveLength(1);
+
+    await consumer.onFellBelow(fellBelow({ business_id: biz }));
+    expect(await job.tick(new Date())).toBe(0); // new window, not due
+    expect(await job.tick(dueLater())).toBe(1);
+    expect(email.sent).toHaveLength(2);
+  });
+
+  it('sends one email when two flushes race the same due window', async () => {
+    const biz = uuidv7();
+    await consumer.onFellBelow(fellBelow({ business_id: biz }));
+    await consumer.onFellBelow(fellBelow({ business_id: biz }));
+
+    const when = dueLater();
+    await Promise.all([job.tick(when), job.tick(when)]);
+    expect(email.sent).toHaveLength(1);
+    expect((await notifsFor(biz)).every((r) => r.status === 'sent')).toBe(true);
+  });
+
+  it('honours a per-business min_interval_hours from AlertConfigChanged', async () => {
+    const fast = uuidv7();
+    const slow = uuidv7();
+    await digestConfig.onChanged(
+      makeEnvelope({
+        producer: 'inventory',
+        businessId: fast,
+        schemaVersion: '1.1.0',
+        payload: {
+          business_id: fast,
+          min_interval_hours: 1,
+          recipients: ['x@x.com'],
+        },
+      }),
+    );
+    await consumer.onFellBelow(fellBelow({ business_id: fast }));
+    await consumer.onFellBelow(fellBelow({ business_id: slow }));
+
+    const inTwoHours = new Date(Date.now() + 2 * HOUR);
+    expect(await job.tick(inTwoHours)).toBe(1); // only `fast` is due
+    expect((await notifsFor(fast)).every((r) => r.status === 'sent')).toBe(
+      true,
+    );
+    expect((await notifsFor(slow)).every((r) => r.status === 'queued')).toBe(
+      true,
+    );
+  });
+
+  it('retries a failing digest up to 3×, then fails terminally', async () => {
+    email.failNext = 10;
+    const biz = uuidv7();
+    await consumer.onFellBelow(fellBelow({ business_id: biz }));
+
+    await job.tick(dueLater());
     expect((await notifsFor(biz))[0]).toMatchObject({
-      status: 'failed',
+      status: 'queued',
       attempts: 1,
     });
-    expect(
-      await outboxFor(SUBJECTS.notifications.notificationFailed),
-    ).toHaveLength(0);
 
-    await worker.tick();
+    await job.tick(dueLater());
     expect((await notifsFor(biz))[0].attempts).toBe(2);
 
-    await worker.tick();
+    await job.tick(dueLater());
     expect((await notifsFor(biz))[0]).toMatchObject({
       status: 'failed',
       attempts: 3,
@@ -206,31 +272,12 @@ describe('notifications — send worker', () => {
     expect(
       await outboxFor(SUBJECTS.notifications.notificationFailed),
     ).toHaveLength(1);
-
-    const before = email.failNext;
-    const touched = await worker.tick();
-    expect(touched).toBe(0); // attempts == 3, not retried
-    expect(email.failNext).toBe(before);
   });
 
-  it('marks failed with no retry when no recipients resolve', async () => {
+  it('fails terminally with no retry when no recipients resolve', async () => {
     const biz = uuidv7();
-    await consumer.onFellBelow(
-      makeEnvelope({
-        producer: 'inventory',
-        businessId: biz,
-        schemaVersion: '1.1.0',
-        payload: {
-          business_id: biz,
-          product_id: uuidv7(),
-          on_hand: 1,
-          threshold: 3,
-          opened_at: T,
-          recipients: [],
-        },
-      }),
-    );
-    await worker.tick();
+    await consumer.onFellBelow(fellBelow({ business_id: biz, recipients: [] }));
+    await job.tick(dueLater());
     const [row] = await notifsFor(biz);
     expect(row).toMatchObject({ status: 'failed', attempts: 3 });
     expect(row.lastError).toContain('no recipients');

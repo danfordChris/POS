@@ -36,6 +36,7 @@ export const SUBJECTS = {
     reserveStock: rpcSubject('inventory', 'reserveStock'),
     commitReservation: rpcSubject('inventory', 'commitReservation'),
     releaseReservation: rpcSubject('inventory', 'releaseReservation'),
+    alertConfigChanged: evtSubject('inventory', 'AlertConfigChanged'),
     stockMovementRecorded: evtSubject('inventory', 'StockMovementRecorded'),
     stockLevelChanged: evtSubject('inventory', 'StockLevelChanged'),
     stockFellBelowThreshold: evtSubject('inventory', 'StockFellBelowThreshold'),

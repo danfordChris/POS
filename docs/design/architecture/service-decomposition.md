@@ -15,10 +15,10 @@
 | `identity` | `user`, `operator`, `refresh_token` | `/v1/auth/*` | `UserRegistered` | — | — |
 | `tenancy` | `business`, `membership`, `invitation` | `/v1/businesses/*`, `/v1/invitations/*`; internal `GET /internal/membership` (Kong only, shared-secret) | `BusinessCreated`, `MembershipCreated`, `MembershipSuspended`, `InvitationCreated`, `InvitationAccepted` | `UserRegistered` (optional link) | `identity.getUser` |
 | `catalog` | `category`, `product` | `/v1/businesses/{id}/categories`, `/v1/businesses/{id}/products` | `ProductUpserted`, `ProductDeactivated`, `PriceChanged`, `CategoryUpserted` | `BusinessCreated` | — |
-| `inventory` | `stock_item`, `stock_movement`, `alert_config`, `low_stock_alert_state` | `/v1/businesses/{id}/stock/*`, `/v1/businesses/{id}/alert-config` | `StockLevelChanged`, `StockMovementRecorded`, `StockFellBelowThreshold`, `StockRecovered` | `ProductUpserted` (seed `stock_item`), `ProductDeactivated` | serves `reserveStock`, `commitReservation`, `releaseReservation` |
+| `inventory` | `stock_item`, `stock_movement`, `alert_config`, `low_stock_alert_state` | `/v1/businesses/{id}/stock/*`, `/v1/businesses/{id}/alert-config` | `StockLevelChanged`, `StockMovementRecorded`, `StockFellBelowThreshold`, `StockRecovered`, `AlertConfigChanged` | `ProductUpserted` (seed `stock_item`), `ProductDeactivated` | serves `reserveStock`, `commitReservation`, `releaseReservation` |
 | `sales` | `sale`, `sale_line`, `receipt` | `/v1/businesses/{id}/sales/*`, `/v1/r/{token}` | `SaleCompleted`, `SaleVoided` | `PriceChanged` (cache price), `ProductUpserted` (name cache) | `inventory.reserveStock` / `commitReservation` / `releaseReservation` |
 | `winger` | `winger_account`, `winger_catalog_projection` | `/v1/businesses/{id}/winger-accounts`, `/v1/winger/*` | `WingerAuthorized`, `WingerSuspended` | `ProductUpserted`, `PriceChanged`, `ProductDeactivated`, `StockLevelChanged` | `identity.getUser` (resolve winger by email/phone) |
-| `notifications` | `notification`, `notification_contact` | — | `NotificationSent`, `NotificationFailed` | `InvitationCreated`, `WingerAuthorized`, `StockFellBelowThreshold`, `StockRecovered`, `BusinessCreated`, `MembershipCreated`, `MembershipSuspended` | — |
+| `notifications` | `notification`, `notification_contact`, `digest_config` | — | `NotificationSent`, `NotificationFailed` | `InvitationCreated`, `WingerAuthorized`, `StockFellBelowThreshold`, `StockRecovered`, `AlertConfigChanged`, `BusinessCreated`, `MembershipCreated`, `MembershipSuspended` | — |
 
 ### Transport rules
 

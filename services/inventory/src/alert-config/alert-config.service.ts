@@ -1,8 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { OutboxWriter } from '@pos/nest-common';
+import { SCHEMA_VERSION, SUBJECTS, makeEnvelope } from '@pos/contracts';
 import { Prisma } from '#prisma';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { PutAlertConfigDto } from './dto/put-alert-config.dto.js';
 import { AlertConfigView, toAlertConfigView } from './alert-config-views.js';
+
+const outbox = new OutboxWriter();
 
 @Injectable()
 export class AlertConfigService {
@@ -49,6 +53,21 @@ export class AlertConfigService {
         where: { businessId },
         create: { businessId, ...data },
         update: data,
+      });
+      await outbox.write(tx, {
+        subject: SUBJECTS.inventory.alertConfigChanged,
+        payload: makeEnvelope({
+          producer: 'inventory',
+          businessId,
+          schemaVersion: SCHEMA_VERSION,
+          payload: {
+            business_id: businessId,
+            min_interval_hours: row.minIntervalHours,
+            recipients: Array.isArray(row.recipients)
+              ? (row.recipients as string[])
+              : [],
+          },
+        }),
       });
       return toAlertConfigView(row);
     });

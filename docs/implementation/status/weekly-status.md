@@ -1,5 +1,27 @@
 # Weekly Status
 
+## 2026-09-06 — T-0205 done: low-stock digest batching
+
+- `inventory` `PUT /alert-config` now emits `AlertConfigChanged`
+  (`min_interval_hours`, `recipients`) via the outbox — `@pos/contracts` gains
+  the payload + subject (additive).
+- `notifications/src/digest/`: `DigestConfigConsumer` projects it into
+  `digest_config` (migration `20260906160000_digest_config`, no RLS).
+  `DigestFlushJob.tick(now?)` groups `queued` low_stock by business, sends **one
+  digest per due window** (`now - oldest_queued >= min_interval_hours`), claims
+  rows atomically (`queued → sending` in a tenant tx) so concurrent flushes send
+  once, emits `NotificationSent` per row. Failure → rows back to `queued`
+  `attempts++`, terminal `failed` + `NotificationFailed` at 3.
+- T-0204's per-row `SendWorker` removed — `DigestFlushJob` owns the low_stock
+  send lifecycle now.
+- Design adopted: `AlertConfigChanged` + `digest_config` into
+  `events-catalog.md` / `service-decomposition.md` / `data-model.md`;
+  digest section rewritten in `integrations/notifications.md`.
+- Tests: `low-stock.e2e-spec.ts` digest suite (11 total in file); inventory 23.
+  Backend suites green (contracts 9 … notifications 16); contracts-compat OK;
+  validator `WORKFLOW:ok`.
+- Next: T-0206 (en/sw templates) then T-0207 (web `/alerts`).
+
 ## 2026-09-06 — T-0204 done: low-stock consumer + email send worker
 
 - `@pos/contracts` v1.1: `NotificationSent` / `NotificationFailed` payloads +

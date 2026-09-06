@@ -21,8 +21,10 @@ export const envSchema = z.object({
   // Base URL for the catalog deep link in alert emails.
   WEB_BASE_URL: z.string().min(1).default('http://localhost:3000'),
 
-  // Send worker poll interval (ms). Doubles as the retry backoff floor.
-  SEND_WORKER_POLL_MS: z.coerce.number().int().positive().default(5000),
+  // Digest flush poll interval (ms); also the retry backoff floor.
+  DIGEST_POLL_MS: z.coerce.number().int().positive().default(60000),
+  // Fallback window length when a business has no `digest_config` row yet.
+  DIGEST_DEFAULT_INTERVAL_HOURS: z.coerce.number().int().positive().default(24),
 });
 
 export type Env = z.infer<typeof envSchema>;

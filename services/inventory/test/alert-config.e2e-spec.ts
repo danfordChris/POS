@@ -10,6 +10,7 @@ import {
   INTERNAL_CONTEXT_SIGNATURE_HEADER,
   MESSAGE_BUS,
 } from '@pos/nest-common';
+import { SUBJECTS } from '@pos/contracts';
 import { InMemoryBus } from '@pos/testing';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -21,6 +22,7 @@ let http: ReturnType<typeof request>;
 const secret = process.env.INTERNAL_CONTEXT_SECRET as string;
 const bizA = uuidv7();
 const bizB = uuidv7();
+const bizC = uuidv7();
 const userId = uuidv7();
 
 function ctx(
@@ -63,11 +65,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const b of [bizA, bizB]) {
+  for (const b of [bizA, bizB, bizC]) {
     await prisma.runInTenantContext(b, async (tx) => {
       await tx.alertConfig.deleteMany({});
     });
   }
+  await prisma.$executeRawUnsafe(`DELETE FROM outbox`);
   await app.close();
 });
 
@@ -101,6 +104,27 @@ describe('inventory — alert-config', () => {
     expect(get.body).toMatchObject({
       recipients: ['a@b.com'],
       min_interval_hours: 6,
+    });
+  });
+
+  it('PUT emits AlertConfigChanged on the outbox', async () => {
+    await http
+      .put(`/v1/businesses/${bizC}/alert-config`)
+      .set(ctx(bizC, 'owner'))
+      .send({ recipients: ['x@y.com'], min_interval_hours: 3 })
+      .expect(200);
+
+    const rows = await prisma.outboxMessage.findMany({
+      where: { subject: SUBJECTS.inventory.alertConfigChanged },
+    });
+    const mine = rows
+      .map((r) => (r.payload as { payload: Record<string, unknown> }).payload)
+      .filter((p) => p.business_id === bizC);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({
+      business_id: bizC,
+      min_interval_hours: 3,
+      recipients: ['x@y.com'],
     });
   });
 

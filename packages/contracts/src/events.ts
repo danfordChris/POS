@@ -93,6 +93,12 @@ export const stockLevelChangedPayload = z.object({
   on_hand: z.number().int(),
 });
 
+export const alertConfigChangedPayload = z.object({
+  business_id: z.string().uuid(),
+  min_interval_hours: z.number().int().positive(),
+  recipients: z.array(z.string()),
+});
+
 export const stockFellBelowThresholdPayload = z.object({
   business_id: z.string().uuid(),
   product_id: z.string().uuid(),
@@ -137,6 +143,7 @@ export const EVENT_PAYLOADS = {
   ProductUpserted: productUpsertedPayload,
   PriceChanged: priceChangedPayload,
   ProductDeactivated: productDeactivatedPayload,
+  AlertConfigChanged: alertConfigChangedPayload,
   StockMovementRecorded: stockMovementRecordedPayload,
   StockLevelChanged: stockLevelChangedPayload,
   StockFellBelowThreshold: stockFellBelowThresholdPayload,
