@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -65,6 +65,50 @@ Implement `POST /v1/businesses/{businessId}/sales` (Owner/Staff) as the reserve 
 
 ## Verification
 
-- `services/sales/test/*` covers all acceptance criteria with a stubbed `inventory` RPC.
-- `pnpm --filter @pos/sales test` green; `pnpm -r build` green; `kong config parse` OK.
+Delivered:
+
+- `InventoryClient` (`src/rpc/inventory-client.ts`) — `bus.request` wrapper for
+  `reserveStock` / `commitReservation` / `releaseReservation` (3s timeout);
+  transport failure → `503 upstream_unavailable`, a valid `{ ok: false }` is
+  returned for the caller to shape.
+- `CreateSaleDto` + `SalesController` `POST /businesses/:businessId/sales`
+  (`InternalContextGuard` + `TenantGuard` + `RolesGuard('owner','staff')`,
+  `Idempotency-Key` header, `sold_by` from the internal context).
+- `SalesService.createSale`: (1) idempotency replay; (2) resolve line snapshots
+  from the request else `product_cache`, else `400 validation_error`; totals in
+  minor units, `total = subtotal - discount_total`, per-line discount ≤ value;
+  (3) `reserveStock`; (4) one tenant txn — allocate `number` via
+  `INSERT … ON CONFLICT DO UPDATE … RETURNING next_number - 1` on
+  `sale_number_counter`, write `sale` + `sale_line[]` + `receipt`
+  (`public_token` = `randomBytes(16).base64url`, `business_name_snapshot` +
+  `currency` from `sales_business`) + the `SaleCompleted` outbox row;
+  (5) `commitReservation` (logged-only on failure — `SaleCompleted` is the
+  backstop); a P2002 on the idempotency key → release + return the winner, any
+  other txn failure → `releaseReservation` once + rethrow.
+- `ProductCacheConsumer` (`ProductUpserted` → name, `PriceChanged` → price +
+  currency) and `BusinessCacheConsumer` (`BusinessCreated` → `sales_business`),
+  idempotent on `event_id`, DLQ. New `sales_business` table (migration
+  `20260907130000_sales_business`, no RLS).
+- Kong: `~/v1/businesses/[^/]+/sales` → new `sales` service route with
+  `pos-internal-context`, in `infra/kong/kong.yml` + `infra/k8s/base/kong-config.yaml`;
+  compose `kong` `depends_on: sales` + `SALES_URL`.
+
+Evidence:
+
+- `pnpm --filter @pos/sales test` → 7 passed (`test/sales.e2e-spec.ts`, 5 new):
+  complete sale (totals, `number` 1 then 2, one receipt, one `SaleCompleted`,
+  `commitReservation` called with the `sale_id`); idempotent replay (same
+  `id`/`number`, one row, one event, `reserveStock` called once);
+  `400 validation_error` for an unpriced/unknown line;
+  reserve-unavailable → error propagates, no `sale` rows, no `releaseReservation`;
+  a write-txn failure after `reserveStock` (forced `(business_id, number)`
+  collision) → `releaseReservation` called once, no new row.
+- `kong config parse` → `parse successful`; `docker compose config` valid.
+- Backend suites green: contracts 10, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 23, sales 7, notifications 22.
+- `pnpm --filter @pos/sales build` + `lint` clean; `prettier` + `prisma format`
+  clean; `node scripts/check-contracts-compat.mjs HEAD` → OK.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
+
+Note: `422 insufficient_stock` mapping is present (step 3) but its full
+shortfall-shaping + zero-write assertions are T-0303.

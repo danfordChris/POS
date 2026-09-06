@@ -86,6 +86,16 @@ model SaleNumberCounter {
   @@map("sale_number_counter")
 }
 
+/// Read-only projection from `tenancy.BusinessCreated`. Supplies the business
+/// name + currency snapshot for a receipt (which is served without auth).
+model SalesBusiness {
+  businessId String @id @map("business_id") @db.Uuid
+  name       String
+  currency   String @default("TZS")
+
+  @@map("sales_business")
+}
+
 /// Read-only projection from catalog `ProductUpserted` / `PriceChanged`. Fills
 /// line snapshots when the client omits `unit_price`.
 model ProductCache {

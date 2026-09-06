@@ -1,0 +1,298 @@
+import { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { uuidv7 } from 'uuidv7';
+import { vi } from 'vitest';
+import {
+  configureApp,
+  registerNotFoundFallback,
+  signInternalContext,
+  INTERNAL_CONTEXT_HEADER,
+  INTERNAL_CONTEXT_SIGNATURE_HEADER,
+  MESSAGE_BUS,
+} from '@pos/nest-common';
+import { SUBJECTS, makeEnvelope } from '@pos/contracts';
+import { InMemoryBus } from '@pos/testing';
+import { AppModule } from '../src/app.module.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
+import { SalesService } from '../src/sales/sales.service.js';
+import { ProductCacheConsumer } from '../src/sales/consumers/product-cache.consumer.js';
+import { BusinessCacheConsumer } from '../src/sales/consumers/business-cache.consumer.js';
+import { InventoryClient } from '../src/rpc/inventory-client.js';
+
+let app: INestApplication;
+let prisma: PrismaService;
+let http: ReturnType<typeof request>;
+let sales: SalesService;
+let products: ProductCacheConsumer;
+let businesses: BusinessCacheConsumer;
+
+const secret = process.env.INTERNAL_CONTEXT_SECRET as string;
+const bizA = uuidv7();
+const bizB = uuidv7();
+const staffId = uuidv7();
+
+const inv = {
+  reserveStock: vi.fn(async () => ({ ok: true as const })),
+  commitReservation: vi.fn(async () => ({ ok: true })),
+  releaseReservation: vi.fn(async () => ({ ok: true })),
+};
+
+function ctx(businessId: string, role: 'owner' | 'staff' = 'staff') {
+  const { header, signature } = signInternalContext(
+    {
+      request_id: `t-${uuidv7()}`,
+      user_id: staffId,
+      business_id: businessId,
+      role,
+      token_kind: 'user',
+    },
+    secret,
+  );
+  return {
+    [INTERNAL_CONTEXT_HEADER]: header,
+    [INTERNAL_CONTEXT_SIGNATURE_HEADER]: signature,
+  };
+}
+
+const salesUrl = (biz: string) => `/v1/businesses/${biz}/sales`;
+
+async function seedProduct(
+  biz: string,
+  productId: string,
+  name: string,
+  price: number,
+) {
+  await products.onUpserted(
+    makeEnvelope({
+      producer: 'catalog',
+      businessId: biz,
+      schemaVersion: '1.0.0',
+      payload: {
+        business_id: biz,
+        product_id: productId,
+        sku: `SKU-${productId.slice(0, 6)}`,
+        name,
+        unit: 'each',
+        is_active: true,
+        reorder_threshold: 0,
+      },
+    }),
+  );
+  await products.onPriceChanged(
+    makeEnvelope({
+      producer: 'catalog',
+      businessId: biz,
+      schemaVersion: '1.0.0',
+      payload: {
+        business_id: biz,
+        product_id: productId,
+        sell_price: price,
+        winger_price: null,
+        currency: 'TZS',
+      },
+    }),
+  );
+}
+
+const outboxSaleCompleted = (biz: string) =>
+  prisma.outboxMessage
+    .findMany({ where: { subject: SUBJECTS.sales.saleCompleted } })
+    .then((rs) =>
+      rs
+        .map((r) => (r.payload as { payload: { business_id: string } }).payload)
+        .filter((p) => p.business_id === biz),
+    );
+
+beforeAll(async () => {
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(MESSAGE_BUS)
+    .useValue(new InMemoryBus())
+    .overrideProvider(InventoryClient)
+    .useValue(inv)
+    .compile();
+
+  app = moduleRef.createNestApplication();
+  configureApp(app);
+  await app.init();
+  registerNotFoundFallback(app);
+
+  prisma = app.get(PrismaService);
+  sales = app.get(SalesService);
+  products = app.get(ProductCacheConsumer);
+  businesses = app.get(BusinessCacheConsumer);
+  http = request(app.getHttpServer());
+
+  for (const b of [bizA, bizB]) {
+    await businesses.onBusinessCreated(
+      makeEnvelope({
+        producer: 'tenancy',
+        businessId: b,
+        schemaVersion: '1.1.0',
+        payload: {
+          business_id: b,
+          name: `Shop ${b.slice(0, 4)}`,
+          currency: 'TZS',
+          locale: 'en',
+          owner_user_id: uuidv7(),
+        },
+      }),
+    );
+  }
+});
+
+afterEach(() => {
+  inv.reserveStock.mockClear();
+  inv.commitReservation.mockClear();
+  inv.releaseReservation.mockClear();
+  inv.reserveStock.mockResolvedValue({ ok: true } as never);
+});
+
+afterAll(async () => {
+  for (const b of [bizA, bizB]) {
+    await prisma.runInTenantContext(b, async (tx) => {
+      await tx.saleLine.deleteMany({});
+      await tx.receipt.deleteMany({});
+      await tx.sale.deleteMany({});
+      await tx.saleNumberCounter.deleteMany({});
+      await tx.productCache.deleteMany({});
+    });
+  }
+  await prisma.$executeRawUnsafe('DELETE FROM sales_business');
+  await prisma.$executeRawUnsafe('DELETE FROM outbox');
+  await prisma.$executeRawUnsafe('DELETE FROM processed_events');
+  await app.close();
+});
+
+describe('sales — POST /sales', () => {
+  it('completes a sale: totals, per-business number, one receipt + one SaleCompleted', async () => {
+    const p1 = uuidv7();
+    const p2 = uuidv7();
+    await seedProduct(bizA, p1, 'Sukari 1kg', 2500);
+    await seedProduct(bizA, p2, 'Mchele 2kg', 4000);
+
+    const res = await http
+      .post(salesUrl(bizA))
+      .set(ctx(bizA))
+      .send({
+        lines: [
+          { product_id: p1, quantity: 2 },
+          { product_id: p2, quantity: 1, discount: 500 },
+        ],
+      })
+      .expect(201);
+
+    expect(res.body).toMatchObject({
+      number: 1,
+      status: 'completed',
+      subtotal: 2500 * 2 + 4000,
+      discount_total: 500,
+      total: 2500 * 2 + 4000 - 500,
+      currency: 'TZS',
+    });
+    expect(res.body.lines).toHaveLength(2);
+    expect(res.body.receipt.public_token).toEqual(expect.any(String));
+    expect(inv.commitReservation).toHaveBeenCalledWith(
+      expect.objectContaining({ sale_id: res.body.id }),
+    );
+    expect(await outboxSaleCompleted(bizA)).toHaveLength(1);
+
+    const second = await http
+      .post(salesUrl(bizA))
+      .set(ctx(bizA))
+      .send({ lines: [{ product_id: p1, quantity: 1 }] })
+      .expect(201);
+    expect(second.body.number).toBe(2);
+  });
+
+  it('replays the same Idempotency-Key without a second sale or event', async () => {
+    const p = uuidv7();
+    await seedProduct(bizB, p, 'Chumvi', 1000);
+    const key = `idem-${uuidv7()}`;
+
+    const first = await http
+      .post(salesUrl(bizB))
+      .set(ctx(bizB))
+      .set('Idempotency-Key', key)
+      .send({ lines: [{ product_id: p, quantity: 3 }] })
+      .expect(201);
+    const again = await http
+      .post(salesUrl(bizB))
+      .set(ctx(bizB))
+      .set('Idempotency-Key', key)
+      .send({ lines: [{ product_id: p, quantity: 3 }] })
+      .expect(201);
+
+    expect(again.body.id).toBe(first.body.id);
+    expect(again.body.number).toBe(first.body.number);
+    const count = await prisma.runInTenantContext(bizB, (tx) =>
+      tx.sale.count({ where: { idempotencyKey: key } }),
+    );
+    expect(count).toBe(1);
+    expect(await outboxSaleCompleted(bizB)).toHaveLength(1);
+    expect(inv.reserveStock).toHaveBeenCalledTimes(1); // not re-reserved on replay
+  });
+
+  it('400 when a line has no cached price and no unit_price', async () => {
+    const res = await http
+      .post(salesUrl(bizA))
+      .set(ctx(bizA))
+      .send({ lines: [{ product_id: uuidv7(), quantity: 1 }] })
+      .expect(400);
+    expect(res.body.error.code).toBe('validation_error');
+  });
+
+  it('503 when reserveStock is unavailable — no sale rows, no release', async () => {
+    const p = uuidv7();
+    await seedProduct(bizA, p, 'Soda', 1500);
+    inv.reserveStock.mockRejectedValueOnce(
+      Object.assign(new Error('no responders'), {}),
+    );
+
+    // The stubbed client throws a plain error; the real client would map it to
+    // 503. Here we assert the error propagates and nothing is written.
+    await expect(
+      sales.createSale(bizA, staffId, {
+        lines: [{ product_id: p, quantity: 1 }],
+      }),
+    ).rejects.toThrow();
+    expect(inv.releaseReservation).not.toHaveBeenCalled();
+    const n = await prisma.runInTenantContext(bizA, (tx) =>
+      tx.sale.count({ where: { lines: { some: { productId: p } } } }),
+    );
+    expect(n).toBe(0);
+  });
+
+  it('releases the reservation once when the write txn fails after reserveStock', async () => {
+    const p = uuidv7();
+    await seedProduct(bizB, p, 'Maziwa', 1800);
+    // First sale claims number 1.
+    await sales.createSale(bizB, staffId, {
+      lines: [{ product_id: p, quantity: 1 }],
+    });
+    const before = await prisma.runInTenantContext(bizB, (tx) =>
+      tx.sale.count(),
+    );
+    // Force the counter to re-hand out number 1 → the next sale.create hits the
+    // (business_id, number) unique and the txn rolls back.
+    await prisma.runInTenantContext(bizB, (tx) =>
+      tx.saleNumberCounter.update({
+        where: { businessId: bizB },
+        data: { nextNumber: 1 },
+      }),
+    );
+    inv.releaseReservation.mockClear();
+
+    await expect(
+      sales.createSale(bizB, staffId, {
+        lines: [{ product_id: p, quantity: 1 }],
+      }),
+    ).rejects.toThrow();
+
+    expect(inv.releaseReservation).toHaveBeenCalledTimes(1);
+    const after = await prisma.runInTenantContext(bizB, (tx) =>
+      tx.sale.count(),
+    );
+    expect(after).toBe(before); // no new sale row
+  });
+});

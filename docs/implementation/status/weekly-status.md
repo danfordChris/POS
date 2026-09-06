@@ -1,5 +1,30 @@
 # Weekly Status
 
+## 2026-09-07 — T-0302 done: POST /sales reserve→write→commit saga
+
+- `sales`: `InventoryClient` (RPC to `reserveStock`/`commitReservation`/
+  `releaseReservation`, 3s timeout → `503 upstream_unavailable`).
+  `SalesController` `POST /businesses/:id/sales` (Owner/Staff, `Idempotency-Key`).
+  `SalesService.createSale`: idempotency replay → resolve line snapshots
+  (request else `product_cache`, else `400`) → `reserveStock` → one tenant txn
+  (allocate `number` from `sale_number_counter`, write `sale`/`sale_line`/
+  `receipt` + `SaleCompleted` outbox) → `commitReservation` (event is the
+  backstop). Txn failure → `releaseReservation` once; P2002 on the idem key →
+  release + return the winner.
+- `ProductCacheConsumer` (`ProductUpserted`/`PriceChanged`) + `BusinessCacheConsumer`
+  (`BusinessCreated` → new `sales_business` table, migration
+  `20260907130000_sales_business`). Idempotent, DLQ.
+- Kong: `~/v1/businesses/[^/]+/sales` → `sales` service (with internal-context)
+  in `kong.yml` + `kong-config.yaml`; compose `kong depends_on: sales`.
+- Tests: `sales.e2e-spec.ts` (7): complete sale + totals + number sequence +
+  receipt + one `SaleCompleted`; idempotent replay; `400` unpriced line;
+  reserve-unavailable → no rows / no release; txn failure → one release.
+  Backend suites green (contracts 10 … sales 7, notifications 22); `kong config
+  parse` OK; `docker compose config` valid; contracts-compat OK; validator
+  `WORKFLOW:ok`.
+- Next: T-0303 (`422 insufficient_stock` shortfall shaping) and T-0304 (void +
+  `inventory` `SaleVoided` consumer).
+
 ## 2026-09-07 — T-0301 done: sales service scaffold
 
 - New `services/sales` (Nest + `@pos/nest-common`, Prisma on the `sales`
