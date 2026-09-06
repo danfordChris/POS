@@ -430,3 +430,67 @@ describe('sales — POST /sales/:id/void', () => {
     expect(mine).toHaveLength(1);
   });
 });
+
+describe('sales — GET /v1/r/:token (public)', () => {
+  async function saleWithReceipt(biz: string) {
+    const p = uuidv7();
+    await seedProduct(biz, p, 'Notebook', 3500);
+    const res = await http
+      .post(salesUrl(biz))
+      .set(ctx(biz))
+      .send({ lines: [{ product_id: p, quantity: 2, discount: 500 }] })
+      .expect(201);
+    return {
+      saleId: res.body.id as string,
+      token: res.body.receipt.public_token as string,
+    };
+  }
+
+  it('returns the receipt with no auth and no internal IDs', async () => {
+    const { token } = await saleWithReceipt(bizA);
+
+    const res = await http.get(`/v1/r/${token}`).expect(200);
+    expect(res.body).toMatchObject({
+      number: expect.any(Number),
+      status: 'issued',
+      business_name: expect.any(String),
+      currency: 'TZS',
+      subtotal: 7000,
+      discount_total: 500,
+      total: 6500,
+    });
+    expect(res.body.lines).toEqual([
+      {
+        name: 'Notebook',
+        unit_price: 3500,
+        quantity: 2,
+        discount: 500,
+        line_total: 6500,
+      },
+    ]);
+    const blob = JSON.stringify(res.body);
+    for (const bad of [
+      'business_id',
+      'sale_id',
+      'product_id',
+      'user_id',
+      '"id"',
+    ]) {
+      expect(blob).not.toContain(bad);
+    }
+  });
+
+  it('unknown token → 404', async () => {
+    const res = await http.get('/v1/r/does-not-exist').expect(404);
+    expect(res.body.error.code).toBe('not_found');
+  });
+
+  it('a voided sale returns 404', async () => {
+    const { saleId, token } = await saleWithReceipt(bizB);
+    await http
+      .post(`${salesUrl(bizB)}/${saleId}/void`)
+      .set(ctx(bizB, 'owner'))
+      .expect(200);
+    await http.get(`/v1/r/${token}`).expect(404);
+  });
+});

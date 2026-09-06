@@ -1,5 +1,20 @@
 # Weekly Status
 
+## 2026-09-07 — T-0305 done: public receipt endpoint
+
+- `sales`: `GET /v1/r/:token` (`ReceiptController`, no guards). `publicReceipt`
+  does an unscoped `receipt` lookup by `public_token`; `null`/`void` → `404`.
+  Payload = snapshots only (number, business name, lines, totals) — no `*_id`.
+- Migration `20260907140000_public_receipt_read`: relax the RLS *read* path on
+  `receipt` / `sale` / `sale_line` for an unscoped public context; writes stay
+  strictly scoped.
+- Kong: `~/v1/r/[^/]+` route on `sales` **without** `pos-internal-context`
+  (`kong.yml` + `kong-config.yaml`).
+- Tests: +3 in `sales.e2e-spec.ts` — no-auth `200` + no internal IDs; unknown →
+  `404`; voided → `404`. sales → 16; `kong config parse` OK; backend suites
+  green; validator `WORKFLOW:ok`.
+- Next: T-0306 (`GET /sales` + `/sales/{id}`, Owner-all / Staff-own).
+
 ## 2026-09-07 — T-0304 done: sale void + inventory reversal
 
 - `sales`: `POST /sales/:id/void` (Owner) → `voidSale` in one tenant txn:

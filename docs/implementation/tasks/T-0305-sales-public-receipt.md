@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -56,6 +56,34 @@ Serve the unauthenticated `GET /v1/r/{public_token}` receipt view from `sales`.
 
 ## Verification
 
-- `services/sales/test/*` covers the criteria above.
-- `pnpm --filter @pos/sales test` green; `pnpm -r build` green; `kong config parse` OK.
+Delivered:
+
+- `ReceiptController` `GET /r/:token` — **no guards**; `SalesService.publicReceipt`
+  does an unscoped `prisma.receipt.findUnique({ where: { publicToken } })` with
+  `sale` + `sale_line` included; returns `null` (→ `404 not_found`) for an
+  unknown token or a `status = 'void'` receipt.
+- **RLS handling** (migration `20260907140000_public_receipt_read`): the *USING*
+  clause on `receipt`, `sale`, `sale_line` is relaxed to also permit an unscoped
+  context (`app.business_id` unset) — the only unscoped reader is this public
+  handler, and it filters by the ≥128-bit `public_token`. *WITH CHECK* stays
+  strict, so every write is still tenant-scoped.
+- `public_token` = `randomBytes(16).base64url` (the `src/sales/public-token.ts`
+  util from T-0302 — 128 bits, URL-safe, DB-unique).
+- Response mapper: `{ number, issued_at, status, business_name, currency,
+  lines: [{ name, unit_price, quantity, discount, line_total }], subtotal,
+  discount_total, total }` — snapshots only, no `*_id`.
+- Kong: `~/v1/r/[^/]+` route on the `sales` service **without**
+  `pos-internal-context`, in `infra/kong/kong.yml` + `infra/k8s/base/kong-config.yaml`.
+
+Evidence:
+
+- `pnpm --filter @pos/sales test` → 16 (3 new): issued receipt → `200` with **no
+  Authorization header**, correct totals + line snapshots, body contains no
+  `business_id` / `sale_id` / `product_id` / `user_id` / `"id"`; unknown token
+  → `404 not_found`; a voided sale's receipt → `404`.
+- `kong config parse` → `parse successful`; the `receipt-public` route has no
+  plugin.
+- Backend suites green: sales 16, inventory 24, notifications 22 (+ contracts 10,
+  nest-common 16, testing 5, identity 7, tenancy 9, catalog 11).
+- `pnpm --filter @pos/sales build` + `lint` clean; `prettier` clean.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

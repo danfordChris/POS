@@ -4,12 +4,13 @@ import { OutboxRelayService } from '../platform/outbox-relay.service.js';
 import { InventoryClient } from '../rpc/inventory-client.js';
 import { SalesService } from './sales.service.js';
 import { SalesController } from './sales.controller.js';
+import { ReceiptController } from './receipt.controller.js';
 import { ProductCacheConsumer } from './consumers/product-cache.consumer.js';
 import { BusinessCacheConsumer } from './consumers/business-cache.consumer.js';
 
 @Module({
   imports: [TenantModule],
-  controllers: [SalesController],
+  controllers: [SalesController, ReceiptController],
   providers: [
     SalesService,
     InventoryClient,

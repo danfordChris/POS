@@ -197,6 +197,51 @@ export class SalesService {
     return toSaleView(full);
   }
 
+  /** Public, unauthenticated receipt view — looked up by `public_token` only,
+   * with no tenant context. Returns `null` for an unknown or voided receipt.
+   * The payload is snapshots only: no `business_id` / `sale_id` / `product_id`. */
+  async publicReceipt(token: string): Promise<{
+    number: number;
+    issued_at: string;
+    status: string;
+    business_name: string;
+    currency: string;
+    lines: {
+      name: string;
+      unit_price: number;
+      quantity: number;
+      discount: number;
+      line_total: number;
+    }[];
+    subtotal: number;
+    discount_total: number;
+    total: number;
+  } | null> {
+    const receipt = await this.prisma.receipt.findUnique({
+      where: { publicToken: token },
+      include: { sale: { include: { lines: true } } },
+    });
+    if (!receipt || receipt.status === 'void') return null;
+    const { sale } = receipt;
+    return {
+      number: sale.number,
+      issued_at: receipt.issuedAt.toISOString(),
+      status: receipt.status,
+      business_name: receipt.businessNameSnapshot,
+      currency: receipt.currency,
+      lines: sale.lines.map((l) => ({
+        name: l.nameSnapshot,
+        unit_price: l.unitPriceSnapshot,
+        quantity: l.quantity,
+        discount: l.discount,
+        line_total: l.lineTotal,
+      })),
+      subtotal: sale.subtotal,
+      discount_total: sale.discountTotal,
+      total: sale.total,
+    };
+  }
+
   /** Void a completed sale: mark it `voided`, void the receipt, and emit
    * `SaleVoided` so `inventory` writes the reversal movements. Idempotent — a
    * re-void of an already-voided sale returns it unchanged. */

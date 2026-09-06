@@ -89,6 +89,11 @@ data:
                   require_business_scope: true
                   tenancy_membership_url: http://tenancy:3000/v1/internal/membership
                   internal_api_key: '{vault://env/INTERNAL_API_KEY}'
+          # Public receipt — no auth, no internal-context plugin.
+          - name: receipt-public
+            paths: ['~/v1/r/[^/]+']
+            regex_priority: 100
+            strip_path: false
     plugins:
       - name: cors
         config: { origins: ['*'], methods: [GET, POST, PATCH, PUT, DELETE, OPTIONS] }
