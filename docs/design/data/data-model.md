@@ -31,9 +31,11 @@
 | `product` | id, business_id, sku, name, description, category_id, unit, image_url, cost_price, sell_price, winger_price (nullable), reorder_threshold (default 0), code (QR/barcode, nullable), is_active, created_at, updated_at | unique (business_id, sku); unique (business_id, code) |
 | `stock_item` | id, business_id, product_id, location_id (nullable), quantity | one row per product in MVP; cached on-hand |
 | `stock_movement` | id, business_id, product_id, type (`stock_in`\|`adjustment`\|`sale`\|`return`\|`void_reversal`), quantity_delta (signed), reason, reference_type, reference_id, created_by, created_at | append-only ledger |
-| `sale` | id, business_id, number (per-business sequence), status (`completed`\|`voided`), subtotal, discount_total, total, currency, sold_by, customer_label (nullable), created_at, voided_at | |
+| `sale` | id, business_id, number (per-business sequence — allocated from `sale_number_counter` in the sale txn), status (`completed`\|`voided`), subtotal, discount_total, total, currency, sold_by, customer_label (nullable), created_at, voided_at | |
+| `sale_number_counter` | business_id (pk), next_number | `sales` schema; row-locked (`SELECT … FOR UPDATE`) inside the sale transaction |
 | `sale_line` | id, sale_id, business_id, product_id, name_snapshot, unit_price_snapshot, quantity, discount, line_total | |
-| `receipt` | id, business_id, sale_id, public_token (unique), status (`issued`\|`void`), issued_at | token is unguessable (≥128-bit) |
+| `receipt` | id, business_id, sale_id, public_token (unique), business_name_snapshot, currency, status (`issued`\|`void`), issued_at | token is unguessable (≥128-bit); `/r/{token}` needs no auth so the name is snapshotted, not joined |
+| `product_cache` | business_id, product_id, name, sell_price, currency | `sales` schema; read-only projection from `ProductUpserted` / `PriceChanged`; fills line snapshots when the client omits `unit_price` |
 | `winger_account` | id, business_id, user_id, status (`active`\|`suspended`), authorized_by, created_at | unique (business_id, user_id); a user row here has no `membership` |
 | `alert_config` | id, business_id, recipients (json: user_ids or emails), min_interval_hours (default 24) | one per business; defaults to all owners |
 | `notification` | id, business_id, type (`low_stock`\|`invitation`\|`winger_authorized`), channel (`email`), payload (json), status (`queued`\|`sent`\|`failed`), dedupe_key (nullable), attempts (default 0), last_error (nullable), created_at, sent_at | `notifications` schema |
