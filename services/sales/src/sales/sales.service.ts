@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { Prisma } from '#prisma';
@@ -193,6 +195,62 @@ export class SalesService {
       }),
     );
     return toSaleView(full);
+  }
+
+  /** Void a completed sale: mark it `voided`, void the receipt, and emit
+   * `SaleVoided` so `inventory` writes the reversal movements. Idempotent — a
+   * re-void of an already-voided sale returns it unchanged. */
+  async voidSale(businessId: string, id: string): Promise<SaleView> {
+    return this.prisma.runInTenantContext(businessId, async (tx) => {
+      const sale = await tx.sale.findUnique({
+        where: { id },
+        include: { lines: true, receipt: true },
+      });
+      if (!sale) {
+        throw new NotFoundException({
+          code: 'not_found',
+          message: 'Sale not found.',
+        });
+      }
+      if (sale.status === 'voided') return toSaleView(sale);
+      if (sale.status !== 'completed') {
+        throw new ConflictException({
+          code: 'conflict',
+          message: `A ${sale.status} sale cannot be voided.`,
+        });
+      }
+
+      await tx.sale.update({
+        where: { id },
+        data: { status: 'voided', voidedAt: new Date() },
+      });
+      await tx.receipt.updateMany({
+        where: { saleId: id },
+        data: { status: 'void' },
+      });
+      await outbox.write(tx, {
+        subject: SUBJECTS.sales.saleVoided,
+        payload: makeEnvelope({
+          producer: 'sales',
+          businessId,
+          schemaVersion: SCHEMA_VERSION,
+          payload: {
+            business_id: businessId,
+            sale_id: id,
+            lines: sale.lines.map((l) => ({
+              product_id: l.productId,
+              quantity: l.quantity,
+            })),
+          },
+        }),
+      });
+
+      const voided = await tx.sale.findUniqueOrThrow({
+        where: { id },
+        include: { lines: true, receipt: true },
+      });
+      return toSaleView(voided);
+    });
   }
 
   private async resolveLines(

@@ -16,11 +16,13 @@ import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { StockService } from '../src/stock/stock.service.js';
 import { ProductEventsConsumer } from '../src/consumers/product-events.consumer.js';
+import { SaleVoidedConsumer } from '../src/consumers/sale-voided.consumer.js';
 
 let app: INestApplication;
 let prisma: PrismaService;
 let stock: StockService;
 let consumer: ProductEventsConsumer;
+let saleVoided: SaleVoidedConsumer;
 let http: ReturnType<typeof request>;
 
 const secret = process.env.INTERNAL_CONTEXT_SECRET as string;
@@ -86,6 +88,7 @@ beforeAll(async () => {
   prisma = app.get(PrismaService);
   stock = app.get(StockService);
   consumer = app.get(ProductEventsConsumer);
+  saleVoided = app.get(SaleVoidedConsumer);
   http = request(app.getHttpServer());
 });
 
@@ -504,6 +507,57 @@ describe('inventory — reservation RPC', () => {
     ]);
     await stock.commit(bizA, committed, uuidv7());
     expect(await stock.release(bizA, committed)).toEqual({ ok: false });
+  });
+});
+
+describe('inventory — SaleVoided consumer', () => {
+  it('reverses stock to pre-sale on-hand and is idempotent on event_id', async () => {
+    const productId = uuidv7();
+    await consumer.onUpserted(upsertEnvelope(bizA, productId, {}));
+    await http
+      .post(movementsUrl)
+      .set(owA())
+      .send({ product_id: productId, type: 'stock_in', quantity_delta: 12 })
+      .expect(201);
+
+    // A sale committed via the reservation RPC took 5 off.
+    const r = uuidv7();
+    await stock.reserve(bizA, r, [{ product_id: productId, quantity: 5 }]);
+    const saleId = uuidv7();
+    await stock.commit(bizA, r, saleId);
+
+    const midQty = await prisma.runInTenantContext(bizA, (tx) =>
+      tx.stockItem.findUniqueOrThrow({
+        where: { businessId_productId: { businessId: bizA, productId } },
+      }),
+    );
+    expect(midQty.quantity).toBe(7);
+
+    const evt = makeEnvelope({
+      producer: 'sales',
+      businessId: bizA,
+      schemaVersion: '1.1.0',
+      payload: {
+        business_id: bizA,
+        sale_id: saleId,
+        lines: [{ product_id: productId, quantity: 5 }],
+      },
+    });
+    await saleVoided.handle(evt);
+    await saleVoided.handle(evt); // idempotent
+
+    const after = await prisma.runInTenantContext(bizA, async (tx) => ({
+      quantity: (
+        await tx.stockItem.findUniqueOrThrow({
+          where: { businessId_productId: { businessId: bizA, productId } },
+        })
+      ).quantity,
+      reversals: await tx.stockMovement.count({
+        where: { productId, type: 'void_reversal', referenceId: saleId },
+      }),
+    }));
+    expect(after.quantity).toBe(12); // back to pre-sale
+    expect(after.reversals).toBe(1); // one movement, not two
   });
 });
 

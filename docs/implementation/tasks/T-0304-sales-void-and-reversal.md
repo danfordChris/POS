@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -55,6 +55,38 @@ Add `POST /v1/businesses/{businessId}/sales/{id}/void` to `sales` and a `SaleVoi
 
 ## Verification
 
-- `services/sales/test/*` + `services/inventory/test/*` cover the criteria above.
-- `pnpm --filter @pos/sales test` + `pnpm --filter @pos/inventory test` green; `pnpm -r build` green.
+Delivered:
+
+- `sales`: `SalesController` `POST /sales/:id/void` (`@Roles('owner')`,
+  `HttpCode(200)`) → `SalesService.voidSale` — in one tenant txn: `404` if
+  missing, `200` unchanged if already `voided`, `409 conflict` for any other
+  non-`completed` state; else set `sale.status='voided'` + `voidedAt`,
+  `receipt.status='void'`, write the `SaleVoided` outbox row (`lines` from
+  `sale_line`). Kong `~/v1/businesses/[^/]+/sales` already covers `/{id}/void`.
+- `inventory`: `StockService.reverseSale(businessId, saleId, lines)` — one
+  `void_reversal` movement per line (`quantity_delta` positive,
+  `reference_type='sale_void'`, `reference_id=sale_id`), on-hand moved back via
+  the existing `applyToItem` path (so `StockLevelChanged` /
+  `StockMovementRecorded` and the low-stock edge still fire). `SaleVoidedConsumer`
+  (`subscribeWithDlq`, `durable: 'inventory-sale-voided'`,
+  `dlq sales.SaleVoided`) calls it inside `runIdempotent(event_id)`; registered
+  in `StockModule`. No change to existing movement/edge logic.
+
+Evidence:
+
+- `pnpm --filter @pos/sales test` → 13 (4 new): Owner void → `voided` +
+  `receipt.status='void'` + `voided_at` + one `SaleVoided` with the line
+  `product_id`/`quantity`; Staff → `403 role_forbidden`; unknown sale → `404`;
+  re-void → `200`, no second `SaleVoided`.
+- `pnpm --filter @pos/inventory test` → 24 (1 new): a committed sale takes 5 off
+  (12 → 7); `SaleVoidedConsumer.handle` twice restores on-hand to 12 and leaves
+  exactly one `void_reversal` movement (idempotent on `event_id`).
+- Backend suites green: contracts 10, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 24, sales 13, notifications 22.
+- `pnpm --filter @pos/{sales,inventory} build` + `lint` clean; `prettier` clean;
+  `contracts-compat` OK.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
+
+Note: the `409` branch is coded but currently unreachable — `sale.status` is
+only ever `completed` or `voided` in the MVP; the test matrix covers the
+reachable states.

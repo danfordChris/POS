@@ -1,5 +1,19 @@
 # Weekly Status
 
+## 2026-09-07 — T-0304 done: sale void + inventory reversal
+
+- `sales`: `POST /sales/:id/void` (Owner) → `voidSale` in one tenant txn:
+  `404`/already-voided `200`/`409` else set `sale.voided` + `voidedAt`,
+  `receipt.void`, emit `SaleVoided` (lines from `sale_line`).
+- `inventory`: `StockService.reverseSale` (one `void_reversal` movement per line,
+  on-hand back up via the existing `applyToItem` path) + `SaleVoidedConsumer`
+  (`runIdempotent` on `event_id`, DLQ), registered in `StockModule`. No change
+  to existing movement/edge logic.
+- Tests: sales +4 (void/role/404/re-void), inventory +1 (reversal restores
+  pre-sale on-hand, idempotent). sales → 13, inventory → 24; backend suites
+  green; contracts-compat OK; validator `WORKFLOW:ok`.
+- Next: T-0305 (public `GET /v1/r/{token}`).
+
 ## 2026-09-07 — T-0303 done: sales insufficient-stock path
 
 - `reserveStock` `{ ok: false }` → `422 insufficient_stock` with per-shortfall

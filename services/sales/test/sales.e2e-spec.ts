@@ -30,6 +30,7 @@ let businesses: BusinessCacheConsumer;
 const secret = process.env.INTERNAL_CONTEXT_SECRET as string;
 const bizA = uuidv7();
 const bizB = uuidv7();
+const bizC = uuidv7();
 const staffId = uuidv7();
 
 const inv = {
@@ -123,7 +124,7 @@ beforeAll(async () => {
   businesses = app.get(BusinessCacheConsumer);
   http = request(app.getHttpServer());
 
-  for (const b of [bizA, bizB]) {
+  for (const b of [bizA, bizB, bizC]) {
     await businesses.onBusinessCreated(
       makeEnvelope({
         producer: 'tenancy',
@@ -149,7 +150,7 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  for (const b of [bizA, bizB]) {
+  for (const b of [bizA, bizB, bizC]) {
     await prisma.runInTenantContext(b, async (tx) => {
       await tx.saleLine.deleteMany({});
       await tx.receipt.deleteMany({});
@@ -320,34 +321,112 @@ describe('sales — POST /sales', () => {
 
   it('releases the reservation once when the write txn fails after reserveStock', async () => {
     const p = uuidv7();
-    await seedProduct(bizB, p, 'Maziwa', 1800);
+    await seedProduct(bizC, p, 'Maziwa', 1800);
     // First sale claims number 1.
-    await sales.createSale(bizB, staffId, {
+    await sales.createSale(bizC, staffId, {
       lines: [{ product_id: p, quantity: 1 }],
     });
-    const before = await prisma.runInTenantContext(bizB, (tx) =>
+    const before = await prisma.runInTenantContext(bizC, (tx) =>
       tx.sale.count(),
     );
     // Force the counter to re-hand out number 1 → the next sale.create hits the
     // (business_id, number) unique and the txn rolls back.
-    await prisma.runInTenantContext(bizB, (tx) =>
+    await prisma.runInTenantContext(bizC, (tx) =>
       tx.saleNumberCounter.update({
-        where: { businessId: bizB },
+        where: { businessId: bizC },
         data: { nextNumber: 1 },
       }),
     );
     inv.releaseReservation.mockClear();
 
     await expect(
-      sales.createSale(bizB, staffId, {
+      sales.createSale(bizC, staffId, {
         lines: [{ product_id: p, quantity: 1 }],
       }),
     ).rejects.toThrow();
 
     expect(inv.releaseReservation).toHaveBeenCalledTimes(1);
-    const after = await prisma.runInTenantContext(bizB, (tx) =>
+    const after = await prisma.runInTenantContext(bizC, (tx) =>
       tx.sale.count(),
     );
     expect(after).toBe(before); // no new sale row
+  });
+});
+
+describe('sales — POST /sales/:id/void', () => {
+  async function makeSale(biz: string) {
+    const p = uuidv7();
+    await seedProduct(biz, p, 'Widget', 1200);
+    const res = await http
+      .post(salesUrl(biz))
+      .set(ctx(biz))
+      .send({ lines: [{ product_id: p, quantity: 2 }] })
+      .expect(201);
+    return { saleId: res.body.id as string, productId: p };
+  }
+  const outboxVoided = (biz: string) =>
+    prisma.outboxMessage
+      .findMany({ where: { subject: SUBJECTS.sales.saleVoided } })
+      .then((rs) =>
+        rs
+          .map(
+            (r) => (r.payload as { payload: { business_id: string } }).payload,
+          )
+          .filter((p) => p.business_id === biz),
+      );
+
+  it('Owner void marks the sale + receipt voided and emits SaleVoided with the lines', async () => {
+    const { saleId, productId } = await makeSale(bizA);
+
+    const res = await http
+      .post(`${salesUrl(bizA)}/${saleId}/void`)
+      .set(ctx(bizA, 'owner'))
+      .expect(200);
+    expect(res.body).toMatchObject({ id: saleId, status: 'voided' });
+    expect(res.body.receipt.status).toBe('void');
+    expect(res.body.voided_at).toEqual(expect.any(String));
+
+    const emitted = await outboxVoided(bizA);
+    const mine = emitted.filter(
+      (e) => (e as { sale_id: string }).sale_id === saleId,
+    );
+    expect(mine).toHaveLength(1);
+    expect((mine[0] as { lines: unknown[] }).lines).toEqual([
+      { product_id: productId, quantity: 2 },
+    ]);
+  });
+
+  it('Staff → 403 role_forbidden', async () => {
+    const { saleId } = await makeSale(bizA);
+    const res = await http
+      .post(`${salesUrl(bizA)}/${saleId}/void`)
+      .set(ctx(bizA, 'staff'))
+      .expect(403);
+    expect(res.body.error.code).toBe('role_forbidden');
+  });
+
+  it('unknown sale → 404', async () => {
+    const res = await http
+      .post(`${salesUrl(bizA)}/${uuidv7()}/void`)
+      .set(ctx(bizA, 'owner'))
+      .expect(404);
+    expect(res.body.error.code).toBe('not_found');
+  });
+
+  it('re-void is idempotent — 200, no second SaleVoided', async () => {
+    const { saleId } = await makeSale(bizB);
+    await http
+      .post(`${salesUrl(bizB)}/${saleId}/void`)
+      .set(ctx(bizB, 'owner'))
+      .expect(200);
+    await http
+      .post(`${salesUrl(bizB)}/${saleId}/void`)
+      .set(ctx(bizB, 'owner'))
+      .expect(200);
+
+    const mine = (await outboxVoided(bizB)).filter(
+      (e) => (e as { sale_id: string }).sale_id === saleId,
+    );
+    expect(mine).toHaveLength(1);
   });
 });

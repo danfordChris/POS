@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Headers,
+  HttpCode,
   Param,
   Post,
   Req,
@@ -37,5 +38,12 @@ export class SalesController {
       dto,
       idempotencyKey?.trim() || undefined,
     );
+  }
+
+  @Post(':id/void')
+  @HttpCode(200)
+  @Roles('owner')
+  void(@Param('businessId') businessId: string, @Param('id') id: string) {
+    return this.sales.voidSale(businessId, id);
   }
 }

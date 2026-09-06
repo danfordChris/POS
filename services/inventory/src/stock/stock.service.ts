@@ -315,6 +315,38 @@ export class StockService {
     });
   }
 
+  /** Reverse a voided sale: one `void_reversal` movement per line, on-hand moved
+   * back up. Same movement/edge path as `commit` — `StockLevelChanged` /
+   * `StockMovementRecorded` and the low-stock edge still fire. Idempotency is the
+   * caller's (`SaleVoidedConsumer` runs this once per `event_id`). */
+  async reverseSale(
+    businessId: string,
+    saleId: string,
+    lines: ReserveLine[],
+  ): Promise<void> {
+    await this.prisma.runInTenantContext(businessId, async (tx) => {
+      for (const l of lines) {
+        const item = await this.ensureItem(tx, businessId, l.product_id);
+        const newQty = item.quantity + l.quantity;
+        const movement = await tx.stockMovement.create({
+          data: {
+            businessId,
+            productId: l.product_id,
+            type: 'void_reversal',
+            quantityDelta: l.quantity,
+            referenceType: 'sale_void',
+            referenceId: saleId,
+          },
+        });
+        await this.applyToItem(tx, businessId, item, l.product_id, newQty, {
+          movementId: movement.id,
+          type: 'void_reversal',
+          delta: l.quantity,
+        });
+      }
+    });
+  }
+
   // ── Consumer helpers (called from ProductEventsConsumer) ───────────────────
 
   async applyProductUpserted(
