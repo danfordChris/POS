@@ -1,5 +1,40 @@
 # Weekly Status
 
+## 2026-09-06 — Mobile brand + splash + e2e test; plan bookkeeping
+
+No phase work. Mobile polish landed since the 2026-09-02 entries, plus a
+reconciliation pass on the plan.
+
+- **Rebrand to "Stoki"** (`b9e7175`) — `AppInfo.name` is the single source of
+  truth; window title, login wordmark, Android label, iOS `CFBundleName` /
+  `CFBundleDisplayName`, pubspec description, and the neumorphic token file
+  headers all read from it. Not yet adopted in `docs/design/` — tracked in
+  `docs/changes/proposed/0003-product-brand-name.md`; the
+  `design_handoff_neumorphic_system/` bundle and `ui-design-system.md` still
+  say "Duka Stock".
+- **Animated in-app splash** (`93c09e0`) — `features/splash`; `AnimatedBrandMark`
+  plays a hand-authored Lottie of three stock blocks converging, then
+  cross-fades into the vector logo. Router holds `/splash` for a 3s minimum.
+  New resources layer (`Images` / `Svgs` / `Animations`); `flutter_svg` +
+  `lottie` wired.
+- **Mobile live e2e test** (`a5f2131`) — `mobile/integration_test/live_e2e_test.dart`
+  drives the real Dio `ApiClient` + services through
+  register → login → business → catalog → stock against the live Kong edge.
+  `integration_test` SDK dep + iOS pod.
+- **NeuTextField fix** (`3143e10`) — error-border ternary had identical
+  branches (every field showed a permanent red outline); restored to
+  error-only. Plus Figma polish: smaller radius, shallower inset well,
+  text-theme-driven label via new `BuildContext` extensions.
+- **Plan reconciliation** — `project.md` Phase 02 moved `[~]` → `[x]` (it was
+  verified done on 2026-09-02 per the entries below and `phase-02` doc);
+  Current Priorities rolled forward to Phase 03; stale Phase 01 dependency
+  lines corrected.
+- Chore: stopped tracking a committed `.pyc` under the workflow scripts
+  (`c75d5a7`).
+
+Verification: `flutter analyze` clean; `flutter test` (3) pass;
+`flutter build apk --debug` succeeds; validator `WORKFLOW:ok`.
+
 ## 2026-09-02 — Phase 02 verified end-to-end (`docker compose up`)
 
 Brought the full local stack up and ran a smoke test through Kong (`:8000`).

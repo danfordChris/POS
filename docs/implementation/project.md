@@ -8,18 +8,16 @@
 
 ## Current Priorities
 
-1. Phase 02 — Inventory core: **code-complete** — `catalog` + `inventory` services,
-   design system (T-0118–T-0119), app shells (T-0120–T-0121), and all feature
-   screens (T-0106–T-0109) are built. Remaining: a live `docker compose up`
-   end-to-end pass + Phase 02 acceptance sign-off.
-2. Phase 03 — Reorder alerts (`inventory` → `notifications`).
-3. Phase 04 — Sales + digital receipts.
+1. Phase 03 — Reorder alerts (`inventory` → `notifications`). Expand T-0201–T-0207
+   into task docs, then build the `notifications` service + web `/alerts`.
+2. Phase 04 — Sales + digital receipts (`sales`; stock saga with `inventory`).
+3. Phase 05 — Winger portal (`winger` read model + portal API).
 
 ## Active Phases
 
 - [x] Phase 00 — Foundations (monolith baseline: T-0001–T-0004 done; T-0005–T-0009 superseded by Phase 01)
 - [x] Phase 01 — Platform and Core Services
-- [~] Phase 02 — Inventory core (`catalog` done; `inventory` + clients pending)
+- [x] Phase 02 — Inventory core (`catalog` + `inventory` services, neumorphic design system, web + mobile app shells, all feature screens; `docker compose up` e2e smoke 25/25 through Kong; acceptance verified 2026-09-02)
 - [ ] Phase 03 — Reorder alerts (`inventory` → `notifications`)
 - [ ] Phase 04 — Sales and digital receipts (`sales`; stock saga with `inventory`)
 - [ ] Phase 05 — Winger portal (`winger` read model + portal API)
@@ -37,11 +35,11 @@
 
 ## Dependencies
 
-- Phase 01 blocked only on the decision 0002 defaults being confirmed or accepted (`docs/changes/proposed/0002-service-architecture.md`).
-- Phases 02–06 depend on Phase 01 (`gateway` + `identity` + `tenancy` + `@pos/*` + NATS).
-- Phase 04 (`sales`) depends on Phase 02 (`inventory` reservation RPC).
+- Phases 01–02 complete; decision 0002 defaults confirmed 2026-09-01 (`docs/design/decisions/0002-microservices.md`).
+- Phases 03–06 depend on Phase 01 (Kong edge + `identity` + `tenancy` + `@pos/*` + NATS) and Phase 02 (`catalog` + `inventory`).
+- Phase 04 (`sales`) depends on the Phase 02 `inventory` reservation RPC.
 - Phase 05 (`winger`) depends on Phase 02 (`catalog` + `inventory` events).
-- Web/mobile shells (ex T-0006/T-0007) target the `gateway`; scheduled within Phase 01.
+- Web + mobile app shells shipped in Phase 02 as T-0120 / T-0121 (target the Kong edge, not a `gateway` service).
 
 ## Linked Artifacts
 
