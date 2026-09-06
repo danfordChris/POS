@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -58,6 +58,37 @@ Build the Sell screen: assemble a cart, submit `POST /sales`, and route to the r
 
 ## Verification
 
-- `mobile/test/*` — a widget test covering the running total and the `insufficient_stock` inline state.
-- `cd mobile && flutter analyze` → no issues; `flutter test` green.
+Delivered:
+
+- `lib/models/sale_models.dart` — `SaleLineInput` / `SaleLine` / `Receipt` / `Sale`.
+- `lib/data/services/sales_service.dart` — `createSale` (sets the
+  `Idempotency-Key` header), `getSale`, `listSales`. `ApiClient.post` gained an
+  optional `headers` param (threaded through the 401-refresh retry).
+- `lib/features/sell/providers/sell_provider.dart` (`BaseProvider`) — `CartLine`
+  list, `addProduct` / `setQuantity` / `setDiscount` / `remove` / `clear`, live
+  `subtotal` / `discountTotal` / `total` (line total clamped ≥ 0). One
+  idempotency key per cart version — regenerated on any mutation, held across
+  `submit` retries. `submit()` → `SalesService.createSale`; on
+  `422 insufficient_stock` → `insufficientProductIds` (from
+  `parseShortfalls(details)`), cart kept, no nav. Registered in `appProviders`.
+- `lib/features/sell/screens/sell_screen.dart` — replaces the stub: search-driven
+  product picker (from `CatalogProvider`), cart rows with `NeuStepper` qty +
+  discount field + line total, sticky total bar, "Complete sale" `NeuButton`
+  (disabled while empty / submitting). `422` marks the short rows red + shows
+  the `insufficient_stock` `ErrorByCodeCard`. On `201` → SnackBar + `clear()`
+  (nav to the receipt screen is wired in T-0308, marked with a `TODO(T-0308)`).
+
+Scoped out (documented deviation): the proactive **offline banner** needs a
+connectivity provider that does not yet exist in `mobile/` — no current write
+screen has one. `submit` surfaces `network_error` via the error card; the
+persistent-banner + write-gate is a shared backlog item for all write screens.
+
+Evidence:
+
+- `cd mobile && flutter analyze` → **No issues found**.
+- `flutter test` → all pass, incl. `test/sell_provider_test.dart` (6): running
+  totals across add / same-product-merge / discount / quantity change; discount
+  cannot push a line below 0; `setQuantity(0)` removes the line; a cart mutation
+  clears shortfall marks; `parseShortfalls` extracts the product ids from a
+  `422` `details` array.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

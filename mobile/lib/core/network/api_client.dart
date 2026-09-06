@@ -61,8 +61,12 @@ class ApiClient {
   Future<T> get<T>(String path, {Map<String, dynamic>? query}) =>
       _send<T>('GET', path, query: query);
 
-  Future<T> post<T>(String path, {Object? body, bool noAuth = false}) =>
-      _send<T>('POST', path, body: body, noAuth: noAuth);
+  Future<T> post<T>(
+    String path, {
+    Object? body,
+    bool noAuth = false,
+    Map<String, String>? headers,
+  }) => _send<T>('POST', path, body: body, noAuth: noAuth, headers: headers);
 
   Future<T> patch<T>(String path, {Object? body}) =>
       _send<T>('PATCH', path, body: body);
@@ -74,6 +78,7 @@ class ApiClient {
     Map<String, dynamic>? query,
     bool noAuth = false,
     bool isRetry = false,
+    Map<String, String>? headers,
   }) async {
     Response<dynamic> res;
     try {
@@ -81,7 +86,11 @@ class ApiClient {
         path,
         data: body,
         queryParameters: query,
-        options: Options(method: method, extra: {'noAuth': noAuth}),
+        options: Options(
+          method: method,
+          extra: {'noAuth': noAuth},
+          headers: headers,
+        ),
       );
     } on DioException catch (e) {
       if (e.response != null) {
@@ -101,6 +110,7 @@ class ApiClient {
           query: query,
           noAuth: noAuth,
           isRetry: true,
+          headers: headers,
         );
       }
       onAuthLost?.call();
