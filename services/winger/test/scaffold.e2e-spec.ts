@@ -40,7 +40,7 @@ describe('winger — scaffold', () => {
     await http.get('/readyz').expect(200);
   });
 
-  it('has both tenant tables under RLS (scoped access works, unscoped is empty)', async () => {
+  it('enforces tenant RLS on both tables', async () => {
     const biz = uuidv7();
     await prisma.runInTenantContext(biz, async (tx) => {
       await tx.wingerAccount.create({
@@ -66,9 +66,19 @@ describe('winger — scaffold', () => {
     );
     expect(scoped).toBe(1);
 
-    // No tenant context → RLS hides the rows.
-    expect(await prisma.wingerAccount.count()).toBe(0);
+    // `winger_catalog_projection` read stays strictly scoped → unscoped sees nothing.
     expect(await prisma.wingerCatalogProjection.count()).toBe(0);
+    // `winger_account` read is relaxed for the cross-tenant `GET /v1/winger/businesses`
+    // path, but WRITE is still strictly scoped.
+    await expect(
+      prisma.wingerAccount.create({
+        data: {
+          businessId: uuidv7(),
+          userId: uuidv7(),
+          authorizedBy: uuidv7(),
+        },
+      }),
+    ).rejects.toThrow();
 
     await prisma.runInTenantContext(biz, async (tx) => {
       await tx.wingerCatalogProjection.deleteMany({});

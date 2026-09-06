@@ -49,6 +49,16 @@ model WingerCatalogProjection {
   @@map("winger_catalog_projection")
 }
 
+/// Business name snapshot, projected from `tenancy.BusinessCreated`. Internal:
+/// no RLS (consumer writes; `GET /v1/winger/businesses` reads it unscoped).
+model WingerBusiness {
+  businessId String @id @map("business_id") @db.Uuid
+  name       String
+  currency   String @default("TZS")
+
+  @@map("winger_business")
+}
+
 model OutboxMessage {
   id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   subject   String

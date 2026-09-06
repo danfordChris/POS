@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -60,9 +60,48 @@ Ship `GET /v1/winger/businesses` and `GET /v1/winger/businesses/{businessId}/pro
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `pnpm --filter @pos/winger test` — whitelist schema test, scope `403`, suspended `403`, price fallback, `in_stock` boolean, `businesses` listing.
-- `kubectl kustomize infra/k8s/base | grep -A5 winger`; `docker compose -f infra/docker-compose.yml config`.
-- Live smoke through Kong: authorize a winger (T-0402), then `GET /v1/winger/businesses` and `GET /v1/winger/businesses/{id}/products` with that winger's token; suspend and confirm `403`.
+- `services/winger` migration `20260908130000_winger_read_models`: `winger_business`
+  (no RLS — consumer writes, unscoped read) + relaxed `winger_account` RLS *read*
+  path (`app.business_id` unset ⇒ visible) so the cross-tenant
+  `GET /v1/winger/businesses` works; `WITH CHECK` stays strict. `WingerBusiness`
+  Prisma model.
+- `BusinessCacheConsumer` — `tenancy.BusinessCreated` → `winger_business`
+  (idempotent, DLQ). Registered in `WingerModule`.
+- `WingerUserGuard` — asserts a real `user` context (operator → `403`, missing →
+  `500` per the platform contract); per-business authorization is in the service.
+- `WingerCatalogService`:
+  - `listBusinesses(userId)` — `winger_account WHERE user_id AND status='active'`
+    (unscoped read), names joined from `winger_business`; suspended/absent ⇒ not
+    listed.
+  - `listProducts(userId, businessId, query)` — `runInTenantContext(businessId)`;
+    `403 winger_scope_denied` unless an `active` `winger_account` exists;
+    projection read `WHERE is_active AND sell_price IS NOT NULL`, cursor-paginated
+    on `product_id`; maps to the fixed whitelist
+    `{ name, image_url, price: winger_price ?? sell_price, currency, in_stock: on_hand > 0 }`.
+- `WingerCatalogController` — `GET /v1/winger/businesses`,
+  `GET /v1/winger/businesses/:businessId/products`, behind
+  `InternalContextGuard` + `WingerUserGuard`.
+- Kong: `winger-portal` route (`/v1/winger`, `require_business_scope: false`) in
+  `infra/kong/kong.yml` + `infra/k8s/base/kong-config.yaml`.
+
+Evidence:
+
+- `pnpm --filter @pos/winger test` → 24 (`winger-catalog` spec +9): businesses
+  list is active-only with names / empty for a non-winger; products response has
+  exactly `{ name, image_url, price, currency, in_stock }` (schema assertion);
+  `price = winger_price ?? sell_price`; `in_stock = on_hand > 0`; inactive
+  excluded; non-authorized `business_id` → `403 winger_scope_denied`; suspended →
+  `403`; missing context → `500`; cursor pagination appends. Scaffold RLS spec
+  updated for the relaxed `winger_account` read (write still rejected unscoped).
+- Backend suites green: contracts 12, nest-common 16, testing 5, identity 8,
+  tenancy 9, catalog 11, inventory 24, sales 20, notifications 22, winger 24.
+- `node scripts/check-contracts-compat.mjs HEAD` → OK; `kubectl kustomize
+  infra/k8s/base` renders; `docker compose config` valid; `kong config parse` →
+  `parse successful`.
+- Live smoke through Kong (rebuilt `winger`): authorize a winger (T-0402), then
+  `GET /v1/winger/businesses` lists it with its name, `GET
+  /v1/winger/businesses/{id}/products` returns whitelisted rows; a non-authorized
+  `business_id` and a suspended account both return `403 winger_scope_denied`.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
