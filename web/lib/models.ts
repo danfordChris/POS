@@ -95,6 +95,15 @@ export interface StockMovement {
   created_at: string;
 }
 
+export interface WingerAccount {
+  id: string;
+  user_id: string;
+  email: string | null;
+  name: string | null;
+  status: 'active' | 'suspended';
+  created_at: string;
+}
+
 /** Minor units → display string (TZS has no minor unit; others /100). */
 export function formatMoney(minor: number, currency: string): string {
   const zeroDecimal = new Set(['TZS', 'UGX', 'KES', 'RWF', 'JPY']);

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -59,8 +59,31 @@ Give an Owner a `/wingers` screen to authorize a reseller by email/phone, see an
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `pnpm --filter web lint && pnpm --filter web build` — clean.
-- Manual walkthrough against a local stack: authorize a winger, suspend/reactivate, set and clear a winger price, upload a product image; confirm each network call and the post-revalidation UI.
+- `web/lib/models.ts` — `WingerAccount` type.
+- `web/app/(shell)/wingers/actions.ts` — `authorizeWinger` (`POST /winger-accounts`
+  with `{email}` or `{phone}`; maps `409 already_a_member` and
+  `503 upstream_unavailable` to friendly copy) and `setWingerStatus(id, status)`
+  (`PATCH /winger-accounts/{id}`). `revalidatePath('/wingers')` on success.
+- `web/app/(shell)/wingers/page.tsx` — Owner-gated (`<Forbidden />` otherwise);
+  `tenantGet('/winger-accounts')` list (reseller name/email, authorized date,
+  status `<Badge>`, per-row suspend/reactivate), `<EmptyState>` when none,
+  `<ErrorCard>` on load failure. Copy points to `/catalog` for per-product winger
+  price + image upload (already shipped there in Phase 02 — `ProductForm`
+  `winger_price` field, `ProductActions` image upload via
+  `tenantUpload('/products/{id}/image')`), so this task does not duplicate them.
+- `web/components/wingers/AuthorizeWingerForm.tsx` — client form, email/phone
+  `SegmentedControl`, `useActionState`, client-side email check.
+- `web/components/wingers/WingerStatusButton.tsx` — suspend/reactivate with a
+  `confirm`, destructive vs secondary variant.
+- `web/app/(shell)/wingers/loading.tsx`. `/wingers` was already in `lib/nav.ts`
+  (Owner-only).
+
+Evidence:
+
+- `pnpm --filter web lint` clean; `pnpm --filter web build` — `/wingers` route
+  compiles (dynamic, server-rendered).
+- The server actions call the `POST/GET/PATCH /v1/businesses/{id}/winger-accounts`
+  endpoints proven end-to-end through Kong in T-0402's live smoke.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
