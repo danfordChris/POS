@@ -39,6 +39,7 @@
 | `notification` | id, business_id, type (`low_stock`\|`invitation`\|`winger_authorized`), channel (`email`), payload (json), status (`queued`\|`sent`\|`failed`), dedupe_key (nullable), attempts (default 0), last_error (nullable), created_at, sent_at | `notifications` schema |
 | `notification_contact` | id, business_id, user_id, role (`owner`\|`staff`), email, locale, active (bool) | `notifications` schema; read-only projection from `BusinessCreated` / `MembershipCreated` / `MembershipSuspended`; unique (business_id, user_id) |
 | `digest_config` | business_id (pk), min_interval_hours, recipients (json) | `notifications` schema; read-only projection from `AlertConfigChanged`; drives the low-stock digest cadence (no RLS — internal worker config) |
+| `notification_business` | business_id (pk), name, locale | `notifications` schema; read-only projection from `BusinessCreated`; supplies the business name + locale for email rendering (no RLS) |
 | `low_stock_alert_state` | id, business_id, product_id, is_open (bool), opened_at, closed_at | `inventory` schema; one per product; source of truth for the low-stock edge (supersedes any `stock_item` flag) |
 | `audit_log` | id, business_id (nullable for control-plane), actor_id, actor_type (`user`\|`operator`\|`system`), action, target_type, target_id, metadata (json), created_at | |
 | `support_access_grant` | id, business_id, operator_id, reason, approved_by (owner user_id), granted_at, expires_at, revoked_at | max lifetime 24h |

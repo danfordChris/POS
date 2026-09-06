@@ -11,6 +11,7 @@ import { SCHEMA_VERSION, SUBJECTS, makeEnvelope } from '@pos/contracts';
 import type { Prisma } from '#prisma';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { EMAIL_SENDER, type EmailSender } from '../email/email-sender.js';
+import { TemplateRegistry } from '../templates/template-registry.js';
 
 const MAX_ATTEMPTS = 3;
 const outbox = new OutboxWriter();
@@ -38,6 +39,7 @@ export class DigestFlushJob implements OnApplicationBootstrap, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly templates: TemplateRegistry,
     @Inject(EMAIL_SENDER) private readonly email: EmailSender,
   ) {}
 
@@ -119,17 +121,30 @@ export class DigestFlushJob implements OnApplicationBootstrap, OnModuleDestroy {
       return false;
     }
 
+    const biz = await this.prisma.notificationBusiness.findUnique({
+      where: { businessId },
+    });
+    const webBase = this.config.getOrThrow<string>('WEB_BASE_URL');
+    const rendered = this.templates.render('low_stock', biz?.locale, {
+      business_name: biz?.name ?? 'Your shop',
+      catalog_url:
+        claimed.length === 1
+          ? claimed[0].payload.catalog_url
+          : `${webBase}/catalog`,
+      items: claimed.map((c) => ({
+        // Product name is not on the event yet — see the T-0204 note.
+        product_name: c.payload.product_id,
+        on_hand: c.payload.on_hand,
+        threshold: c.payload.threshold,
+      })),
+    });
+
     try {
       await this.email.send({
         to: recipients,
-        subject: `Low stock: ${claimed.length} product${claimed.length === 1 ? '' : 's'}`,
-        text: [
-          `${claimed.length} product(s) are at or below their reorder threshold:`,
-          ...claimed.map(
-            (c) =>
-              `- ${c.payload.product_id}: on-hand ${c.payload.on_hand} (threshold ${c.payload.threshold}) — ${c.payload.catalog_url}`,
-          ),
-        ].join('\n'),
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
       });
       await this.settle(businessId, claimed, { ok: true });
       return true;

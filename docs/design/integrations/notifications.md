@@ -67,7 +67,12 @@
 
 ### Localization
 
-- Template rendered in the business `locale` (en/sw).
+- Template rendered in the business `locale` (en/sw), read from
+  `notification_business` (projected from `BusinessCreated`); unknown locale → en.
+- Copy lives in per-locale template modules; the render path has no
+  `if locale` branching. `vars`:
+  `{ business_name, catalog_url, items: [{ product_name, on_hand, threshold }] }`
+  (one item = single-product copy, many = digest copy).
 
 ## Decisions
 

@@ -1,5 +1,23 @@
 # Weekly Status
 
+## 2026-09-06 — T-0206 done: localized low-stock templates
+
+- `notifications/src/templates/`: `TemplateRegistry.render('low_stock', locale,
+  vars)` → `{subject,text,html}`. en/sw copy in per-locale modules (no `if
+  locale` branching); unknown locale → en. `vars = {business_name, catalog_url,
+  items:[{product_name,on_hand,threshold}]}` (1 item = single, many = digest).
+- New `notification_business` projection (migration
+  `20260906170000_notification_business`, no RLS) fed by the existing
+  `BusinessCreated` consumer — supplies business name + locale.
+- `DigestFlushJob` renders via the registry (no inline strings).
+  `product_name` is still `product_id` (same T-0204 follow-up).
+- Design: `notification_business` in `data-model.md` /
+  `service-decomposition.md`; localization section rewritten.
+- Tests: `template-registry.spec.ts` (5) + a Swahili digest integration check.
+  notifications 22; backend suites green; contracts-compat OK; validator
+  `WORKFLOW:ok`.
+- Next: T-0207 (web Owner-only `/alerts`).
+
 ## 2026-09-06 — T-0205 done: low-stock digest batching
 
 - `inventory` `PUT /alert-config` now emits `AlertConfigChanged`

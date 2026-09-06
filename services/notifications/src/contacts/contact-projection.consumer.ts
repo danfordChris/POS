@@ -96,14 +96,22 @@ export class ContactProjectionConsumer implements OnApplicationBootstrap {
       this.idempotency,
       evt.event_id,
       SUBJECTS.tenancy.businessCreated,
-      () =>
-        this.contacts.upsert({
-          businessId: evt.payload.business_id,
-          userId: evt.payload.owner_user_id,
+      async () => {
+        const { business_id, name, locale, owner_user_id, owner_email } =
+          evt.payload;
+        await this.prisma.notificationBusiness.upsert({
+          where: { businessId: business_id },
+          create: { businessId: business_id, name, locale },
+          update: { name, locale },
+        });
+        await this.contacts.upsert({
+          businessId: business_id,
+          userId: owner_user_id,
           role: 'owner',
-          email: evt.payload.owner_email ?? null,
-          locale: evt.payload.owner_locale ?? evt.payload.locale,
-        }),
+          email: owner_email ?? null,
+          locale: evt.payload.owner_locale ?? locale,
+        });
+      },
     );
   }
 

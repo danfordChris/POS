@@ -86,6 +86,7 @@ afterEach(async () => {
   email.reset();
   await prisma.$executeRawUnsafe('DELETE FROM notification');
   await prisma.$executeRawUnsafe('DELETE FROM notification_contact');
+  await prisma.$executeRawUnsafe('DELETE FROM notification_business');
   await prisma.$executeRawUnsafe('DELETE FROM digest_config');
   await prisma.$executeRawUnsafe('DELETE FROM outbox');
   await prisma.$executeRawUnsafe('DELETE FROM processed_events');
@@ -175,6 +176,33 @@ describe('notifications — digest flush', () => {
     expect(
       await outboxFor(SUBJECTS.notifications.notificationSent),
     ).toHaveLength(2);
+  });
+
+  it('renders the digest in the business locale from BusinessCreated', async () => {
+    const biz = uuidv7();
+    await contacts.onBusinessCreated(
+      makeEnvelope({
+        producer: 'tenancy',
+        businessId: biz,
+        schemaVersion: '1.1.0',
+        payload: {
+          business_id: biz,
+          name: 'Duka la Mama',
+          currency: 'TZS',
+          locale: 'sw',
+          owner_user_id: uuidv7(),
+          owner_email: 'mama@duka.co.tz',
+        },
+      }),
+    );
+    await consumer.onFellBelow(fellBelow({ business_id: biz }));
+    await job.tick(dueLater());
+
+    expect(email.sent).toHaveLength(1);
+    expect(email.sent[0].subject).toContain('inakaribia kuisha');
+    expect(email.sent[0].text).toContain('Duka la Mama');
+    expect(email.sent[0].text).toContain('agiza upya');
+    expect(email.sent[0].html).toContain('<li>');
   });
 
   it('drops a recovered product from the digest and leaves it superseded', async () => {

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-06
 
 ## Linked Phase
@@ -58,6 +58,38 @@ Provide `en` and `sw` low-stock templates (single-product and digest) and a Mail
 
 ## Verification
 
-- `services/notifications/test/*` asserts locale-correct single and digest bodies via the capture `EmailSender`.
-- `pnpm --filter @pos/notifications test` green; `pnpm -r build` green.
+Delivered:
+
+- `src/templates/`: `TemplateRegistry.render('low_stock', locale, vars)` →
+  `{ subject, text, html }`. Copy lives in `low_stock/en.ts` + `low_stock/sw.ts`
+  (per-locale modules — no `if locale` branching in the render path);
+  `low-stock-vars.ts` holds the `vars` contract + a shared HTML shell with
+  escaping. Unknown/missing locale → `en`.
+- `vars` = `{ business_name, catalog_url, items: [{ product_name, on_hand,
+  threshold }] }`; one item → single-product copy, many → digest copy.
+- New `notification_business` projection (`business_id` pk, `name`, `locale`;
+  migration `20260906170000_notification_business`, no RLS) — fed by the existing
+  `ContactProjectionConsumer.onBusinessCreated`. Supplies `business_name` +
+  locale for rendering.
+- `DigestFlushJob` now renders via `TemplateRegistry` (no inline body strings);
+  `catalog_url` = the product page for a single item, `WEB_BASE_URL/catalog` for
+  a digest. `SendWorker` was already removed in T-0205.
+- **Note**: `product_name` is still the `product_id` (event carries no name — the
+  same T-0204 product-name follow-up).
+
+Evidence:
+
+- `pnpm --filter @pos/notifications test` → 22 passed:
+  `src/templates/template-registry.spec.ts` (5) — en copy, sw copy, unknown →
+  en, single vs digest shape, no token/password/internal-URL in any
+  locale×shape body; `low-stock.e2e-spec.ts` gains a locale integration test
+  (a `BusinessCreated{locale:'sw'}` → the flushed digest email is Swahili,
+  carries the business name, has an HTML part).
+- Backend suites green: contracts 9, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 23, notifications 22.
+- `pnpm --filter @pos/notifications build` + `lint` clean; `prettier` +
+  `prisma format` clean; `contracts-compat` OK.
+- Design: `notification_business` added to `data-model.md` /
+  `service-decomposition.md`; localization section rewritten in
+  `integrations/notifications.md`.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
