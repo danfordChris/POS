@@ -1,5 +1,19 @@
 # Weekly Status
 
+## 2026-09-07 — T-0306 done: sales list + detail with role scoping
+
+- `sales`: `GET /businesses/:id/sales` + `GET .../:id` (Owner/Staff). Staff
+  `where.soldBy = <their user_id>`; Owner sees all. Newest-first cursor
+  pagination on the time-ordered `id`. `getSale` → `404` when missing or a
+  Staff reads another user's sale (never `403`). Summary vs full (`toSaleView`)
+  mappers.
+- Tests: +4 in `sales.e2e-spec.ts` — Owner-all vs Staff-own list; cursor paging;
+  Staff detail own `200` / other `404`; Owner any + unknown `404` + cross-tenant
+  `404`. sales → 20; backend suites green (contracts 10 … sales 20,
+  notifications 22); contracts-compat OK; validator `WORKFLOW:ok`.
+- Backend for Phase 04 is complete (T-0301–T-0306). Next: T-0307 (mobile sell
+  flow), T-0308 (mobile receipt), T-0309 (web sales screens).
+
 ## 2026-09-07 — T-0305 done: public receipt endpoint
 
 - `sales`: `GET /v1/r/:token` (`ReceiptController`, no guards). `publicReceipt`

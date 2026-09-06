@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -55,6 +55,29 @@ Add `GET /v1/businesses/{businessId}/sales` and `GET .../sales/{id}` with Owner-
 
 ## Verification
 
-- `services/sales/test/*` covers the scoping + pagination + 404 matrix.
-- `pnpm --filter @pos/sales test` green; `pnpm -r build` green.
+Delivered:
+
+- `ListSalesQuery` (`limit` 1–100, `cursor`, optional `status`).
+- `SalesService.listSales(businessId, role, userId, q)` — `where.soldBy = userId`
+  when `role === 'staff'`; `orderBy id desc` (uuidv7 is time-ordered);
+  cursor = `id < q.cursor`; `{ data: SaleSummaryView[], next_cursor }`.
+  `getSale(...)` — tenant-scoped fetch; `404 not_found` when missing **or**
+  `role === 'staff' && sale.soldBy !== userId` (never `403`, to hide existence).
+- Views: `toSaleSummary` (`id`, `number`, `status`, `total`, `currency`,
+  `line_count`, `created_at`); `getSale` reuses `toSaleView` (lines +
+  `receipt.public_token`).
+- `SalesController` `GET /businesses/:businessId/sales` and `GET .../:id`
+  (`@Roles('owner','staff')`, `role` + `user_id` from the request).
+
+Evidence:
+
+- `pnpm --filter @pos/sales test` → 20 (4 new): Owner list returns all 3 sales,
+  Staff list returns only their 2; `limit`/`cursor` pages newest-first
+  (2 then 1, `next_cursor` null at the end); Staff detail → own sale `200`,
+  another user's sale `404`; Owner reads any, unknown id `404`, a sale from
+  another business `404` (cross-tenant).
+- Backend suites green: contracts 10, nest-common 16, testing 5, identity 7,
+  tenancy 9, catalog 11, inventory 24, sales 20, notifications 22.
+- `pnpm --filter @pos/sales build` + `lint` clean; `prettier` clean;
+  `contracts-compat` OK.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

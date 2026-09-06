@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +17,9 @@ import { TenantGuard } from '../tenant/tenant.guard.js';
 import { RolesGuard, Roles } from '../tenant/roles.decorator.js';
 import { SalesService } from './sales.service.js';
 import { CreateSaleDto } from './dto/create-sale.dto.js';
+import { ListSalesQuery } from './dto/list-sales.dto.js';
+
+type Role = 'owner' | 'staff';
 
 @ApiTags('sales')
 @Controller('businesses/:businessId/sales')
@@ -37,6 +42,36 @@ export class SalesController {
       userId,
       dto,
       idempotencyKey?.trim() || undefined,
+    );
+  }
+
+  @Get()
+  @Roles('owner', 'staff')
+  list(
+    @Param('businessId') businessId: string,
+    @Query() query: ListSalesQuery,
+    @Req() req: Request,
+  ) {
+    return this.sales.listSales(
+      businessId,
+      req.membership!.role as Role,
+      req.internalContext!.user_id as string,
+      query,
+    );
+  }
+
+  @Get(':id')
+  @Roles('owner', 'staff')
+  get(
+    @Param('businessId') businessId: string,
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    return this.sales.getSale(
+      businessId,
+      req.membership!.role as Role,
+      req.internalContext!.user_id as string,
+      id,
     );
   }
 

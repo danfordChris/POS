@@ -30,6 +30,33 @@ export interface SaleView {
   receipt: { public_token: string; status: string } | null;
 }
 
+export interface SaleSummaryView {
+  id: string;
+  number: number;
+  status: string;
+  total: number;
+  currency: string;
+  line_count: number;
+  created_at: string;
+}
+
+export function toSaleSummary(
+  s: Pick<
+    SaleRow,
+    'id' | 'number' | 'status' | 'total' | 'currency' | 'createdAt'
+  > & { lines: unknown[] },
+): SaleSummaryView {
+  return {
+    id: s.id,
+    number: s.number,
+    status: s.status,
+    total: s.total,
+    currency: s.currency,
+    line_count: s.lines.length,
+    created_at: s.createdAt.toISOString(),
+  };
+}
+
 export function toSaleView(s: SaleRow): SaleView {
   return {
     id: s.id,

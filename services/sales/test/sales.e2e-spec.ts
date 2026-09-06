@@ -39,11 +39,15 @@ const inv = {
   releaseReservation: vi.fn(async () => ({ ok: true })),
 };
 
-function ctx(businessId: string, role: 'owner' | 'staff' = 'staff') {
+function ctx(
+  businessId: string,
+  role: 'owner' | 'staff' = 'staff',
+  userId: string = staffId,
+) {
   const { header, signature } = signInternalContext(
     {
       request_id: `t-${uuidv7()}`,
-      user_id: staffId,
+      user_id: userId,
       business_id: businessId,
       role,
       token_kind: 'user',
@@ -493,4 +497,138 @@ describe('sales — GET /v1/r/:token (public)', () => {
       .expect(200);
     await http.get(`/v1/r/${token}`).expect(404);
   });
+});
+
+describe('sales — GET /sales + GET /sales/:id', () => {
+  const bizR = uuidv7();
+  const staff1 = uuidv7();
+  const staff2 = uuidv7();
+  let s1Sale = '';
+  let s2Sale = '';
+
+  beforeAll(async () => {
+    await businesses.onBusinessCreated(
+      makeEnvelope({
+        producer: 'tenancy',
+        businessId: bizR,
+        schemaVersion: '1.1.0',
+        payload: {
+          business_id: bizR,
+          name: 'Read Shop',
+          currency: 'TZS',
+          locale: 'en',
+          owner_user_id: uuidv7(),
+        },
+      }),
+    );
+    const p = uuidv7();
+    await seedProduct(bizR, p, 'Kalamu', 500);
+    // staff1 rings up two sales, staff2 one.
+    for (let i = 0; i < 2; i += 1) {
+      const r = await http
+        .post(salesUrl(bizR))
+        .set(ctx(bizR, 'staff', staff1))
+        .send({ lines: [{ product_id: p, quantity: 1 }] })
+        .expect(201);
+      s1Sale = r.body.id;
+    }
+    const r2 = await http
+      .post(salesUrl(bizR))
+      .set(ctx(bizR, 'staff', staff2))
+      .send({ lines: [{ product_id: p, quantity: 1 }] })
+      .expect(201);
+    s2Sale = r2.body.id;
+  });
+
+  afterAll(async () => {
+    await prisma.runInTenantContext(bizR, async (tx) => {
+      await tx.saleLine.deleteMany({});
+      await tx.receipt.deleteMany({});
+      await tx.sale.deleteMany({});
+      await tx.saleNumberCounter.deleteMany({});
+      await tx.productCache.deleteMany({});
+    });
+  });
+
+  it('Owner sees every sale; Staff sees only their own', async () => {
+    const owner = await http
+      .get(salesUrl(bizR))
+      .set(ctx(bizR, 'owner'))
+      .expect(200);
+    expect(owner.body.data).toHaveLength(3);
+    expect(owner.body.data[0]).toMatchObject({
+      number: expect.any(Number),
+      status: 'completed',
+      line_count: 1,
+    });
+
+    const s1 = await http
+      .get(salesUrl(bizR))
+      .set(ctx(bizR, 'staff', staff1))
+      .expect(200);
+    expect(s1.body.data).toHaveLength(2);
+    expect(s1.body.data.map((r: { id: string }) => r.id).sort()).not.toContain(
+      s2Sale,
+    );
+  });
+
+  it('paginates newest-first with a working cursor', async () => {
+    const first = await http
+      .get(salesUrl(bizR))
+      .query({ limit: 2 })
+      .set(ctx(bizR, 'owner'))
+      .expect(200);
+    expect(first.body.data).toHaveLength(2);
+    expect(first.body.next_cursor).toEqual(expect.any(String));
+
+    const rest = await http
+      .get(salesUrl(bizR))
+      .query({ limit: 2, cursor: first.body.next_cursor })
+      .set(ctx(bizR, 'owner'))
+      .expect(200);
+    expect(rest.body.data).toHaveLength(1);
+    expect(rest.body.next_cursor).toBeNull();
+  });
+
+  it('Staff gets their own sale detail and 404 for another user’s', async () => {
+    const mine = await http
+      .get(`${salesUrl(bizR)}/${s1Sale}`)
+      .set(ctx(bizR, 'staff', staff1))
+      .expect(200);
+    expect(mine.body).toMatchObject({ id: s1Sale, status: 'completed' });
+    expect(mine.body.receipt.public_token).toEqual(expect.any(String));
+
+    await http
+      .get(`${salesUrl(bizR)}/${s2Sale}`)
+      .set(ctx(bizR, 'staff', staff1))
+      .expect(404);
+  });
+
+  it('Owner reads any sale; unknown id → 404; another business is invisible', async () => {
+    await http
+      .get(`${salesUrl(bizR)}/${s2Sale}`)
+      .set(ctx(bizR, 'owner'))
+      .expect(200);
+    await http
+      .get(`${salesUrl(bizR)}/${uuidv7()}`)
+      .set(ctx(bizR, 'owner'))
+      .expect(404);
+    // A sale that belongs to bizA is not visible from bizR.
+    const other = await makeSaleForCrossTenant();
+    await http
+      .get(`${salesUrl(bizR)}/${other}`)
+      .set(ctx(bizR, 'owner'))
+      .expect(404);
+  });
+
+  async function makeSaleForCrossTenant() {
+    const p = uuidv7();
+    await seedProduct(bizA, p, 'Rula', 700);
+    const r = await http
+      .post(salesUrl(bizA))
+      .set(ctx(bizA))
+      .send({ lines: [{ product_id: p, quantity: 1 }] })
+      .expect(201);
+    return r.body.id as string;
+  }
 });

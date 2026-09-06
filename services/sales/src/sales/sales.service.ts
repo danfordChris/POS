@@ -13,8 +13,18 @@ import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { InventoryClient } from '../rpc/inventory-client.js';
 import { CreateSaleDto } from './dto/create-sale.dto.js';
+import { ListSalesQuery } from './dto/list-sales.dto.js';
 import { publicToken } from './public-token.js';
-import { SaleView, toSaleView } from './sales-views.js';
+import {
+  SaleSummaryView,
+  SaleView,
+  toSaleSummary,
+  toSaleView,
+} from './sales-views.js';
+
+type Role = 'owner' | 'staff';
+const DEFAULT_LIMIT = 25;
+const MAX_LIMIT = 100;
 
 const outbox = new OutboxWriter();
 
@@ -195,6 +205,55 @@ export class SalesService {
       }),
     );
     return toSaleView(full);
+  }
+
+  /** List sales for the business. Staff see only sales they rang up; Owner sees
+   * all. Newest-first, cursor-paginated on the (time-ordered) `id`. */
+  async listSales(
+    businessId: string,
+    role: Role,
+    userId: string,
+    q: ListSalesQuery,
+  ): Promise<{ data: SaleSummaryView[]; next_cursor: string | null }> {
+    const limit = Math.min(q.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+    return this.prisma.runInTenantContext(businessId, async (tx) => {
+      const where: Record<string, unknown> = {};
+      if (role === 'staff') where.soldBy = userId;
+      if (q.status) where.status = q.status;
+      if (q.cursor) where.id = { lt: q.cursor };
+      const rows = await tx.sale.findMany({
+        where,
+        include: { lines: { select: { id: true } } },
+        orderBy: { id: 'desc' },
+        take: limit + 1,
+      });
+      const page = rows.slice(0, limit);
+      const next = rows.length > limit ? page[page.length - 1].id : null;
+      return { data: page.map(toSaleSummary), next_cursor: next };
+    });
+  }
+
+  /** One sale in full. Staff may only read their own — another user's sale in
+   * the same business is `404` (not `403`), to avoid leaking existence. */
+  async getSale(
+    businessId: string,
+    role: Role,
+    userId: string,
+    id: string,
+  ): Promise<SaleView> {
+    return this.prisma.runInTenantContext(businessId, async (tx) => {
+      const sale = await tx.sale.findUnique({
+        where: { id },
+        include: { lines: true, receipt: true },
+      });
+      if (!sale || (role === 'staff' && sale.soldBy !== userId)) {
+        throw new NotFoundException({
+          code: 'not_found',
+          message: 'Sale not found.',
+        });
+      }
+      return toSaleView(sale);
+    });
   }
 
   /** Public, unauthenticated receipt view — looked up by `public_token` only,
