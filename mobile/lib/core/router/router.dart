@@ -16,6 +16,7 @@ import 'package:pos_mobile/features/sell/screens/sell_screen.dart';
 import 'package:pos_mobile/features/shell/screens/app_shell.dart';
 import 'package:pos_mobile/features/splash/screens/splash_screen.dart';
 import 'package:pos_mobile/features/stock/screens/record_movement_screen.dart';
+import 'package:pos_mobile/features/winger/screens/winger_catalog_screen.dart';
 import 'package:pos_mobile/models/catalog_models.dart';
 import 'package:pos_mobile/models/sale_models.dart';
 
@@ -28,6 +29,7 @@ enum AppRoute {
   onboarding('/onboarding'),
   // authenticated tabs
   home('/home'),
+  wingerCatalog('/winger'),
   catalog('/catalog'),
   scan('/scan'),
   sell('/sell'),
@@ -79,8 +81,14 @@ GoRouter createRouter(SessionProvider session) {
           return loc == AppRoute.onboarding.path
               ? null
               : AppRoute.onboarding.path;
+        case SessionStatus.winger:
+          // A winger session can reach the winger portal and nothing else.
+          return loc == AppRoute.wingerCatalog.path
+              ? null
+              : AppRoute.wingerCatalog.path;
         case SessionStatus.ready:
           const authOnly = {'/login', '/register', '/onboarding', '/splash'};
+          if (loc == AppRoute.wingerCatalog.path) return AppRoute.home.path;
           return authOnly.contains(loc) ? AppRoute.home.path : null;
       }
     },
@@ -104,6 +112,10 @@ GoRouter createRouter(SessionProvider session) {
       GoRoute(
         path: AppRoute.gallery.path,
         builder: (_, _) => const GalleryScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.wingerCatalog.path,
+        builder: (_, _) => const WingerCatalogScreen(),
       ),
       GoRoute(
         path: AppRoute.productNew.path,

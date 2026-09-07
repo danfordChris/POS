@@ -1,21 +1,27 @@
 import 'package:pos_mobile/core/network/api_client.dart';
 import 'package:pos_mobile/core/network/api_exception.dart';
 import 'package:pos_mobile/data/services/auth_service.dart';
+import 'package:pos_mobile/data/services/winger_service.dart';
 import 'package:pos_mobile/data/token_store.dart';
 import 'package:pos_mobile/models/auth_models.dart';
 import 'package:pos_mobile/shared/providers/base_provider.dart';
 
-enum SessionStatus { loading, signedOut, needsBusiness, ready }
+/// `winger` — a reseller with no membership; the app shows only the winger
+/// portal (see `createRouter`).
+enum SessionStatus { loading, signedOut, needsBusiness, winger, ready }
 
 /// App-wide auth state. `GoRouter` redirects on [status]; registered in
 /// `appProviders` so it outlives every route.
 class SessionProvider extends BaseProvider {
-  SessionProvider({TokenStore? store}) : _store = store ?? TokenStore() {
+  SessionProvider({TokenStore? store, WingerApi? winger})
+    : _store = store ?? TokenStore(),
+      _winger = winger ?? const WingerService() {
     ApiClient.instance.onTokensRefreshed = _store.writeTokens;
     ApiClient.instance.onAuthLost = signOut;
   }
 
   final TokenStore _store;
+  final WingerApi _winger;
 
   SessionStatus _status = SessionStatus.loading;
   AuthUser? _user;
@@ -29,6 +35,7 @@ class SessionProvider extends BaseProvider {
   String? get businessName => _businessName;
   String? get role => _role;
   bool get isOwner => _role == 'owner';
+  bool get isWinger => _status == SessionStatus.winger;
 
   /// Called once at startup. Any storage/plugin failure lands the user on the
   /// sign-in screen rather than crashing the app.
@@ -97,19 +104,30 @@ class SessionProvider extends BaseProvider {
     }
 
     final biz = await _store.readBusiness();
-    if (biz.id == null) {
-      _set(SessionStatus.needsBusiness);
-      return;
+    if (biz.id != null) {
+      try {
+        final info = await AuthService.getBusiness(biz.id!);
+        _businessId = info.id;
+        _businessName = info.name;
+        _role = info.role ?? biz.role ?? 'staff';
+        _set(SessionStatus.ready);
+        return;
+      } on ApiException {
+        _businessId = _businessName = _role = null;
+      }
     }
+
+    // No owner/staff membership resolved. A reseller with an active
+    // winger_account gets the winger portal; anyone else must create a business.
+    _set(await _isWinger() ? SessionStatus.winger : SessionStatus.needsBusiness);
+  }
+
+  Future<bool> _isWinger() async {
     try {
-      final info = await AuthService.getBusiness(biz.id!);
-      _businessId = info.id;
-      _businessName = info.name;
-      _role = info.role ?? biz.role ?? 'staff';
-      _set(SessionStatus.ready);
-    } on ApiException {
-      _businessId = _businessName = _role = null;
-      _set(SessionStatus.needsBusiness);
+      final businesses = await _winger.listBusinesses();
+      return businesses.isNotEmpty;
+    } catch (_) {
+      return false;
     }
   }
 

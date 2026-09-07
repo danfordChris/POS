@@ -4,6 +4,7 @@ import 'package:pos_mobile/features/auth/providers/session_provider.dart';
 import 'package:pos_mobile/features/catalog/providers/catalog_provider.dart';
 import 'package:pos_mobile/features/sell/providers/sell_provider.dart';
 import 'package:pos_mobile/features/stock/providers/stock_provider.dart';
+import 'package:pos_mobile/features/winger/providers/winger_provider.dart';
 import 'package:pos_mobile/shared/providers/app_provider.dart';
 
 /// App-wide providers, mounted once above the router in `main.dart`. Only state
@@ -14,4 +15,5 @@ List<SingleChildWidget> appProviders = [
   ChangeNotifierProvider(create: (_) => CatalogProvider()),
   ChangeNotifierProvider(create: (_) => StockProvider()),
   ChangeNotifierProvider(create: (_) => SellProvider()),
+  ChangeNotifierProvider(create: (_) => WingerProvider()),
 ];

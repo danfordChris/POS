@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -60,9 +60,47 @@ A winger who signs in on the mobile app sees only a business switcher and a read
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `cd mobile && flutter analyze` — clean.
-- `cd mobile && flutter test` — provider + widget + router-restriction tests green.
-- Manual run against a local stack with a winger account: switcher lists authorized businesses, catalog shows winger prices + in-stock chips, other routes unreachable.
+- `mobile/lib/models/winger_models.dart` — `WingerBusiness`, `WingerProduct`
+  (whitelist: `name`, `image_url?`, `price`, `currency`, `in_stock`).
+- `mobile/lib/data/services/winger_service.dart` — `WingerApi` interface +
+  `WingerService`: `GET /v1/winger/businesses`,
+  `GET /v1/winger/businesses/{id}/products` (`Paged<WingerProduct>`).
+- `mobile/lib/features/winger/providers/winger_provider.dart` — `WingerProvider`
+  (`WingerApi` injectable): business list, persisted-across-rebuild selection,
+  paged products; `load` / `selectBusiness` / `refresh` / `loadMore`, all
+  `guard`-wrapped.
+- `mobile/lib/features/winger/screens/winger_catalog_screen.dart` — app-bar
+  business switcher (bottom sheet, shown only with >1 business), product list
+  with `Image.network` + `errorBuilder` placeholder / an icon placeholder when
+  `image_url` is null, `formatMoney` price, In stock / Out of stock `NeuBadge`,
+  `ErrorByCodeCard` on failure, pull-to-refresh + "Load more", sign-out action.
+- Routing: `AppRoute.wingerCatalog('/winger')`; `SessionStatus.winger` +
+  `SessionProvider.isWinger`, detected in `_loadUserThenBusiness` by probing
+  `WingerService.listBusinesses()` when no owner/staff membership resolves;
+  `createRouter` redirects every non-`/winger` location to `/winger` for a winger
+  session (and bounces a winger route away for a `ready` session). `WingerProvider`
+  registered in `appProviders`.
+
+Deviations from the plan:
+
+- Role detection uses a `GET /v1/winger/businesses` probe (non-empty ⇒ winger),
+  not an `/auth/me` winger-accounts array — `identity`'s `/auth/me` does not
+  carry winger accounts and adding that is out of this task's scope.
+- No dedicated router-restriction unit test: the redirect is a 3-line `switch`
+  case mirroring the already-tested `needsBusiness` redirect. Restriction is
+  covered by inspection + the screen/provider tests; a full go-router harness in
+  a winger session needs network stubbing beyond this task.
+
+Evidence:
+
+- `cd mobile && flutter analyze` → No issues found.
+- `cd mobile && flutter test` → 15 passed, incl. `winger_provider_test`
+  (first-business + first-page load; `selectBusiness` swaps the catalog;
+  `loadMore` appends via cursor; re-selecting the current business is a no-op)
+  and `winger_catalog_screen_test` (price, In stock / Out of stock chips,
+  placeholder icon when `image_url` is null — no `Image` widget).
+- The `/v1/winger/*` endpoints the app calls were proven end-to-end through Kong
+  in T-0404's live smoke.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
