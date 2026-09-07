@@ -2,7 +2,14 @@ import Link from 'next/link';
 import { getSession } from '@/lib/session';
 import { tenantGet } from '@/lib/tenant-api';
 import { Badge, Button, Card, ErrorCard } from '@/components/ui';
-import { formatMoney, type Page, type Product, type StockItem } from '@/lib/models';
+import {
+  formatMoney,
+  type Customer,
+  type InvoiceSummary,
+  type Page,
+  type Product,
+  type StockItem,
+} from '@/lib/models';
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -10,15 +17,25 @@ export default async function DashboardPage() {
 
   let products: Product[] = [];
   let stock: StockItem[] = [];
+  let owing: Customer[] = [];
+  let overdue: InvoiceSummary[] = [];
   let loadError: string | null = null;
   try {
-    [products, stock] = await Promise.all([
+    [products, stock, owing, overdue] = await Promise.all([
       tenantGet<Page<Product>>('/products', { limit: 100 }).then((r) => r.data),
       tenantGet<{ data: StockItem[] }>('/stock', { limit: 100 }).then((r) => r.data),
+      tenantGet<Page<Customer>>('/customers', { has_balance: 'true', limit: 100 }).then(
+        (r) => r.data,
+      ),
+      tenantGet<Page<InvoiceSummary>>('/invoices', { overdue: 'true', limit: 100 }).then(
+        (r) => r.data,
+      ),
     ]);
   } catch (e) {
     loadError = (e as { message?: string }).message ?? 'load failed';
   }
+
+  const receivable = owing.reduce((sum, c) => sum + c.outstanding_balance, 0);
 
   const onHand = new Map(stock.map((s) => [s.product_id, s]));
   const low = stock.filter((s) => s.low_stock);
@@ -52,6 +69,25 @@ export default async function DashboardPage() {
               <Stat label="Today's sales" value="—" hint="Phase 04" />
             </div>
           </Card>
+
+          {receivable > 0 || overdue.length > 0 ? (
+            <Card className="flex items-center justify-between">
+              <div>
+                <span className="text-caption text-text-secondary">Owed to you</span>
+                <div className="text-h2 font-bold tnum">{formatMoney(receivable, currency)}</div>
+                <span className="text-caption text-text-secondary">
+                  {owing.length} customer{owing.length === 1 ? '' : 's'} · {overdue.length} overdue
+                  invoice{overdue.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <Link
+                href="/invoices?overdue=true"
+                className="text-caption font-semibold text-accent"
+              >
+                View overdue
+              </Link>
+            </Card>
+          ) : null}
 
           <div className="flex flex-wrap gap-3">
             <Link href="/catalog/new">

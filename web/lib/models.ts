@@ -81,6 +81,95 @@ export interface Sale {
   voided_at: string | null;
   lines: SaleLine[];
   receipt: { public_token: string; status: string } | null;
+  invoice: {
+    id: string;
+    number: number;
+    status: string;
+    public_token: string;
+    balance_due_minor: number;
+  } | null;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  tax_id: string | null;
+  outstanding_balance: number;
+  disabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerInvoiceSummary {
+  id: string;
+  number: number;
+  status: string;
+  total_minor: number;
+  balance_due_minor: number;
+  issue_date: string;
+  due_date: string;
+}
+
+export interface CustomerDetail extends Customer {
+  recent_invoices: CustomerInvoiceSummary[];
+}
+
+export interface InvoiceSummary {
+  id: string;
+  number: number;
+  customer_id: string;
+  customer_name: string;
+  status: string;
+  currency: string;
+  total_minor: number;
+  balance_due_minor: number;
+  issue_date: string;
+  due_date: string;
+}
+
+export interface InvoiceLine {
+  id: string;
+  product_id: string | null;
+  description: string;
+  quantity: number;
+  unit_price_minor: number;
+  discount_minor: number;
+  line_total_minor: number;
+}
+
+export interface InvoicePayment {
+  id: string;
+  amount_minor: number;
+  method: string;
+  reference: string | null;
+  received_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  number: number;
+  sale_id: string | null;
+  customer_id: string;
+  customer_name: string;
+  status: string;
+  currency: string;
+  subtotal_minor: number;
+  discount_minor: number;
+  tax_minor: number;
+  total_minor: number;
+  amount_paid_minor: number;
+  balance_due_minor: number;
+  issue_date: string;
+  due_date: string;
+  public_token: string;
+  void_reason: string | null;
+  document_url: string | null;
+  created_at: string;
+  lines: InvoiceLine[];
+  payments: InvoicePayment[];
 }
 
 export interface StockMovement {

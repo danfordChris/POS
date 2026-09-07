@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -80,9 +80,43 @@ customer, and download an invoice PDF.
 
 ## Verification
 
-_Planned — to be filled on completion:_
+Delivered:
 
-- `pnpm --filter web lint` + `pnpm --filter web build`.
-- Manual walk-through against the local stack: customer → credit sale → invoice
-  → payment → paid; PDF download; dashboard card.
-- `validate_workflow.py` → `WORKFLOW:ok`.
+- `web/lib/models.ts` — `Customer`, `CustomerDetail`, `CustomerInvoiceSummary`,
+  `InvoiceSummary`, `Invoice`, `InvoiceLine`, `InvoicePayment`; `Sale` gains the
+  embedded `invoice` summary.
+- `web/lib/nav.ts` — **Invoices** + **Customers** under Overview (not
+  Owner-only — Staff use them too).
+- `web/app/(shell)/customers/` — `page.tsx` (list: `?q=` search box,
+  `?has_balance=true` toggle, cursor paging) + `NewCustomerForm`; `[id]/page.tsx`
+  (outstanding balance, `EditCustomerForm` with a deactivate checkbox, recent
+  invoices table); `actions.ts` (`createCustomer` / `updateCustomer` /
+  `setCustomerDisabled`); `loading.tsx`.
+- `web/app/(shell)/invoices/` — `page.tsx` (list: status + `?overdue=true`
+  filters, cursor paging); `[id]/page.tsx` (lines, money breakdown, payments
+  table, `RecordPaymentForm`, Owner-only `VoidInvoiceButton`, `PdfDownloadButton`
+  + a public-link `↗`); `actions.ts` (`recordPayment` with friendly
+  `overpayment` / `invoice_not_payable` copy, `voidInvoice`); `loading.tsx`.
+- `web/components/invoices/PdfDownloadButton.tsx` — polls the public
+  `/v1/i/{token}/pdf` (302→object once rendered, `202` while pending), shows
+  "Generating…", opens the PDF in a new tab when ready.
+- Dashboard (`(shell)/page.tsx`) — an **"Owed to you"** card: total receivable
+  (sum of `customers?has_balance=true`) + overdue-invoice count, linking to
+  `/invoices?overdue=true`. Shown only when there is a balance.
+- Sale detail (`sales/[id]/page.tsx`) — an "Invoice #N" link when the sale
+  carries one.
+
+Not in scope for web: the `cash | credit` toggle + customer picker in the sale
+flow. **Web has no sale-creation flow** (sales are rung up on mobile —
+`sales/page.tsx` is read-only), so that piece lands in T-0608 (mobile).
+
+Evidence:
+
+- `pnpm --filter web lint` → clean; `pnpm --filter web build` → compiles;
+  new routes `/customers`, `/customers/[id]`, `/invoices`, `/invoices/[id]`
+  render in the build output.
+- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` →
+  `WORKFLOW:ok`.
+- Manual walk-through deferred to the Phase 07 acceptance step (T-0609 / the
+  acceptance smoke), which drives customer → credit sale → invoice → payment →
+  PDF end-to-end through the running stack.

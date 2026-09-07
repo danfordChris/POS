@@ -86,7 +86,7 @@ into design; the proposal file was removed per the workflow lifecycle. Deltas:
 - [x] T-0604 `sales` standalone invoices + payments + void (balance math, `InvoicePaymentRecorded` / `InvoiceVoided`, customer-balance maintenance, idempotency, sale-void → invoice-void)
 - [x] T-0605 `media` service — scaffold + `InvoiceIssued` consumer + `renderInvoice` RPC + HTML→PDF + MinIO/S3 + `InvoiceDocumentReady` + `document` table + Kong `/pdf` routes
 - [x] T-0606 `notifications` — `invoice_issued` / `payment_received` / `invoice_overdue` templates (en/sw) + consumers + overdue sweep
-- [ ] T-0607 `web` — Customers, Invoices list/detail, record payment, AR dashboard card, credit toggle + customer picker in the sale flow, PDF download
+- [x] T-0607 `web` — Customers, Invoices list/detail, record payment, AR dashboard card, credit toggle + customer picker in the sale flow, PDF download
 - [ ] T-0608 `mobile` — customer picker + credit toggle in the sell flow, invoice detail + share, read-only AR summary
 - [ ] T-0609 Isolation + RLS-backstop + acceptance — extend `services/sales` + new `services/media` isolation / rls-backstop specs; `acceptance-smoke.sh` credit-sale → invoice → PDF → payment walk-through (U14/U15); `acceptance-map.md`, phase acceptance, `weekly-status.md`
 

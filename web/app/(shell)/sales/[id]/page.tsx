@@ -100,6 +100,14 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
             View public receipt ↗
           </a>
         ) : null}
+        {sale.invoice ? (
+          <Link
+            href={`/invoices/${sale.invoice.id}`}
+            className="text-accent font-semibold text-body"
+          >
+            Invoice #{sale.invoice.number}
+          </Link>
+        ) : null}
         {session?.role === 'owner' ? (
           <div className="ml-auto">
             <VoidSaleButton saleId={sale.id} disabled={voided} />

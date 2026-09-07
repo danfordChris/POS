@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
   Boxes,
+  FileText,
   LayoutDashboard,
   LineChart,
   LifeBuoy,
@@ -9,6 +10,7 @@ import {
   Receipt,
   Settings,
   Users,
+  UserSquare2,
   UsersRound,
 } from 'lucide-react';
 
@@ -33,6 +35,8 @@ export const NAV: NavSection[] = [
       { href: '/stock', label: 'Stock', icon: Boxes },
       { href: '/stock/movements', label: 'Stock movements', icon: LineChart },
       { href: '/sales', label: 'Sales', icon: Receipt },
+      { href: '/invoices', label: 'Invoices', icon: FileText },
+      { href: '/customers', label: 'Customers', icon: UserSquare2 },
     ],
   },
   {
