@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -84,9 +84,49 @@ invoice ledger.
 
 ## Verification
 
-_Planned — to be filled on completion:_
+Delivered:
 
-- `pnpm --filter @pos/sales test` (new customers spec) + `build` + `lint`.
-- `kong config parse` + `kubectl kustomize infra/k8s/base`.
-- Live smoke through Kong: create a customer, list with/without `has_balance`.
-- `validate_workflow.py` → `WORKFLOW:ok`.
+- `services/sales/src/customers/` — `CustomersService` (`create` / `list` /
+  `get` / `update` + `static recomputeOutstandingBalance(tx, businessId,
+  customerId)` exported for T-0603/T-0604), `CustomersController`
+  (`@Controller('businesses/:businessId/customers')`,
+  `InternalContextGuard` + `TenantGuard` + `RolesGuard`, Owner+Staff), DTOs
+  (`create` / `update` / `list`), `customers-views.ts`.
+  - `list`: newest-first cursor pagination on the time-ordered `id`; `?q=`
+    (name/phone/email `contains`, insensitive); `?has_balance=true`
+    (`outstandingBalance > 0`); disabled customers hidden from the default list.
+  - `get`: `outstanding_balance` (cached) + `recent_invoices` (last 10).
+  - `update`: partial; `disabled:true/false` toggles `disabled_at`; nulls clear
+    optional fields.
+  - `create` / `update` write `CustomerCreated` / `CustomerUpdated` to the
+    outbox in the same tenant txn (email/phone only when present, per the
+    `.email()` schema).
+- `sales.module.ts` — `CustomersController` + `CustomersService` registered and
+  exported.
+- Kong — `sales-customers-tenant` route (`~/v1/businesses/[^/]+/customers`,
+  `require_business_scope: true`) in `infra/kong/kong.yml` +
+  `infra/k8s/base/kong-config.yaml`.
+
+Evidence:
+
+- `services/sales/test/customers.e2e-spec.ts` — **7 passing**: create (trims,
+  lowercases email, one `CustomerCreated`); no name → `400 validation_error`;
+  list order + `?q=` + `?has_balance=true` empty; get zero-balance +
+  `recent_invoices: []`, unknown → `404`; `disabled:true` hides from list /
+  still fetchable / `CustomerUpdated` carries `disabled:true`; cross-tenant list
+  empty (forced RLS); operator token → `403 operator_data_access_denied`,
+  wrong-business context → `403 not_a_member`.
+- All `services/sales` specs green in isolation: customers 7, sales 18,
+  isolation 13, rls-backstop 15, scaffold 2. (`pnpm -r`-style shared-Postgres
+  pool contention still flakes `sales.e2e-spec.ts` when the compose stack is
+  attached — passes alone; CI runs a dedicated DB.)
+- `pnpm --filter @pos/sales build lint` green;
+  `node scripts/check-contracts-compat.mjs HEAD` → OK;
+  `kong config parse` → `parse successful`;
+  `kubectl kustomize infra/k8s/base` renders.
+- Live smoke through the local Kong edge (sales image rebuilt): register →
+  create business → `POST /v1/businesses/{id}/customers` returns the row
+  (`outstanding_balance: 0`); `GET .../customers`, `?q=ash`, and
+  `?has_balance=true` (empty) all behave.
+- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` →
+  `WORKFLOW:ok`.

@@ -7,17 +7,25 @@ import { SalesController } from './sales.controller.js';
 import { ReceiptController } from './receipt.controller.js';
 import { ProductCacheConsumer } from './consumers/product-cache.consumer.js';
 import { BusinessCacheConsumer } from './consumers/business-cache.consumer.js';
+import { CustomersService } from '../customers/customers.service.js';
+import { CustomersController } from '../customers/customers.controller.js';
 
 @Module({
   imports: [TenantModule],
-  controllers: [SalesController, ReceiptController],
+  controllers: [SalesController, ReceiptController, CustomersController],
   providers: [
     SalesService,
+    CustomersService,
     InventoryClient,
     ProductCacheConsumer,
     BusinessCacheConsumer,
     OutboxRelayService,
   ],
-  exports: [SalesService, ProductCacheConsumer, BusinessCacheConsumer],
+  exports: [
+    SalesService,
+    CustomersService,
+    ProductCacheConsumer,
+    BusinessCacheConsumer,
+  ],
 })
 export class SalesModule {}
