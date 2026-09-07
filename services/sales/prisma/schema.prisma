@@ -181,12 +181,14 @@ model Payment {
   amountMinor Int      @map("amount_minor")
   method      String // cash | bank_transfer | mobile_money | other
   reference   String?
-  receivedAt  DateTime @map("received_at") @db.Timestamptz(6)
-  createdBy   String   @map("created_by") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  receivedAt     DateTime @map("received_at") @db.Timestamptz(6)
+  createdBy      String   @map("created_by") @db.Uuid
+  idempotencyKey String?  @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  @@unique([businessId, idempotencyKey])
   @@index([businessId, invoiceId])
   @@map("payment")
 }

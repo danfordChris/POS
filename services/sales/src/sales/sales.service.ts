@@ -407,6 +407,17 @@ export class SalesService {
         }),
       });
 
+      // Voiding the sale voids its invoice by the same rule. A `paid` invoice
+      // is left as-is (a credit note is the manual follow-up).
+      if (sale.invoice && !['void', 'paid'].includes(sale.invoice.status)) {
+        await this.invoices.voidInvoiceInTx(
+          tx,
+          businessId,
+          sale.invoice.id,
+          'sale voided',
+        );
+      }
+
       const voided = await tx.sale.findUniqueOrThrow({
         where: { id },
         include: { lines: true, receipt: true, invoice: true },
