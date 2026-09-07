@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Objective
@@ -47,20 +47,20 @@ Let an Owner authorize resellers ("wingers") who then see a fixed-whitelist cata
 - [x] T-0404 Winger catalog endpoints + whitelist DTO + schema test + scope/suspension enforcement + Kong `/v1/winger/*` route
 - [x] T-0405 Web `/wingers` management + per-product winger price + product image upload
 - [x] T-0406 Mobile winger catalog + business switcher (restricted routing)
-- [ ] T-0407 `winger_authorized` email template (en/sw) + `notifications` `WingerAuthorized` consumer
+- [x] T-0407 `winger_authorized` email template (en/sw) + `notifications` `WingerAuthorized` consumer
 
 ## Acceptance Criteria
 
-- [ ] `GET /v1/winger/businesses/{id}/products` response validates against the whitelist schema — no `quantity`, `on_hand`, `cost_price`, `created_by`, `sku`, or member fields.
-- [ ] A winger request for a `business_id` the caller has no `active` `winger_account` for returns `403 winger_scope_denied`.
-- [ ] A `suspended` winger gets `403` on `GET /v1/winger/businesses` and `GET /v1/winger/businesses/{id}/products`.
-- [ ] `price` equals `winger_price` when set on the product, else `sell_price`.
-- [ ] `in_stock` is `true` iff `on_hand > 0`; no numeric quantity appears in the response.
-- [ ] `POST /v1/businesses/{id}/winger-accounts` for a user who has a `membership` in that business returns `409`.
-- [ ] `POST /v1/businesses/{id}/winger-accounts` with an unknown `email` provisions a user and returns the account; a `WingerAuthorized` event is published.
-- [ ] `PATCH .../winger-accounts/{id}` to `suspended` publishes `WingerSuspended`.
-- [ ] A winger authorization produces one `notification` row of type `winger_authorized`; the template renders in `en` and `sw`.
-- [ ] `node scripts/check-contracts-compat.mjs HEAD` → OK (all contract changes additive).
+- [x] `GET /v1/winger/businesses/{id}/products` response validates against the whitelist schema — no `quantity`, `on_hand`, `cost_price`, `created_by`, `sku`, or member fields.
+- [x] A winger request for a `business_id` the caller has no `active` `winger_account` for returns `403 winger_scope_denied`.
+- [x] A `suspended` winger gets `403` on `GET /v1/winger/businesses` and `GET /v1/winger/businesses/{id}/products`.
+- [x] `price` equals `winger_price` when set on the product, else `sell_price`.
+- [x] `in_stock` is `true` iff `on_hand > 0`; no numeric quantity appears in the response.
+- [x] `POST /v1/businesses/{id}/winger-accounts` for a user who has a `membership` in that business returns `409`.
+- [x] `POST /v1/businesses/{id}/winger-accounts` with an unknown `email` provisions a user and returns the account; a `WingerAuthorized` event is published.
+- [x] `PATCH .../winger-accounts/{id}` to `suspended` publishes `WingerSuspended`.
+- [x] A winger authorization produces one `notification` row of type `winger_authorized`; the template renders in `en` and `sw`.
+- [x] `node scripts/check-contracts-compat.mjs HEAD` → OK (all contract changes additive).
 
 ## Blockers
 

@@ -9,6 +9,7 @@ import { TemplatesModule } from './templates/templates.module.js';
 import { ContactsModule } from './contacts/contacts.module.js';
 import { LowStockModule } from './low-stock/low-stock.module.js';
 import { DigestModule } from './digest/digest.module.js';
+import { WingerModule } from './winger/winger.module.js';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DigestModule } from './digest/digest.module.js';
     ContactsModule,
     LowStockModule,
     DigestModule,
+    WingerModule,
     HealthModule.forRootAsync({
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => ({

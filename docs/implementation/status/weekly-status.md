@@ -1,5 +1,45 @@
 # Weekly Status
 
+## 2026-09-07 — Phase 05 complete: winger portal (T-0401–T-0407)
+
+- **T-0401** `services/winger` scaffolded from `sales` (schema `winger`, role
+  `winger_app`); `winger_account` + `winger_catalog_projection` + forced RLS;
+  `@pos/contracts` `SUBJECTS.winger` + `wingerAuthorizedPayload` /
+  `wingerSuspendedPayload`; `SCHEMA_VERSION` 1.1.0 → 1.2.0; compose + k8s + CI.
+- **T-0402** Owner `POST/GET/PATCH /v1/businesses/{id}/winger-accounts`
+  (Owner-only); `identity.getUser { create }` provisions a passwordless shell
+  user; `tenancy.resolveMembership` → `409` member/winger mutual exclusion;
+  `WingerAuthorized` / `WingerSuspended` via the outbox; Kong
+  `winger-accounts-tenant` route. Live smoke through Kong.
+- **T-0403** `CatalogProjectionConsumer` rebuilds `winger_catalog_projection`
+  from `ProductUpserted` / `PriceChanged` / `ProductDeactivated` /
+  `StockLevelChanged` (idempotent + DLQ each); `image_url` added to
+  `ProductUpserted`; `catalog` emits it on image change.
+- **T-0404** `GET /v1/winger/businesses` + `GET
+  /v1/winger/businesses/{id}/products` (whitelist `{ name, image_url, price,
+  currency, in_stock }`, `price = winger_price ?? sell_price`, `in_stock =
+  on_hand > 0`); `WingerUserGuard`; `403 winger_scope_denied` for
+  non-authorized / suspended; `winger_business` projection + relaxed
+  `winger_account` read RLS for the cross-tenant businesses list; Kong
+  `winger-portal` route (`require_business_scope: false`). Live smoke.
+- **T-0405** web `/wingers` — authorize (email/phone), list, suspend/reactivate;
+  per-product winger price + image upload already live on `/catalog`.
+- **T-0406** mobile winger-only app: `WingerProvider` + catalog screen +
+  business switcher; `SessionStatus.winger` (probes `/v1/winger/businesses`);
+  router forces a winger session to `/winger` only. `flutter analyze` clean,
+  `flutter test` 15.
+- **T-0407** `notifications` `WingerAuthorizedConsumer` → `notification` row →
+  transactional `winger_authorized` email, en/sw; `skipped` when no email;
+  idempotent on `event_id` + `winger_account_id`. `vitest` `fileParallelism:
+  false` for the shared-schema e2e specs.
+- **Design gap-fills** folded in (`data-model`, `events-catalog`, `internal-rpc`,
+  `service-decomposition`, `api-contract`) — all consistent with existing truth.
+- Backend suites green: contracts 12, nest-common 16, testing 5, identity 8,
+  tenancy 9, catalog 11, inventory 24, sales 20, winger 24, notifications 27;
+  web lint+build; mobile analyze+test 15; `check-contracts-compat` OK; kong
+  parse + kustomize + compose config OK; validator `WORKFLOW:ok`.
+- **Phase 05 done.** Next: Phase 06 — hardening and MVP acceptance.
+
 ## 2026-09-07 — Phase 05 planned: winger portal task docs T-0401–T-0407
 
 - **Design gap-fills** (`docs(design):`): `winger_catalog_projection` columns in

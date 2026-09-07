@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -56,8 +56,41 @@ When `WingerAuthorized` is published, `notifications` sends the newly authorized
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `pnpm --filter @pos/notifications test` — consumer idempotency + locale selection + template-registry specs green.
-- Live smoke: authorize a winger via `POST /v1/businesses/{id}/winger-accounts` (T-0402) with the notifications container running; confirm one `winger_authorized` `notification` row and a captured/sent email containing the portal URL.
+- Templates: `src/templates/winger-authorized-vars.ts` (`WingerAuthorizedVars`
+  `{ business_name, portal_url }`, `noticeHtml` shell reusing `escapeHtml`) +
+  `src/templates/winger_authorized/en.ts` and `sw.ts`.
+  `TemplateRegistry.renderWingerAuthorized(locale, vars)` — unknown locale → `en`.
+- `src/winger/winger-authorized.service.ts` — `WingerAuthorizedService.record`:
+  in a tenant txn, resolve `business_name` from `notification_business`, create a
+  `notification` row (`type: 'winger_authorized'`, `channel: 'email'`,
+  `dedupeKey: winger_authorized:{winger_account_id}`, payload carries `email`,
+  `locale`, `portal_url`, `business_name`), then send immediately via
+  `EMAIL_SENDER` and mark `sent` + emit `NotificationSent` (on failure: `failed`
+  + `NotificationFailed`). No `email` on the event → row `status: 'skipped'`,
+  nothing sent. `P2002` on the dedupe key → no-op. `locale` on the event wins
+  over the business default.
+- `src/winger/winger-authorized.consumer.ts` — subscribes
+  `winger.WingerAuthorized` via `subscribeWithDlq` (`durable`
+  `notifications-winger-authorized`, `dlqSubject` `pos.dlq.winger.WingerAuthorized`),
+  idempotent on `event_id`. `WingerModule` wired into `app.module.ts`.
+- `vitest.config.ts` — `fileParallelism: false` (the e2e specs share one schema
+  and blanket-delete tables in `afterEach`; serialize the files).
+
+Evidence:
+
+- `pnpm --filter @pos/notifications test` → 27 passed (template-registry
+  `winger_authorized` en/sw + fallback; `winger-authorized.e2e-spec` +4: one
+  localized email + `sent` row + `NotificationSent`; idempotent on `event_id`
+  and on `winger_account_id`; `skipped` + no send when no email; unknown locale
+  → English).
+- `node scripts/check-contracts-compat.mjs HEAD` → OK (no contract change here;
+  `wingerAuthorizedPayload` landed in T-0401/T-0402).
+- Backend suites green: contracts 12, nest-common 16, testing 5, identity 8,
+  tenancy 9, catalog 11, inventory 24, sales 20, winger 24, notifications 27.
+- Live smoke: with the full stack up (`notifications` + `winger` rebuilt), an
+  Owner `POST /v1/businesses/{id}/winger-accounts` produced one
+  `winger_authorized` notification and a Mailpit-captured email whose body
+  carries the `portal_url`.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

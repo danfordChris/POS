@@ -51,6 +51,28 @@ describe('TemplateRegistry — low_stock', () => {
     }
   });
 
+  it('renders winger_authorized in en and sw with the portal link', () => {
+    const vars = {
+      business_name: 'Duka la Mama',
+      portal_url: 'https://app.example/winger',
+    };
+    const en = reg.renderWingerAuthorized('en', vars);
+    expect(en.subject).toBe('You can now sell for Duka la Mama');
+    expect(en.text).toContain('authorized you as a reseller');
+    expect(en.text).toContain(vars.portal_url);
+    expect(en.html).toContain(vars.portal_url);
+
+    const sw = reg.renderWingerAuthorized('sw', vars);
+    expect(sw.subject).toContain('Sasa unaweza kuuza');
+    expect(sw.text).toContain('amekuidhinisha');
+    expect(sw.text).toContain(vars.portal_url);
+
+    // unknown locale → en
+    expect(reg.renderWingerAuthorized('fr', vars)).toEqual(
+      reg.renderWingerAuthorized('en', vars),
+    );
+  });
+
   it('contains no secrets or internal URLs', () => {
     for (const locale of ['en', 'sw']) {
       for (const vars of [single, digest]) {
