@@ -140,7 +140,9 @@ export class StockService {
         }
       }
 
-      const item = await this.ensureItem(tx, businessId, dto.product_id);
+      const item = (await this.lockItems(tx, businessId, [dto.product_id])).get(
+        dto.product_id,
+      )!;
       const newQty = item.quantity + dto.quantity_delta;
       if (newQty < 0) {
         throw new UnprocessableEntityException({
@@ -210,6 +212,22 @@ export class StockService {
           : { ok: true as const };
       }
 
+      // Lock the products' stock rows first, so concurrent reservations for the
+      // same product serialize and cannot both pass the availability check.
+      const ids = [...new Set(lines.map((l) => l.product_id))];
+      const locked = await this.lockItems(tx, businessId, ids);
+
+      // Re-check under the lock: a concurrent call with the same reservation_id
+      // may have created it while we waited.
+      const now = await tx.stockReservation.findUnique({
+        where: { id: reservationId },
+      });
+      if (now) {
+        return now.status === 'released'
+          ? { ok: false as const, shortfalls: [] }
+          : { ok: true as const };
+      }
+
       const held = await tx.stockReservation.findMany({
         where: { status: 'held' },
       });
@@ -223,11 +241,9 @@ export class StockService {
         }
       }
 
-      const ids = [...new Set(lines.map((l) => l.product_id))];
-      const items = await tx.stockItem.findMany({
-        where: { productId: { in: ids } },
-      });
-      const onHand = new Map(items.map((i) => [i.productId, i.quantity]));
+      const onHand = new Map(
+        [...locked.values()].map((i) => [i.productId, i.quantity]),
+      );
 
       const shortfalls: { product_id: string; available: number }[] = [];
       for (const l of lines) {
@@ -239,14 +255,25 @@ export class StockService {
       }
       if (shortfalls.length > 0) return { ok: false as const, shortfalls };
 
-      await tx.stockReservation.create({
-        data: {
-          id: reservationId,
-          businessId,
-          status: 'held',
-          lines: lines as unknown as Prisma.InputJsonValue,
-        },
-      });
+      try {
+        await tx.stockReservation.create({
+          data: {
+            id: reservationId,
+            businessId,
+            status: 'held',
+            lines: lines as unknown as Prisma.InputJsonValue,
+          },
+        });
+      } catch (error) {
+        // Lost the create race for this reservation_id — the winner holds it.
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          return { ok: true as const };
+        }
+        throw error;
+      }
       return { ok: true as const };
     });
   }
@@ -264,7 +291,16 @@ export class StockService {
       if (r.status === 'committed') return { ok: true };
       if (r.status === 'released') return { ok: false };
 
-      for (const l of r.lines as unknown as ReserveLine[]) {
+      const lines = r.lines as unknown as ReserveLine[];
+      // Lock all involved products for the whole transaction; re-read per line
+      // (a multi-line reservation may repeat a product).
+      await this.lockItems(
+        tx,
+        businessId,
+        lines.map((l) => l.product_id),
+      );
+
+      for (const l of lines) {
         const item = await this.ensureItem(tx, businessId, l.product_id);
         const newQty = item.quantity - l.quantity;
         const movement = await tx.stockMovement.create({
@@ -325,6 +361,11 @@ export class StockService {
     lines: ReserveLine[],
   ): Promise<void> {
     await this.prisma.runInTenantContext(businessId, async (tx) => {
+      await this.lockItems(
+        tx,
+        businessId,
+        lines.map((l) => l.product_id),
+      );
       for (const l of lines) {
         const item = await this.ensureItem(tx, businessId, l.product_id);
         const newQty = item.quantity + l.quantity;
@@ -401,9 +442,49 @@ export class StockService {
     this.logger.warn(
       `stock_item auto-created for ${productId} (ProductUpserted not seen yet)`,
     );
-    return tx.stockItem.create({
-      data: { businessId, productId, quantity: 0 },
+    try {
+      return await tx.stockItem.create({
+        data: { businessId, productId, quantity: 0 },
+      });
+    } catch (error) {
+      // A concurrent path created it first — read it back.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return tx.stockItem.findUniqueOrThrow({
+          where: { businessId_productId: { businessId, productId } },
+        });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Serialize every quantity / reservation mutation for a product: ensure its
+   * `stock_item` row exists, then `SELECT … FOR UPDATE` it. A concurrent
+   * transaction touching the same product blocks here until this one commits,
+   * so `recordMovement` / `reserve` / `commit` can read-modify-write without a
+   * lost update or an over-reservation. Returns the freshly-locked rows.
+   */
+  private async lockItems(
+    tx: Tx,
+    businessId: string,
+    productIds: string[],
+  ): Promise<Map<string, StockItem>> {
+    const ids = [...new Set(productIds)];
+    for (const pid of ids) {
+      await this.ensureItem(tx, businessId, pid);
+    }
+    await tx.$queryRawUnsafe(
+      'SELECT id FROM stock_item WHERE business_id = $1::uuid AND product_id = ANY($2::uuid[]) FOR UPDATE',
+      businessId,
+      ids,
+    );
+    const rows = await tx.stockItem.findMany({
+      where: { productId: { in: ids } },
     });
+    return new Map(rows.map((r) => [r.productId, r]));
   }
 
   /** Persist the new quantity, move the low-stock edge state, and emit the

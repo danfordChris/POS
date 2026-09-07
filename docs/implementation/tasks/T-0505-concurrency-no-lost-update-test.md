@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -56,8 +56,40 @@ Prove that many concurrent sales of one product can never drive `on_hand` below 
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- The concurrency spec output: succeed/`422` split, final `on_hand`, ledger sum, repeated-run stability.
-- Any `inventory` locking change (expected: none — `reserveStock` already row-locks).
-- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
+- `services/inventory/test/concurrency.e2e-spec.ts` — drives the real
+  `StockService` reservation path (the same code the `sales` saga calls over
+  `inventory.reserveStock`):
+  - `on_hand = 10`, **25 concurrent** single-unit `reserve()` calls (distinct
+    reservation ids) → exactly 10 `ok:true`, 15 shortfalls; commit all 10 →
+    `on_hand` = 0 (never negative), `sum(stock_movement.quantity_delta)` = 0
+    (+10 stock_in, −10 sale). Looped 3×.
+  - 25 concurrent `POST /stock/movements` `stock_in` of +3 → `on_hand` = 75,
+    exactly 25 `stock_in` rows.
+  - 25 concurrent `reserve()` sharing one reservation id → exactly one held
+    reservation, one `sale` movement on commit.
+
+Bug found + fixed (production change):
+
+- `StockService.reserve` / `recordMovement` / `commit` / `reverseSale` did a
+  read-modify-write on `stock_item.quantity` (and computed reservation
+  availability) with **no row lock** under READ COMMITTED. The first run of the
+  new test showed **22 reservations succeeding against 10 on-hand** and
+  double-counted `stock_in` movements.
+- Fix (`services/inventory/src/stock/stock.service.ts`): a private `lockItems`
+  helper that ensures the `stock_item` row exists then `SELECT … FOR UPDATE`s it;
+  called at the top of the mutating section of `recordMovement`, `reserve`,
+  `commit`, and `reverseSale`, so concurrent transactions for the same product
+  serialize. `reserve` also re-checks the reservation id under the lock and
+  catches a `P2002` on the create (shared-id race). `ensureItem` now tolerates a
+  `P2002` from a concurrent create.
+- No contract or API change; behaviour is identical for the single-threaded path.
+
+Evidence:
+
+- `pnpm --filter @pos/inventory test` → 62 (concurrency spec +3; the 59
+  existing specs unchanged).
+- Full backend sweep green: contracts 13, nest-common 16, testing 5, identity 8,
+  tenancy 33, catalog 43, inventory 62, sales 48, winger 37, notifications 37.
+- `node scripts/check-contracts-compat.mjs HEAD` → OK; validator `WORKFLOW:ok`.
