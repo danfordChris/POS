@@ -33,7 +33,7 @@
 
 | HTTP | `code` examples |
 |---|---|
-| 400 | `validation_error` |
+| 400 | `validation_error`, `image_too_large`, `unsupported_image_type` |
 | 401 | `unauthenticated`, `wrong_token_audience` |
 | 403 | `not_a_member`, `role_forbidden`, `winger_scope_denied`, `operator_data_access_denied` |
 | 404 | `not_found` (body echoes the looked-up key, e.g. scanned `code`) |
@@ -149,6 +149,7 @@ business → `409 conflict`.
 - Path-scoped tenancy, not header-scoped, so tenancy is visible in logs and routing.
 - Price fields on product write are silently dropped for Staff, not a 400, to keep the mobile form simple; server is the authority.
 - Receipt route lives at `/v1/r/{token}` (short) and is unauthenticated.
+- Edge rate limits (Kong `rate-limiting`, `policy: local`, `limit_by: ip`): the public auth routes (`/v1/auth/{register,login,refresh}`, `/v1/auth/operator/login`) at 60/min; the public receipt route (`/v1/r/{token}`) at 120/min. Exceeding either returns `429`.
 
 ## Contracts
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -53,8 +53,24 @@ Both public surfaces — auth and the tokenised receipt — are rate-limited at 
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `kong config parse` output; the `kong-config.yaml` diff.
-- The rate-limit test hitting `429` on both routes and recovering.
-- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
+- `infra/kong/kong.yml` + `infra/k8s/base/kong-config.yaml`: a `rate-limiting`
+  plugin (`policy: local`, `limit_by: ip`) on `receipt-public` at **120/min**;
+  the `auth-public` limit (**60/min**) confirmed unchanged.
+- `infra/kong/kong.yml`: `request-size-limiting` `allowed_payload_size` 10 → 12
+  MB, so a 10 MB product image plus multipart overhead reaches the catalog
+  service and gets the friendly `image_too_large` error rather than a raw 413.
+- `docs/design/interfaces/api-contract.md` Decisions: the two edge limits recorded.
+- `infra/rate-limit-smoke.sh` — fires past each per-minute allowance and asserts
+  a `429` appears, and that a single request is not limited.
+
+Evidence:
+
+- `kong config parse` → `parse successful` with `rate-limiting` on both
+  `auth-public` and `receipt-public`; `kubectl kustomize infra/k8s/base` renders
+  the same limits.
+- Live smoke (`bash infra/rate-limit-smoke.sh` against the running stack):
+  single `/v1/auth/login` → `400` (not limited); a 75-call burst → `429`;
+  a 140-call burst on `/v1/r/{token}` → `429`.
+- Full backend sweep green; `check-contracts-compat` OK; validator `WORKFLOW:ok`.

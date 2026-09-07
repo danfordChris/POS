@@ -152,6 +152,10 @@ services:
           - ~/v1/r/[^/]+
         regex_priority: 100
         strip_path: false
+        plugins:
+          # Public + unauthenticated: cap scraping of receipt tokens.
+          - name: rate-limiting
+            config: { minute: 120, policy: local, limit_by: ip }
 
   - name: winger
     url: http://winger:3000
@@ -197,6 +201,8 @@ plugins:
       headers: [Authorization, Content-Type, X-Request-Id]
       credentials: false
   - name: request-size-limiting
-    config: { allowed_payload_size: 10 }
+    # 12 MB: a 10 MB product image plus multipart overhead. The catalog service
+    # enforces the real 10 MB image cap with a friendly `image_too_large` error.
+    config: { allowed_payload_size: 12 }
   - name: correlation-id
     config: { header_name: X-Request-Id, generator: uuid, echo_downstream: true }

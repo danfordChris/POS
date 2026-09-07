@@ -116,6 +116,9 @@ data:
             paths: ['~/v1/r/[^/]+']
             regex_priority: 100
             strip_path: false
+            plugins:
+              - name: rate-limiting
+                config: { minute: 120, policy: local, limit_by: ip }
       - name: winger
         url: http://winger:3000
         routes:
