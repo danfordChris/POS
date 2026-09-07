@@ -1,5 +1,22 @@
 # Weekly Status
 
+## 2026-09-07 — v0.1.0 tagged (MVP release)
+
+- `v0.1.0` annotated tag + GitHub Release cut on `main` @ `df65152` with full
+  CI green — every `service` matrix job **and** the `acceptance (U1-U13 e2e)`
+  job passing.
+- Two CI fixes landed to get there (`df65152`): the `acceptance` job now
+  migrates each service schema from the runner host before the app containers
+  boot (the old step exec'd into containers still crash-looping on the missing
+  schema) and fails loudly if a service never reaches `/readyz`; the `inventory`
+  concurrency spec drives its stock-in barrage through the service layer
+  instead of 25 parallel supertest sockets (intermittent `ECONNRESET`).
+- Remaining release-checklist items are target-environment work for the deploy
+  operator: secrets present + matching across Kong and every service, Kong
+  `cors` origins pinned off `['*']` (security-review finding 1), images rolled,
+  `prisma migrate deploy` per service, `/readyz` green, and
+  `infra/acceptance-smoke.sh` against the deployed edge.
+
 ## 2026-09-07 — Phase 06 acceptance verified: MVP green
 
 Full acceptance gate re-run on `main` at `6451933`, all pass:

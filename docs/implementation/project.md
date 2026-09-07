@@ -8,12 +8,14 @@
 
 ## Current Priorities
 
-- **MVP complete.** Phases 00–06 done; PRD stories U1–U13 have passing automated
-  tests wired into CI (the `service` matrix + the `acceptance` job). Security
-  review recorded with no open high/critical findings
-  (`docs/ops/security-review-2026-09.md`).
-- Next: cut the release per `docs/ops/release-checklist.md`, then work the
-  backlog — security hardening follow-ups (CORS pin, image magic-byte sniff,
+- **MVP released — `v0.1.0` tagged 2026-09-07** on `main` @ `df65152` with full
+  CI green (the `service` matrix + the `acceptance (U1-U13 e2e)` job). Phases
+  00–06 done; PRD stories U1–U13 have passing automated tests. Security review
+  recorded with no open high/critical findings
+  (`docs/ops/security-review-2026-09.md`). The target-environment steps in
+  `docs/ops/release-checklist.md` (secrets, CORS pin, image roll, migrate,
+  smoke against the deployed edge) are the deploy operator's to run.
+- Next: work the backlog — security hardening follow-ups (CORS pin, image magic-byte sniff,
   login backoff, Kong security headers, `pnpm audit` in CI); winger shell-user
   claim/set-password flow; `tenancy` event enrichment for `notification_contact`;
   mobile offline banner; the `pnpm -r test` local-flake fix (per-service test DB).
