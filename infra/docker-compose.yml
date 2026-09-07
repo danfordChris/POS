@@ -150,6 +150,32 @@ services:
       timeout: 5s
       retries: 12
 
+  media:
+    build: { context: .., dockerfile: services/media/Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MEDIA_PORT: '3000'
+      MEDIA_DATABASE_URL: postgresql://media_app:media_app@postgres:5432/pos_dev?schema=media
+      NATS_URL: nats://nats:4222
+      INTERNAL_CONTEXT_SECRET: ${INTERNAL_CONTEXT_SECRET:-dev-only-internal-context-secret-change-me}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-pos-local}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-pos-local-secret}
+      S3_BUCKET: ${S3_BUCKET:-pos-media}
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000/pos-media}
+    depends_on:
+      postgres: { condition: service_healthy }
+      nats: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://localhost:3000/readyz || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   notifications:
     build: { context: .., dockerfile: services/notifications/Dockerfile }
     restart: unless-stopped
@@ -183,6 +209,7 @@ services:
       inventory: { condition: service_started }
       sales: { condition: service_started }
       winger: { condition: service_started }
+      media: { condition: service_started }
     environment:
       KONG_DATABASE: 'off'
       KONG_VAULTS: env

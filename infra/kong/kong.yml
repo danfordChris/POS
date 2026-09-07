@@ -234,6 +234,37 @@ services:
               internal_api_key: '{vault://env/INTERNAL_API_KEY}'
               membership_cache_ttl: 30
 
+  - name: media
+    url: http://media:3000
+    routes:
+      # Invoice PDF (Phase 07). Higher priority than sales-invoices-tenant so
+      # `/invoices/{id}/pdf` reaches media, not sales.
+      - name: media-invoice-pdf-tenant
+        paths:
+          - ~/v1/businesses/[^/]+/invoices/[^/]+/pdf
+        regex_priority: 200
+        strip_path: false
+        plugins:
+          - name: pos-internal-context
+            config:
+              jwt_secret: '{vault://env/JWT_ACCESS_SECRET}'
+              internal_context_secret: '{vault://env/INTERNAL_CONTEXT_SECRET}'
+              internal_context_ttl: 60
+              require_business_scope: true
+              tenancy_membership_url: http://tenancy:3000/v1/internal/membership
+              internal_api_key: '{vault://env/INTERNAL_API_KEY}'
+              membership_cache_ttl: 30
+      # Public invoice PDF — no auth, no internal-context plugin. Higher priority
+      # than invoice-public so `/v1/i/{token}/pdf` reaches media.
+      - name: media-invoice-pdf-public
+        paths:
+          - ~/v1/i/[^/]+/pdf
+        regex_priority: 200
+        strip_path: false
+        plugins:
+          - name: rate-limiting
+            config: { minute: 120, policy: local, limit_by: ip }
+
 plugins:
   - name: cors
     config:

@@ -23,3 +23,4 @@ resources:
   - notifications.yaml
   - sales.yaml
   - winger.yaml
+  - media.yaml

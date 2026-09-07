@@ -43,7 +43,9 @@ route, and add a credit-sale → invoice → PDF → payment → `paid` walk-thr
   0 foreign, relaxed reads visible-unscoped / 0 foreign, every cross-tenant
   INSERT rejected.
 - `services/media/test/isolation.e2e-spec.ts` + `rls-backstop.e2e-spec.ts` — the
-  `/pdf` routes and the `document` table (strict).
+  member `/pdf` route (wrong-business / operator → 403) and the `document` table
+  (RELAXED read — the public `/v1/i/{token}/pdf` looks it up by token unscoped;
+  writes strict).
 - `infra/acceptance-smoke.sh` — after U13: **U14** create a customer + credit
   sale → assert one `issued` invoice, `balance_due == total`, `GET /v1/i/{token}`
   `200` logged-out; poll `/v1/i/{token}/pdf` to `200`; **U15** record a payment

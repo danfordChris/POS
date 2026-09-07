@@ -1,0 +1,58 @@
+// media service — owns `document` (rendered invoice PDFs) in the `media` schema,
+// plus the transactional outbox + idempotency tables. It holds no invoice data
+// of its own: everything it renders arrives on `sales.InvoiceIssued`.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("MEDIA_DATABASE_URL")
+}
+
+/// One rendered document per (kind, ref). Today `kind = 'invoice'` and
+/// `ref_id` is the invoice id. `public_token` is the invoice's unguessable
+/// token, stored so the unauthenticated `/v1/i/{token}/pdf` route can find the
+/// row with no tenant context (RELAXED-read RLS, like `sales.invoice`); the
+/// full `InvoiceIssued` snapshot is kept so `renderInvoice` can rebuild the PDF.
+model Document {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId  String   @map("business_id") @db.Uuid
+  kind        String   @default("invoice")
+  refId       String   @map("ref_id") @db.Uuid
+  publicToken String   @map("public_token")
+  url         String
+  bytes       Int
+  sha256      String
+  snapshot    Json
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([businessId, kind, refId])
+  @@index([publicToken])
+  @@map("document")
+}
+
+model OutboxMessage {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  subject   String
+  payload   Json
+  headers   Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  attempts  Int       @default(0)
+  lastError String?   @map("last_error")
+
+  @@index([createdAt], map: "outbox_unsent_idx")
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  subject     String
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@map("processed_events")
+}

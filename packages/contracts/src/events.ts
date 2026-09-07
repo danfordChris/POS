@@ -170,6 +170,14 @@ export const customerUpdatedPayload = z.object({
   disabled: z.boolean(),
 });
 
+export const invoiceLineSnapshot = z.object({
+  description: z.string(),
+  quantity: z.number().int().positive(),
+  unit_price_minor: z.number().int(),
+  discount_minor: z.number().int().nonnegative(),
+  line_total_minor: z.number().int(),
+});
+
 export const invoiceIssuedPayload = z.object({
   business_id: z.string().uuid(),
   invoice_id: z.string().uuid(),
@@ -187,6 +195,12 @@ export const invoiceIssuedPayload = z.object({
   due_date: z.string().datetime(),
   public_token: z.string().min(1),
   locale: z.string(),
+  /** Snapshot fields for the invoice document. Additive (v1.4). */
+  business_name: z.string().optional(),
+  subtotal_minor: z.number().int().nonnegative().optional(),
+  discount_minor: z.number().int().nonnegative().optional(),
+  tax_minor: z.number().int().nonnegative().optional(),
+  lines: z.array(invoiceLineSnapshot).optional(),
 });
 
 export const invoicePaymentRecordedPayload = z.object({

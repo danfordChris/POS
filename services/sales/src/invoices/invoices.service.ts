@@ -150,6 +150,17 @@ export class InvoicesService {
           due_date: dueDate.toISOString(),
           public_token: token,
           locale: input.locale,
+          business_name: input.businessName,
+          subtotal_minor: input.subtotal,
+          discount_minor: input.discountTotal,
+          tax_minor: 0,
+          lines: input.lines.map((l) => ({
+            description: l.name,
+            quantity: l.quantity,
+            unit_price_minor: l.unitPrice,
+            discount_minor: l.discount,
+            line_total_minor: l.lineTotal,
+          })),
         },
       }),
     });

@@ -258,6 +258,24 @@ describe('@pos/contracts', () => {
       customer_email: 'asha@example.com',
     };
     expect(EVENT_PAYLOADS.InvoiceIssued.parse(fromSale)).toEqual(fromSale);
+    // v1.4 additive document-snapshot fields round-trip too.
+    const withSnapshot = {
+      ...issued,
+      business_name: 'Duka la Asha',
+      subtotal_minor: 30000,
+      discount_minor: 0,
+      tax_minor: 0,
+      lines: [
+        {
+          description: 'Sukari 1kg',
+          quantity: 12,
+          unit_price_minor: 2500,
+          discount_minor: 0,
+          line_total_minor: 30000,
+        },
+      ],
+    };
+    expect(EVENT_PAYLOADS.InvoiceIssued.parse(withSnapshot)).toEqual(withSnapshot);
 
     const paid = {
       business_id: businessId,

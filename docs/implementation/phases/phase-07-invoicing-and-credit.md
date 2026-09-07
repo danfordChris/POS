@@ -84,7 +84,7 @@ into design; the proposal file was removed per the workflow lifecycle. Deltas:
 - [x] T-0602 `sales` customers CRUD + accounts-receivable rollup endpoints
 - [x] T-0603 `sales` credit sale → invoice issuance (`payment_terms` on `POST /sales`, per-business numbering, `InvoiceIssued`, public `GET /v1/i/{token}`)
 - [x] T-0604 `sales` standalone invoices + payments + void (balance math, `InvoicePaymentRecorded` / `InvoiceVoided`, customer-balance maintenance, idempotency, sale-void → invoice-void)
-- [ ] T-0605 `media` service — scaffold + `InvoiceIssued` consumer + `renderInvoice` RPC + HTML→PDF + MinIO/S3 + `InvoiceDocumentReady` + `document` table + Kong `/pdf` routes
+- [x] T-0605 `media` service — scaffold + `InvoiceIssued` consumer + `renderInvoice` RPC + HTML→PDF + MinIO/S3 + `InvoiceDocumentReady` + `document` table + Kong `/pdf` routes
 - [ ] T-0606 `notifications` — `invoice_issued` / `payment_received` / `invoice_overdue` templates (en/sw) + consumers + overdue sweep
 - [ ] T-0607 `web` — Customers, Invoices list/detail, record payment, AR dashboard card, credit toggle + customer picker in the sale flow, PDF download
 - [ ] T-0608 `mobile` — customer picker + credit toggle in the sell flow, invoice detail + share, read-only AR summary

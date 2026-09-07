@@ -20,7 +20,7 @@ DECLARE
   role_name text;
 BEGIN
   FOREACH svc IN ARRAY ARRAY[
-    'identity', 'tenancy', 'catalog', 'inventory', 'sales', 'winger', 'notifications'
+    'identity', 'tenancy', 'catalog', 'inventory', 'sales', 'winger', 'media', 'notifications'
   ]
   LOOP
     role_name := svc || '_app';

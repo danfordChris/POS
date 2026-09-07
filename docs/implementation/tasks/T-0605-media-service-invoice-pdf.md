@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -109,12 +109,72 @@ A new `media` service renders each issued invoice to a stored PDF, emits
 
 ## Verification
 
-_Planned — to be filled on completion:_
+Delivered:
 
-- `pnpm --filter @pos/media test build lint`.
-- `docker compose -f infra/docker-compose.yml config` + `kubectl kustomize
-  infra/k8s/base` + `kong config parse`.
-- Live smoke: issue an invoice → poll `/v1/i/{token}/pdf` `202`→`200`; check the
-  object in MinIO.
-- `node scripts/check-contracts-compat.mjs HEAD`; `validate_workflow.py` →
+- `services/media/` — new Nest service (`@pos/media`, port 3008): `app.module`,
+  `config` (`MEDIA_*` + `S3_*` env), `prisma` (`PrismaService` with
+  `TenantContext`), `platform` (NATS + outbox relay), `tenant` (guard),
+  Dockerfile, `oxlint`/`vitest`/`tsconfig`. `/healthz` + `/readyz` (DB check).
+- `prisma/schema.prisma` + migration `20260908160000_init` — `document`
+  (`business_id`, `kind`, `ref_id`, `public_token`, `url`, `bytes`, `sha256`,
+  `snapshot` JSON; unique `(business_id, kind, ref_id)`; index `public_token`)
+  with the `enable_tenant_rls` helper and a **RELAXED-read** `tenant_isolation`
+  policy (the public `/pdf` route looks up by token unscoped; writes strict) +
+  outbox / processed_events.
+- `src/invoices/`:
+  - `pdf.ts` — `renderInvoicePdf(snapshot)` → a one-page A4 PDF via `pdf-lib`
+    (pure JS, no headless browser): header, bill-to, line table, totals
+    (subtotal / discount / tax / total / paid / balance due).
+  - `object-store.ts` — `ObjectStore.put(key, bytes, type)` → S3/MinIO
+    (`@aws-sdk/client-s3`, `pos-media` bucket), returns the public URL.
+  - `document.service.ts` — `renderAndStore(snapshot, onPersist?)` (render →
+    put at `invoices/{biz}/{invoice}.pdf` → upsert `document` + run `onPersist`
+    in one tenant txn), `exists`, `snapshotFor`, `urlByInvoice` (scoped),
+    `urlByToken` (relaxed).
+  - `invoice-issued.consumer.ts` — `subscribeWithDlq(sales.InvoiceIssued)`,
+    idempotent on `event_id`, dedupe on `invoice_id`; render + store + enqueue
+    `InvoiceDocumentReady` transactionally.
+  - `media.rpc.ts` — `bus.reply(pos.rpc.media.renderInvoice)` → re-render from
+    the stored snapshot + re-emit `InvoiceDocumentReady`; `{ found: false }`
+    for an unknown invoice.
+  - `invoice-pdf.controller.ts` — `GET /v1/businesses/{id}/invoices/{id}/pdf`
+    (`InternalContextGuard` + `TenantGuard`) and `GET /v1/i/{token}/pdf` (no
+    guards): `302` to the object once rendered, `202` + `Retry-After: 2` before.
+- `@pos/contracts` — `invoiceIssuedPayload` gains additive `business_name`,
+  `subtotal_minor`, `discount_minor`, `tax_minor`, `lines[]` (v1.4); sales'
+  `issueCore` populates them; `SCHEMA_VERSION` `1.3.0` → `1.4.0`;
+  `check-contracts-compat` OK.
+- Kong — `media` service with `media-invoice-pdf-tenant`
+  (`~/v1/businesses/[^/]+/invoices/[^/]+/pdf`, `require_business_scope`,
+  `regex_priority: 200` so it beats `sales-invoices-tenant`) and
+  `media-invoice-pdf-public` (`~/v1/i/[^/]+/pdf`, no plugin, priority 200) in
+  `kong.yml` + k8s `kong-config.yaml`.
+- infra — `media` in `infra/postgres/initdb/20-service-schemas.sql`,
+  `infra/docker-compose.yml` (+ kong `depends_on`), `infra/k8s/base/media.yaml`
+  + kustomization + `secret.example.yaml`; `.env.example` +
+  `MEDIA_PORT` / `MEDIA_DATABASE_URL`.
+- `.github/workflows/ci.yml` — `service (media)` matrix row; `MEDIA_DATABASE_URL`
+  in the migrate / test / acceptance env blocks; `media` in the acceptance
+  migrate + readiness loops.
+
+Evidence:
+
+- `services/media/test/invoice-pdf.e2e-spec.ts` — **6 passing**: `InvoiceIssued`
+  → one stored `%PDF-` object + `document` row (`sha256`, `bytes`) + exactly one
+  `InvoiceDocumentReady`; idempotent on `event_id` + dedupe on `invoice_id`
+  (one `put`); member `/pdf` `202`→`302` and wrong-business → `403`; public
+  `/v1/i/{token}/pdf` `202`→`302` with no auth, unknown token → `202`;
+  `renderInvoice` RPC re-renders (`found: true`) / unknown → `found: false`;
+  `document` foreign-scoped read empty, by-token relaxed read resolves.
+- `pnpm --filter @pos/media build test lint` green; `pnpm --filter
+  @pos/contracts test` → 15; `node scripts/check-contracts-compat.mjs HEAD` → OK.
+- All `services/sales` specs still green in isolation (customers 7, invoices 8,
+  invoice-payments 8, sales 18, isolation 13, rls-backstop 15).
+- `kong config parse` → `parse successful`; `kubectl kustomize infra/k8s/base`
+  renders with `media.yaml`; `ci.yml` valid YAML.
+- Live smoke through the local Kong edge (media + sales rebuilt, kong
+  recreated): credit sale → poll `GET /v1/businesses/{id}/invoices/{id}/pdf`
+  `202`→`302` → follows to MinIO → `200 application/pdf` (`%PDF-`);
+  `GET /v1/i/{token}/pdf` with no auth → the same PDF.
+- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` →
   `WORKFLOW:ok`.
