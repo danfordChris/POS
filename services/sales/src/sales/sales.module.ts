@@ -9,13 +9,23 @@ import { ProductCacheConsumer } from './consumers/product-cache.consumer.js';
 import { BusinessCacheConsumer } from './consumers/business-cache.consumer.js';
 import { CustomersService } from '../customers/customers.service.js';
 import { CustomersController } from '../customers/customers.controller.js';
+import { InvoicesService } from '../invoices/invoices.service.js';
+import { InvoicesController } from '../invoices/invoices.controller.js';
+import { InvoicePublicController } from '../invoices/invoice-public.controller.js';
 
 @Module({
   imports: [TenantModule],
-  controllers: [SalesController, ReceiptController, CustomersController],
+  controllers: [
+    SalesController,
+    ReceiptController,
+    CustomersController,
+    InvoicesController,
+    InvoicePublicController,
+  ],
   providers: [
     SalesService,
     CustomersService,
+    InvoicesService,
     InventoryClient,
     ProductCacheConsumer,
     BusinessCacheConsumer,
@@ -24,6 +34,7 @@ import { CustomersController } from '../customers/customers.controller.js';
   exports: [
     SalesService,
     CustomersService,
+    InvoicesService,
     ProductCacheConsumer,
     BusinessCacheConsumer,
   ],

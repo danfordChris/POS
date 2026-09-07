@@ -12,6 +12,7 @@ import { SCHEMA_VERSION, SUBJECTS, makeEnvelope } from '@pos/contracts';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { InventoryClient } from '../rpc/inventory-client.js';
+import { InvoicesService } from '../invoices/invoices.service.js';
 import { CreateSaleDto } from './dto/create-sale.dto.js';
 import { ListSalesQuery } from './dto/list-sales.dto.js';
 import { publicToken } from './public-token.js';
@@ -44,6 +45,7 @@ export class SalesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly inventory: InventoryClient,
+    private readonly invoices: InvoicesService,
   ) {}
 
   async createSale(
@@ -57,15 +59,31 @@ export class SalesService {
       const prior = await this.prisma.runInTenantContext(businessId, (tx) =>
         tx.sale.findUnique({
           where: { businessId_idempotencyKey: { businessId, idempotencyKey } },
-          include: { lines: true, receipt: true },
+          include: { lines: true, receipt: true, invoice: true },
         }),
       );
       if (prior) return toSaleView(prior);
     }
 
     // 2. Resolve line snapshots from the request or the product cache.
-    const { lines, subtotal, discountTotal, total, currency, businessName } =
-      await this.resolveLines(businessId, dto);
+    const {
+      lines,
+      subtotal,
+      discountTotal,
+      total,
+      currency,
+      businessName,
+      locale,
+    } = await this.resolveLines(businessId, dto);
+
+    const isCredit = dto.payment_terms === 'credit';
+    if (isCredit && !dto.customer_id) {
+      throw new BadRequestException({
+        code: 'customer_required',
+        message: 'A credit sale needs a customer.',
+        details: [{ field: 'customer_id', issue: 'required for credit terms' }],
+      });
+    }
 
     // 3. Reserve stock (before the write txn).
     const reservationId = uuidv7();
@@ -95,6 +113,26 @@ export class SalesService {
     let saleId: string;
     try {
       saleId = await this.prisma.runInTenantContext(businessId, async (tx) => {
+        // A credit sale must name a real customer of this business.
+        let customer: {
+          id: string;
+          name: string;
+          email: string | null;
+        } | null = null;
+        if (isCredit) {
+          customer = await tx.customer.findUnique({
+            where: { id: dto.customer_id! },
+            select: { id: true, name: true, email: true },
+          });
+          if (!customer) {
+            throw new BadRequestException({
+              code: 'validation_error',
+              message: 'That customer does not exist.',
+              details: [{ field: 'customer_id', issue: 'unknown customer' }],
+            });
+          }
+        }
+
         const [{ number }] = await tx.$queryRaw<{ number: number }[]>`
           INSERT INTO sale_number_counter (business_id, next_number)
           VALUES (${businessId}::uuid, 2)
@@ -113,6 +151,8 @@ export class SalesService {
             currency,
             soldBy: userId,
             customerLabel: dto.customer_label ?? null,
+            paymentTerms: isCredit ? 'credit' : 'cash',
+            customerId: customer?.id ?? null,
             idempotencyKey: idempotencyKey ?? null,
             reservationId,
             lines: {
@@ -159,6 +199,24 @@ export class SalesService {
             },
           }),
         });
+
+        // A credit sale issues an `issued` invoice in the same transaction.
+        if (isCredit && customer) {
+          await this.invoices.issueFromSale(tx, {
+            businessId,
+            saleId: sale.id,
+            customerId: customer.id,
+            customerName: customer.name,
+            customerEmail: customer.email,
+            businessName,
+            currency,
+            locale,
+            lines,
+            subtotal,
+            discountTotal,
+            total,
+          });
+        }
         return sale.id;
       });
     } catch (error) {
@@ -174,7 +232,7 @@ export class SalesService {
             where: {
               businessId_idempotencyKey: { businessId, idempotencyKey },
             },
-            include: { lines: true, receipt: true },
+            include: { lines: true, receipt: true, invoice: true },
           }),
         );
         return toSaleView(winner);
@@ -201,7 +259,7 @@ export class SalesService {
     const full = await this.prisma.runInTenantContext(businessId, (tx) =>
       tx.sale.findUniqueOrThrow({
         where: { id: saleId },
-        include: { lines: true, receipt: true },
+        include: { lines: true, receipt: true, invoice: true },
       }),
     );
     return toSaleView(full);
@@ -244,7 +302,7 @@ export class SalesService {
     return this.prisma.runInTenantContext(businessId, async (tx) => {
       const sale = await tx.sale.findUnique({
         where: { id },
-        include: { lines: true, receipt: true },
+        include: { lines: true, receipt: true, invoice: true },
       });
       if (!sale || (role === 'staff' && sale.soldBy !== userId)) {
         throw new NotFoundException({
@@ -308,7 +366,7 @@ export class SalesService {
     return this.prisma.runInTenantContext(businessId, async (tx) => {
       const sale = await tx.sale.findUnique({
         where: { id },
-        include: { lines: true, receipt: true },
+        include: { lines: true, receipt: true, invoice: true },
       });
       if (!sale) {
         throw new NotFoundException({
@@ -351,7 +409,7 @@ export class SalesService {
 
       const voided = await tx.sale.findUniqueOrThrow({
         where: { id },
-        include: { lines: true, receipt: true },
+        include: { lines: true, receipt: true, invoice: true },
       });
       return toSaleView(voided);
     });
@@ -367,6 +425,7 @@ export class SalesService {
     total: number;
     currency: string;
     businessName: string;
+    locale: string;
   }> {
     const ids = [...new Set(dto.lines.map((l) => l.product_id))];
     const cache = await this.prisma.runInTenantContext(businessId, (tx) =>
@@ -426,6 +485,7 @@ export class SalesService {
       total: subtotal - discountTotal,
       currency,
       businessName: bizRow?.name ?? 'Business',
+      locale: bizRow?.locale ?? 'en',
     };
   }
 

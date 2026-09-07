@@ -137,6 +137,7 @@ model Invoice {
   dueDate              DateTime  @map("due_date") @db.Timestamptz(6)
   publicToken          String    @unique @map("public_token")
   businessNameSnapshot String    @map("business_name_snapshot")
+  customerNameSnapshot String    @map("customer_name_snapshot")
   voidReason           String?   @map("void_reason")
   documentUrl          String?   @map("document_url")
   documentGeneratedAt  DateTime? @map("document_generated_at") @db.Timestamptz(6)
@@ -205,6 +206,7 @@ model SalesBusiness {
   businessId String @id @map("business_id") @db.Uuid
   name       String
   currency   String @default("TZS")
+  locale     String @default("en")
 
   @@map("sales_business")
 }

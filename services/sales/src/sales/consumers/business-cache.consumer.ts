@@ -69,8 +69,13 @@ export class BusinessCacheConsumer implements OnApplicationBootstrap {
             businessId: evt.payload.business_id,
             name: evt.payload.name,
             currency: evt.payload.currency,
+            locale: evt.payload.locale,
           },
-          update: { name: evt.payload.name, currency: evt.payload.currency },
+          update: {
+            name: evt.payload.name,
+            currency: evt.payload.currency,
+            locale: evt.payload.locale,
+          },
         }),
     );
   }

@@ -124,9 +124,30 @@ data:
                   require_business_scope: true
                   tenancy_membership_url: http://tenancy:3000/v1/internal/membership
                   internal_api_key: '{vault://env/INTERNAL_API_KEY}'
+          # Invoices (Phase 07). Business-scoped.
+          - name: sales-invoices-tenant
+            paths: ['~/v1/businesses/[^/]+/invoices']
+            regex_priority: 100
+            strip_path: false
+            plugins:
+              - name: pos-internal-context
+                config:
+                  jwt_secret: '{vault://env/JWT_ACCESS_SECRET}'
+                  internal_context_secret: '{vault://env/INTERNAL_CONTEXT_SECRET}'
+                  require_business_scope: true
+                  tenancy_membership_url: http://tenancy:3000/v1/internal/membership
+                  internal_api_key: '{vault://env/INTERNAL_API_KEY}'
           # Public receipt — no auth, no internal-context plugin.
           - name: receipt-public
             paths: ['~/v1/r/[^/]+']
+            regex_priority: 100
+            strip_path: false
+            plugins:
+              - name: rate-limiting
+                config: { minute: 120, policy: local, limit_by: ip }
+          # Public invoice view — no auth, no internal-context plugin.
+          - name: invoice-public
+            paths: ['~/v1/i/[^/]+']
             regex_priority: 100
             strip_path: false
             plugins:

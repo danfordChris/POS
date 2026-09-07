@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -50,4 +51,22 @@ export class CreateSaleDto {
   @IsString()
   @MaxLength(120)
   customer_label?: string;
+
+  @ApiPropertyOptional({
+    enum: ['cash', 'credit'],
+    default: 'cash',
+    description:
+      'A `credit` sale issues an invoice; `customer_id` is required.',
+  })
+  @IsOptional()
+  @IsIn(['cash', 'credit'])
+  payment_terms?: 'cash' | 'credit';
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Required when `payment_terms` is `credit`.',
+  })
+  @IsOptional()
+  @IsUUID()
+  customer_id?: string;
 }

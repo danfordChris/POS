@@ -1,7 +1,7 @@
 import type { Prisma } from '#prisma';
 
 const saleWithChildren = {
-  include: { lines: true, receipt: true },
+  include: { lines: true, receipt: true, invoice: true },
 } satisfies Prisma.SaleDefaultArgs;
 
 export type SaleRow = Prisma.SaleGetPayload<typeof saleWithChildren>;
@@ -28,6 +28,13 @@ export interface SaleView {
   voided_at: string | null;
   lines: SaleLineView[];
   receipt: { public_token: string; status: string } | null;
+  invoice: {
+    id: string;
+    number: number;
+    status: string;
+    public_token: string;
+    balance_due_minor: number;
+  } | null;
 }
 
 export interface SaleSummaryView {
@@ -79,6 +86,15 @@ export function toSaleView(s: SaleRow): SaleView {
     })),
     receipt: s.receipt
       ? { public_token: s.receipt.publicToken, status: s.receipt.status }
+      : null,
+    invoice: s.invoice
+      ? {
+          id: s.invoice.id,
+          number: s.invoice.number,
+          status: s.invoice.status,
+          public_token: s.invoice.publicToken,
+          balance_due_minor: s.invoice.balanceDueMinor,
+        }
       : null,
   };
 }

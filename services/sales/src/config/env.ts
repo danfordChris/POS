@@ -12,6 +12,8 @@ export const envSchema = z.object({
     .min(16, 'INTERNAL_CONTEXT_SECRET must be at least 16 characters'),
   // Base URL the public receipt link points at.
   WEB_BASE_URL: z.string().min(1).default('http://localhost:3000'),
+  // Net payment term for a new invoice: due_date = issue_date + this many days.
+  INVOICE_NET_DAYS: z.coerce.number().int().positive().default(14),
 });
 
 export type Env = z.infer<typeof envSchema>;

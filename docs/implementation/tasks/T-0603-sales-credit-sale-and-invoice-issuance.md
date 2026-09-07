@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -102,11 +102,64 @@ same transaction as the sale, and the invoice is viewable at an unauthenticated
 
 ## Verification
 
-_Planned — to be filled on completion:_
+Delivered:
 
-- `pnpm --filter @pos/sales test` (credit-sale + public-invoice + counter-
-  concurrency specs) + `build` + `lint`.
-- `node scripts/check-contracts-compat.mjs HEAD`.
-- `kong config parse` + `kubectl kustomize infra/k8s/base`.
-- Live smoke through Kong: credit sale → `GET /v1/i/{token}` logged out.
-- `validate_workflow.py` → `WORKFLOW:ok`.
+- `services/sales/src/invoices/` — `InvoicesService`
+  (`issueFromSale(tx, …)` allocates the per-business number under a row-locked
+  `invoice_number_counter` upsert, writes `invoice` + `invoice_line` snapshots,
+  calls `CustomersService.recomputeOutstandingBalance`, enqueues `InvoiceIssued`
+  — all in the sale txn; `list` with `?status=` / `?customer_id=` / `?overdue=`
+  + Staff-sees-own-sale scoping; `get`; `publicInvoice` relaxed-read lookup),
+  `InvoicesController` (`GET /v1/businesses/{id}/invoices` + `/{id}`, Owner+Staff),
+  `InvoicePublicController` (`GET /v1/i/{token}`, no guards),
+  `invoices-views.ts` (incl. the fixed `PublicInvoiceView` whitelist),
+  `dto/list-invoices.dto.ts`.
+- `create-sale.dto.ts` — `payment_terms` (`cash`|`credit`) + `customer_id`.
+- `sales.service.ts` — `createSale`: `credit` + no `customer_id` →
+  `400 customer_required` (before reserving stock); inside the txn an unknown
+  `customer_id` → `400 validation_error` (reservation released via the existing
+  catch); stores `payment_terms` + `customer_id`; on a completed `credit` sale
+  calls `invoices.issueFromSale`. `resolveLines` now also returns `locale`
+  (from the `sales_business` projection).
+- `sales-views.ts` / all `toSaleView` includes — `SaleView` gains an
+  `invoice { id, number, status, public_token, balance_due_minor } | null`.
+- `sales_business` projection gains `locale` (fed from `BusinessCreated.locale`)
+  so `InvoiceIssued.locale` is real, not a default.
+- Migration `20260907170000_invoice_customer_snapshot` —
+  `invoice.customer_name_snapshot` (public view can't join `customer`),
+  `sales_business.locale`, and a **relaxed-read** `tenant_isolation` policy on
+  `invoice_line` (the public `/v1/i/{token}` renders line items unscoped, same
+  as `sale_line`).
+- Kong — `sales-invoices-tenant` (`~/v1/businesses/[^/]+/invoices`,
+  `require_business_scope`) + `invoice-public` (`~/v1/i/[^/]+`, no
+  internal-context plugin, 120/min rate-limit) in `kong.yml` + k8s
+  `kong-config.yaml`.
+- `INVOICE_NET_DAYS` (default 14) in `services/sales` env + `.env.example`.
+
+Evidence:
+
+- `services/sales/test/invoices.e2e-spec.ts` — **8 passing**: credit sale issues
+  one `issued` invoice (`balance_due == total`, number 1 then 2, one
+  `InvoiceIssued` carrying `customer_email` + `locale: sw`), customer balance
+  bumped; no `customer_id` → `400 customer_required`; unknown `customer_id` →
+  `400`, no sale/invoice written, one `releaseReservation`; cash sale →
+  `invoice: null`, no event; reservation shortfall on a credit sale → `422`, no
+  sale/invoice, balance still 0; `GET /v1/i/{token}` unauthenticated → exact
+  15-key whitelist, `customer_name` snapshot, no `product_id` on lines, unknown
+  token → `404`; list `?status=issued` + Owner/Staff visibility; 10 concurrent
+  credit sales → 10 distinct invoice numbers.
+- All `services/sales` specs green in isolation: customers 7, invoices 8,
+  sales 18, isolation 13, rls-backstop 15, scaffold 2.
+- `pnpm --filter @pos/sales build lint` green;
+  `node scripts/check-contracts-compat.mjs HEAD` → OK;
+  `kong config parse` → `parse successful`;
+  `kubectl kustomize infra/k8s/base` renders.
+- Live smoke through the local Kong edge (sales rebuilt, kong recreated):
+  register → business → product → stock-in → customer → `POST /sales`
+  (`payment_terms: credit`) returns the embedded invoice
+  (`balance_due_minor: 10000`); customer `outstanding_balance` = 10000;
+  `GET .../invoices` lists it with `due_date` = issue + 14d;
+  `GET /v1/i/{token}` logged-out returns the whitelisted snapshot with line
+  items; `credit` with no customer → `400`.
+- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` →
+  `WORKFLOW:ok`.

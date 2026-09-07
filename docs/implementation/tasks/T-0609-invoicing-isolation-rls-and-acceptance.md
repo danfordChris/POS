@@ -37,10 +37,11 @@ route, and add a credit-sale → invoice → PDF → payment → `paid` walk-thr
   `/v1/businesses/{id}/customers*` and `/v1/businesses/{id}/invoices*` (+
   `/payments`, `/void`, `/pdf`) to the enumerated routes: wrong-business /
   operator / roleless → `403`, positive control not-`403`.
-- `services/sales/test/rls-backstop.e2e-spec.ts` — add `customer`, `invoice`
-  (RELAXED), `invoice_line`, `payment` with INSERT SQL; assert strict tables read
-  0 unscoped / 0 foreign, relaxed reads visible-unscoped / 0 foreign, every
-  cross-tenant INSERT rejected.
+- `services/sales/test/rls-backstop.e2e-spec.ts` — add `customer` (STRICT),
+  `invoice` + `invoice_line` (RELAXED read — public `/v1/i/{token}`),
+  `payment` (STRICT) with INSERT SQL; assert strict tables read 0 unscoped /
+  0 foreign, relaxed reads visible-unscoped / 0 foreign, every cross-tenant
+  INSERT rejected.
 - `services/media/test/isolation.e2e-spec.ts` + `rls-backstop.e2e-spec.ts` — the
   `/pdf` routes and the `document` table (strict).
 - `infra/acceptance-smoke.sh` — after U13: **U14** create a customer + credit
