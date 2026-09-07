@@ -26,6 +26,7 @@
 - Operator tokens have audience `operator`; rejected by all data-plane routes.
 - Control-plane may read only: business id, name, `subscription_status`, and aggregate counts (products, members) — never row contents.
 - Break-glass: `SupportAccessGrant` requires `business_id`, `reason`, Owner approval, and `expires_at` (max 24h). Every access under a grant writes an `AuditLog` row visible to the Owner.
+- `tenancy` owns `support_access_grant` + `audit_log`, serves the control-plane (`/v1/admin/*`, audience `operator`) and the Owner approval routes, caps `expires_at` at `granted_at + 24h`, and writes the `audit_log` row on each operator read performed under an active grant.
 - No grant → operator queries on tenant tables return 403 at the app layer and are blocked by RLS.
 
 ### Cross-tenant interaction
