@@ -40,6 +40,16 @@ export const invitationCreatedPayload = z.object({
   role: z.enum(['staff']),
   accept_url: z.string().url(),
   expires_at: z.string().datetime(),
+  /** Business name for the invitation email. Additive (v1.2). */
+  business_name: z.string().optional(),
+  /** Recipient locale for the invitation email. Additive (v1.2). */
+  locale: z.string().optional(),
+});
+
+export const invitationAcceptedPayload = z.object({
+  business_id: z.string().uuid(),
+  invitation_id: z.string().uuid(),
+  user_id: z.string().uuid(),
 });
 
 export const categoryUpsertedPayload = z.object({
@@ -177,6 +187,7 @@ export const EVENT_PAYLOADS = {
   MembershipCreated: membershipCreatedPayload,
   MembershipSuspended: membershipSuspendedPayload,
   InvitationCreated: invitationCreatedPayload,
+  InvitationAccepted: invitationAcceptedPayload,
   CategoryUpserted: categoryUpsertedPayload,
   ProductUpserted: productUpsertedPayload,
   PriceChanged: priceChangedPayload,

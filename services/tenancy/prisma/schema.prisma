@@ -43,6 +43,27 @@ model Membership {
   @@map("membership")
 }
 
+/// A pending offer of Staff membership. Only the SHA-256 `token_hash` is stored;
+/// the opaque token lives only in the `InvitationCreated` event / email.
+/// RLS read is relaxed (accept looks it up by token_hash with no business
+/// context); WITH CHECK stays strict.
+model Invitation {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String    @map("business_id") @db.Uuid
+  role       String    @default("staff")
+  email      String
+  tokenHash  String    @unique @map("token_hash")
+  status     String    @default("pending") // pending | accepted | revoked | expired
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdBy  String    @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  acceptedBy String?   @map("accepted_by") @db.Uuid
+  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz(6)
+
+  @@index([businessId, status])
+  @@map("invitation")
+}
+
 model OutboxMessage {
   id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   subject   String

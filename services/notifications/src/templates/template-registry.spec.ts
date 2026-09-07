@@ -73,6 +73,27 @@ describe('TemplateRegistry — low_stock', () => {
     );
   });
 
+  it('renders invitation in en and sw with the accept link', () => {
+    const vars = {
+      business_name: 'Duka la Mama',
+      accept_url: 'https://app.example/invitations/accept?token=abc',
+    };
+    const en = reg.renderInvitation('en', vars);
+    expect(en.subject).toBe('Join Duka la Mama on Stoki');
+    expect(en.text).toContain('invited to join Duka la Mama');
+    expect(en.text).toContain(vars.accept_url);
+    expect(en.html).toContain(vars.accept_url);
+
+    const sw = reg.renderInvitation('sw', vars);
+    expect(sw.subject).toContain('Jiunge na Duka la Mama');
+    expect(sw.text).toContain('Umealikwa');
+    expect(sw.text).toContain(vars.accept_url);
+
+    expect(reg.renderInvitation('fr', vars)).toEqual(
+      reg.renderInvitation('en', vars),
+    );
+  });
+
   it('contains no secrets or internal URLs', () => {
     for (const locale of ['en', 'sw']) {
       for (const vars of [single, digest]) {

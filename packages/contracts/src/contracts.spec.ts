@@ -36,6 +36,30 @@ describe('@pos/contracts', () => {
     expect(schema.parse(value)).toEqual(value);
   });
 
+  it('round-trips invitation event payloads', () => {
+    expect(SUBJECTS.tenancy.invitationCreated).toBe('pos.evt.tenancy.InvitationCreated');
+    expect(SUBJECTS.tenancy.invitationAccepted).toBe('pos.evt.tenancy.InvitationAccepted');
+
+    const created = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      invitation_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d61',
+      email: 'staff@example.com',
+      role: 'staff' as const,
+      accept_url: 'https://app.example/invitations/accept?token=abc',
+      expires_at: '2026-09-14T00:00:00.000Z',
+    };
+    expect(EVENT_PAYLOADS.InvitationCreated.parse(created)).toEqual(created);
+    const withCopy = { ...created, business_name: 'Duka', locale: 'sw' };
+    expect(EVENT_PAYLOADS.InvitationCreated.parse(withCopy)).toEqual(withCopy);
+
+    const accepted = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      invitation_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d61',
+      user_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d62',
+    };
+    expect(EVENT_PAYLOADS.InvitationAccepted.parse(accepted)).toEqual(accepted);
+  });
+
   it('rejects an internal context missing token_kind', () => {
     expect(internalContextSchema.safeParse({ request_id: 'r' }).success).toBe(false);
   });

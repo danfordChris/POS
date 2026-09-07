@@ -32,7 +32,7 @@ Build the two designed-but-unimplemented capabilities the MVP acceptance stories
 
 ## Tasks
 
-- [ ] T-0501 `tenancy` staff invitations (create / list / revoke / accept) + `InvitationCreated` + `invitation` email
+- [x] T-0501 `tenancy` staff invitations (create / list / revoke / accept) + `InvitationCreated` + `invitation` email
 - [ ] T-0502 `tenancy` control-plane `/v1/admin/*` + `support_access_grant` + `audit_log` + Owner approve/revoke + 24h cap
 - [ ] T-0503 Cross-tenant isolation suite over every data-plane route (CI)
 - [ ] T-0504 RLS-only backstop test (app tenant filter bypassed)

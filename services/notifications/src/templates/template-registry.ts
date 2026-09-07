@@ -12,6 +12,9 @@ import type {
 } from './winger-authorized-vars.js';
 import { enWingerAuthorized } from './winger_authorized/en.js';
 import { swWingerAuthorized } from './winger_authorized/sw.js';
+import type { InvitationTemplate, InvitationVars } from './invitation-vars.js';
+import { enInvitation } from './invitation/en.js';
+import { swInvitation } from './invitation/sw.js';
 
 const LOW_STOCK: Record<string, LowStockTemplate> = {
   en: enLowStock,
@@ -21,6 +24,11 @@ const LOW_STOCK: Record<string, LowStockTemplate> = {
 const WINGER_AUTHORIZED: Record<string, WingerAuthorizedTemplate> = {
   en: enWingerAuthorized,
   sw: swWingerAuthorized,
+};
+
+const INVITATION: Record<string, InvitationTemplate> = {
+  en: enInvitation,
+  sw: swInvitation,
 };
 
 /** Renders localized email bodies. Copy lives in the per-locale template
@@ -48,6 +56,18 @@ export class TemplateRegistry {
     vars: WingerAuthorizedVars,
   ): RenderedEmail {
     const tpl = WINGER_AUTHORIZED[locale ?? ''] ?? WINGER_AUTHORIZED.en;
+    return {
+      subject: tpl.subject(vars),
+      text: tpl.text(vars),
+      html: tpl.html(vars),
+    };
+  }
+
+  renderInvitation(
+    locale: string | null | undefined,
+    vars: InvitationVars,
+  ): RenderedEmail {
+    const tpl = INVITATION[locale ?? ''] ?? INVITATION.en;
     return {
       subject: tpl.subject(vars),
       text: tpl.text(vars),

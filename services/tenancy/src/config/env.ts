@@ -12,6 +12,10 @@ export const envSchema = z.object({
     .min(16, 'INTERNAL_CONTEXT_SECRET must be at least 16 characters'),
   // Shared secret Kong presents on the internal membership endpoint.
   INTERNAL_API_KEY: z.string().min(8).default('dev-internal-api-key'),
+  // Base URL the invitation accept link points at.
+  WEB_BASE_URL: z.string().min(1).default('http://localhost:3000'),
+  // How long a staff invitation stays acceptable.
+  INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
 });
 
 export type Env = z.infer<typeof envSchema>;
