@@ -29,7 +29,8 @@ Hold work not yet scheduled into a phase or written as a full task doc.
       emails have no owner recipients unless `alert_config.recipients` is set.
 - [x] Expand Phase 02–06 checklist items into full task docs when each phase is
       scheduled — Phase 02 done; Phase 03 (T-0201–T-0207); Phase 04 (T-0301–T-0309);
-      Phase 05 (T-0401–T-0407) done; Phase 06 task docs written (T-0501–T-0509, 2026-09-07)
+      Phase 05 (T-0401–T-0407) done; Phase 06 task docs written (T-0501–T-0509, 2026-09-07);
+      Phase 07 — invoicing + credit sales — task docs written (T-0601–T-0609, 2026-09-07)
 - [ ] Service mesh (mTLS) evaluation — Phase 06 (proposal 0002, on-hold)
 - [ ] Invitation resend endpoint
 - [ ] Mobile camera scanning (`mobile_scanner` + camera permission config) — the
@@ -61,4 +62,10 @@ Hold work not yet scheduled into a phase or written as a full task doc.
       upload (2); progressive login backoff / account lock (3); Kong
       security-headers plugin for the prod edge (4); `pnpm audit` / Dependabot in
       CI (5).
-- [ ] Post-MVP: NextSMS adapter, PDF invoicing, payments/mobile money, multi-location, EFD/VFD, offline sync, push notifications, `reporting`/`media` services
+- [~] PDF invoicing + credit sales + a `media` service — scheduled as Phase 07
+      (T-0601–T-0609); design in `docs/design/product/invoicing-and-credit.md`.
+- [ ] Invoicing follow-ups (deferred out of Phase 07): credit limits /
+      block-on-overdue; credit notes / refunds on a `paid` invoice; `draft`
+      invoice editing; statement-of-account PDFs; receipt PDFs; SMS delivery of
+      the invoice link.
+- [ ] Post-MVP: NextSMS adapter, payments/mobile money, multi-location, EFD/VFD, offline sync, push notifications, `reporting` service
