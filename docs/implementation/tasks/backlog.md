@@ -51,5 +51,9 @@ Hold work not yet scheduled into a phase or written as a full task doc.
 - [ ] Product image gallery — up to 10 images per product (new `product_image`
       table + count/size limits + web/mobile gallery UI). Requested 2026-09-07;
       only the single-image 10 MB size cap + friendly errors shipped in T-0506.
+- [ ] `pnpm -r test` flakes locally on the shared Postgres since T-0503/T-0505
+      added HTTP-heavy e2e specs (pool contention). Workaround:
+      `pnpm --workspace-concurrency=1 test`. Fix: a per-service test DB or a
+      pooled-connection cap in the vitest setup.
 - [ ] CI coverage gates
 - [ ] Post-MVP: NextSMS adapter, PDF invoicing, payments/mobile money, multi-location, EFD/VFD, offline sync, push notifications, `reporting`/`media` services

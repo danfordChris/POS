@@ -1,12 +1,15 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from '../http/all-exceptions.filter.js';
 import { correlationId } from '../http/correlation-id.middleware.js';
+import type { ErrorReporter } from '../http/error-reporter.js';
 
 export interface ConfigureAppOptions {
   /** URL prefix for all routes. Default `v1`. Pass `''` to disable. */
   prefix?: string;
   /** Paths kept off the prefix (k8s probes). Default `['healthz', 'readyz']`. */
   excludePrefixPaths?: string[];
+  /** Optional sink for unhandled (5xx) errors. Defaults to a no-op. */
+  errorReporter?: ErrorReporter;
 }
 
 /**
@@ -30,6 +33,6 @@ export function configureApp(app: INestApplication, options: ConfigureAppOptions
       transformOptions: { enableImplicitConversion: true },
     }),
   );
-  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalFilters(new AllExceptionsFilter(options.errorReporter));
   app.enableShutdownHooks();
 }

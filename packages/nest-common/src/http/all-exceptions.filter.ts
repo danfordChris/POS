@@ -16,6 +16,7 @@ import {
   friendlyFor,
 } from './error-response.js';
 import type { RequestWithContext } from './request-context.js';
+import { noopErrorReporter, type ErrorReporter } from './error-reporter.js';
 
 /**
  * Converts every thrown error into the canonical envelope:
@@ -32,6 +33,8 @@ import type { RequestWithContext } from './request-context.js';
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  constructor(private readonly reporter: ErrorReporter = noopErrorReporter) {}
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -45,6 +48,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `[${requestId}] ${request?.method} ${request?.originalUrl} -> ${status}: ${body.devMessage}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
+      try {
+        this.reporter.captureException(exception, {
+          requestId,
+          method: request?.method,
+          path: request?.originalUrl,
+          businessId: request?.internalContext?.business_id ?? null,
+        });
+      } catch (reporterError) {
+        this.logger.error(
+          `error reporter threw: ${
+            reporterError instanceof Error ? reporterError.message : String(reporterError)
+          }`,
+        );
+      }
     }
 
     const payload: ErrorResponse = { error: body, requestId };

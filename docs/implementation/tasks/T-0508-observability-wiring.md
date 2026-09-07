@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -55,8 +55,40 @@ Every service request emits a structured log line carrying its `request_id` and 
 
 ## Verification
 
-Run and capture:
+Delivered (all in `@pos/nest-common`, so every service picks it up via `configureApp`):
 
-- The captured structured log line for a scoped request (`request_id` + `business_id`) and for an unscoped one.
-- The `ErrorReporter`-invoked-once test.
-- `pnpm -r test` green; `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
+- `correlationId` middleware now logs **one structured JSON line per request** on
+  the `HTTP` logger: `{ request_id, method, path, status, duration_ms,
+  business_id? }`. `business_id` is read from `req.internalContext` on
+  `res.on('finish')` (after `InternalContextGuard` ran) and is omitted when the
+  request had no tenant context.
+- `http/error-reporter.ts` — `ErrorReporter` interface (`captureException(err,
+  { requestId, method, path, businessId })`), a `noopErrorReporter` default, and
+  a documented adapter shape for wiring a real client (Sentry, …).
+- `AllExceptionsFilter` takes an optional `ErrorReporter` (default no-op) and
+  calls it **once per unhandled 5xx**, wrapped in try/catch so a broken reporter
+  never affects the HTTP response. `configureApp({ errorReporter })` threads it
+  through. Not invoked for 4xx.
+- Health probes audited: `GET /healthz` + `/readyz` are on every service (via
+  `HealthModule`) and wired in compose `healthcheck`s + k8s
+  `liveness/readinessProbe`s — nothing missing. Uptime + log-shipping + error-hook
+  guidance added to `docs/ops/backup-restore-runbook.md`.
+
+Evidence:
+
+- `pnpm --filter @pos/nest-common test` → 22 (+6): `correlation-id.middleware.spec`
+  — one structured line with `request_id`, no `business_id` when unscoped,
+  `business_id` from the internal context, honours an inbound `x-request-id`;
+  `all-exceptions.filter.spec` — reporter invoked once for a 5xx with
+  request/business context, NOT for a 4xx, a throwing reporter never breaks the
+  response.
+- Per-service suites all green (run serially — see note): identity 8, tenancy 33,
+  catalog 46, inventory 62, sales 48, notifications 37, winger 37. contracts 13,
+  testing 5.
+- `pnpm --filter @pos/nest-common lint` clean; `node scripts/check-contracts-compat.mjs HEAD` → OK; validator `WORKFLOW:ok`.
+
+Note: `pnpm -r test` across all packages at once can flake on the shared local
+Postgres now that T-0503/T-0505 added HTTP-heavy specs (connection-pool
+contention → a transient non-403). CI runs each service in its own matrix job
+with a dedicated Postgres, so it is unaffected; locally use
+`pnpm --workspace-concurrency=1 test`. Logged in `backlog.md`.

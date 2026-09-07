@@ -87,6 +87,24 @@ pg_restore -h "$PGHOST" -U "$PGSUPERUSER" -d "$TARGET_DB" -j 4 pos.dump
 
 `infra/restore-drill.sh` automates 1–3 against a throwaway database.
 
+## Observability & uptime checks
+
+- **Health**: every service serves `GET /healthz` (liveness) and `GET /readyz`
+  (readiness — includes a DB ping). Wired as compose `healthcheck`s and k8s
+  `livenessProbe` / `readinessProbe`. Kong exposes `GET /status` on its admin
+  listener. Point the uptime monitor at each service's `/readyz` (or Kong
+  `/status` for an edge-only check) on a 30–60s interval.
+- **Request logs**: `@pos/nest-common`'s `correlationId` middleware emits one
+  structured JSON line per request on the `HTTP` logger:
+  `{ request_id, method, path, status, duration_ms, business_id? }`. `business_id`
+  is present only when the request carried a signed internal context. Ship these
+  to the log aggregator and index on `request_id` + `business_id`.
+- **Error tracking**: unhandled 5xx errors go through
+  `AllExceptionsFilter` → an injectable `ErrorReporter` (default no-op). To turn
+  it on, a service's `main.ts` builds its own client and passes it:
+  `configureApp(app, { errorReporter })`. The `ErrorReporter` receives
+  `{ requestId, method, path, businessId }` alongside the error.
+
 ## Per-business export (not a backup)
 
 `GET /settings/export` in the web app (Owner only) downloads one business's

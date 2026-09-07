@@ -11,12 +11,20 @@ interface CapturedResponse {
   json: ReturnType<typeof vi.fn>;
 }
 
-function mockHost(requestId = 'req-1'): { host: ArgumentsHost; res: CapturedResponse } {
+function mockHost(
+  requestId = 'req-1',
+  businessId?: string,
+): { host: ArgumentsHost; res: CapturedResponse } {
   const res: CapturedResponse = {
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
   };
-  const req = { requestId, method: 'POST', originalUrl: '/v1/things' };
+  const req = {
+    requestId,
+    method: 'POST',
+    originalUrl: '/v1/things',
+    internalContext: businessId ? { business_id: businessId } : undefined,
+  };
   const host = {
     switchToHttp: () => ({ getResponse: () => res, getRequest: () => req }),
   } as unknown as ArgumentsHost;
@@ -84,5 +92,39 @@ describe('AllExceptionsFilter', () => {
     expect(body.error.message).toBe('Something went wrong on our side. Please try again.');
     expect(body.error.devMessage).toContain('req-2');
     expect(JSON.stringify(body)).not.toContain('secret internals');
+  });
+
+  it('invokes the error reporter once for a 5xx, with request/business context', () => {
+    const capture = vi.fn();
+    const reporting = new AllExceptionsFilter({ captureException: capture });
+    const { host } = mockHost('req-9', 'biz-42');
+    reporting.catch(new Error('boom'), host);
+
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture.mock.calls[0][1]).toMatchObject({
+      requestId: 'req-9',
+      method: 'POST',
+      path: '/v1/things',
+      businessId: 'biz-42',
+    });
+  });
+
+  it('does NOT invoke the error reporter for a 4xx', () => {
+    const capture = vi.fn();
+    const reporting = new AllExceptionsFilter({ captureException: capture });
+    const { host } = mockHost();
+    reporting.catch(new NotFoundException('nope'), host);
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it('a throwing reporter never breaks the response', () => {
+    const reporting = new AllExceptionsFilter({
+      captureException: () => {
+        throw new Error('reporter down');
+      },
+    });
+    const { host, res } = mockHost();
+    expect(() => reporting.catch(new Error('boom'), host)).not.toThrow();
+    expect(res.status).toHaveBeenCalledWith(500);
   });
 });

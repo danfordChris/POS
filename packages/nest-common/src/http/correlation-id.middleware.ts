@@ -10,7 +10,9 @@ const logger = new Logger('HTTP');
 /**
  * Plain Express middleware (bound via `app.use` by `configureApp()`).
  * Assigns a correlation id to every request (honouring an inbound `x-request-id`),
- * echoes it on the response, and logs a one-line access record on completion.
+ * echoes it on the response, and logs one structured access record on completion
+ * carrying `request_id`, `method`, `path`, `status`, `duration_ms`, and
+ * `business_id` when the request resolved a signed internal context.
  */
 export function correlationId(req: RequestWithContext, res: Response, next: NextFunction): void {
   const inbound = req.headers[REQUEST_ID_HEADER];
@@ -21,10 +23,19 @@ export function correlationId(req: RequestWithContext, res: Response, next: Next
 
   const startedAt = process.hrtime.bigint();
   res.on('finish', () => {
-    const ms = Number(process.hrtime.bigint() - startedAt) / 1e6;
-    logger.log(
-      `[${requestId}] ${req.method} ${req.originalUrl} ${res.statusCode} ${ms.toFixed(1)}ms`,
-    );
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    // `internalContext` is attached by InternalContextGuard, which has run by
+    // the time the response finishes.
+    const businessId = req.internalContext?.business_id ?? undefined;
+    const record: Record<string, unknown> = {
+      request_id: requestId,
+      method: req.method,
+      path: req.originalUrl,
+      status: res.statusCode,
+      duration_ms: Number(durationMs.toFixed(1)),
+    };
+    if (businessId) record.business_id = businessId;
+    logger.log(JSON.stringify(record));
   });
 
   next();

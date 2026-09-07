@@ -1,5 +1,6 @@
 export * from './http/error-response.js';
 export * from './http/all-exceptions.filter.js';
+export * from './http/error-reporter.js';
 export * from './http/correlation-id.middleware.js';
 export * from './http/not-found.js';
 export * from './http/request-context.js';
