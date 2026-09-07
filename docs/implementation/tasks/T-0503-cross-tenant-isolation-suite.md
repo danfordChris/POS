@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -60,8 +60,40 @@ One suite proves that every tenant-scoped route rejects a caller who is not a me
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- The isolation suite output listing every route asserted, all green.
-- `.github/workflows/ci.yml` diff showing the job; a CI run (or local `act`/manual) proving it executes.
-- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
+- Chosen shape: **a per-service `test/isolation.e2e-spec.ts`** (not a new
+  package) — it reuses each service's existing e2e harness, which the
+  `.github/workflows/ci.yml` `service` matrix already runs (`pnpm test` includes
+  `test/**/*.e2e-spec.ts`), so **no CI change was needed**.
+- `services/catalog/test/isolation.e2e-spec.ts` — 8 routes (`/categories`,
+  `/products` CRUD + `/deactivate` + `/image`); per route: wrong-business `403`,
+  operator `403 operator_data_access_denied`, roleless `403`; positive control
+  (`GET /products` as the member) not `403`.
+- `services/inventory/test/isolation.e2e-spec.ts` — 6 routes (`/alert-config`
+  GET/PUT, `/stock`, `/stock/movements`, `/stock/low`, `POST /stock/movements`).
+- `services/sales/test/isolation.e2e-spec.ts` — 4 routes (`POST/GET /sales`,
+  `GET /sales/:id`, `POST /sales/:id/void`).
+- `services/winger/test/isolation.e2e-spec.ts` — 3 Owner winger-account routes
+  (wrong-business / operator / roleless `403`) **plus** `/v1/winger/*`: a
+  non-winger and a `suspended` winger both get `403 winger_scope_denied` on
+  `…/products`; `GET /v1/winger/businesses` → `403` for an operator and `[]`
+  (no leak) for a non-winger.
+- `services/tenancy/test/isolation.e2e-spec.ts` — 10 business-scoped routes
+  (`/businesses/:id`, `/members`, `/invitations`, `/support-grants`,
+  `/audit-log`); wrong-business / operator / non-member `403`; positive control
+  not `403`.
+- `docs/implementation/status/acceptance-map.md` — the U1–U13 → asserting-test
+  map, plus a description of the isolation suite.
+
+Evidence:
+
+- Per-service suites all green:
+  catalog 36 (+25), inventory 43 (+19), sales 33 (+13), winger 31 (+7),
+  tenancy 22 (+2). Full backend sweep: contracts 13, nest-common 16, testing 5,
+  identity 8, tenancy 22, catalog 36, inventory 43, sales 33, winger 31,
+  notifications 31.
+- No production code changed — no isolation hole was found (every
+  `/v1/businesses/{id}/*` guard already rejected a wrong-business / operator /
+  roleless context; `/v1/winger/*` already rejected non-/suspended wingers).
+- `node scripts/check-contracts-compat.mjs HEAD` → OK; validator `WORKFLOW:ok`.
