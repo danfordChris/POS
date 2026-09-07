@@ -1,5 +1,30 @@
 # Weekly Status
 
+## 2026-09-07 — Phase 07 acceptance verified
+
+Full acceptance gate re-run on `main` @ `4923a86`, all pass:
+
+- Backend test sweep (per service, serial): identity 8, tenancy 33, catalog 46,
+  inventory 62, sales 110, winger 37, media 13, notifications 47, contracts 15,
+  nest-common 22, testing 5 — all green. (`sales.e2e-spec.ts` still shows the
+  documented shared-Postgres pool-contention flake under `-r` with the compose
+  stack attached; green in isolation and in the CI per-service matrix.)
+- CI run `34160186707` on `4923a86` — **every job green**, incl.
+  `service (media)`, `service (sales)`, and `acceptance (U1-U13 e2e)` (5m36s).
+- `node scripts/check-contracts-compat.mjs HEAD` → OK;
+  `validate_workflow.py` → `WORKFLOW:ok`.
+- `kong config parse` (with the `pos-internal-context` plugin) → `parse
+  successful`; `kubectl kustomize infra/k8s/base` → renders clean (incl.
+  `media.yaml`).
+- Live smokes through the local Kong edge: `infra/acceptance-smoke.sh` → all
+  stories passed (U1/U4/U5/U8/U10–U12/U13/**U14**/**U15**);
+  `infra/rate-limit-smoke.sh` → PASS; `infra/restore-drill.sh` → PASS
+  (`media_app` present + non-superuser).
+- `pnpm --filter web lint` + `build` → clean. `flutter analyze` → no issues;
+  `flutter test` → 22/22.
+
+Next: cut `v0.2.0` per `docs/ops/release-checklist.md`.
+
 ## 2026-09-07 — Phase 07 complete: invoicing + credit sales (T-0601–T-0609)
 
 - **`sales`** gained `customer` / `invoice` / `invoice_line` / `payment` (+

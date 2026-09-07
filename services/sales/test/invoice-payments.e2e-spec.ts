@@ -15,7 +15,6 @@ import { SUBJECTS, makeEnvelope } from '@pos/contracts';
 import { InMemoryBus } from '@pos/testing';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
-import { SalesService } from '../src/sales/sales.service.js';
 import { ProductCacheConsumer } from '../src/sales/consumers/product-cache.consumer.js';
 import { BusinessCacheConsumer } from '../src/sales/consumers/business-cache.consumer.js';
 import { InventoryClient } from '../src/rpc/inventory-client.js';
@@ -23,7 +22,6 @@ import { InventoryClient } from '../src/rpc/inventory-client.js';
 let app: INestApplication;
 let prisma: PrismaService;
 let http: ReturnType<typeof request>;
-let sales: SalesService;
 let products: ProductCacheConsumer;
 let businesses: BusinessCacheConsumer;
 
@@ -129,7 +127,6 @@ beforeAll(async () => {
   registerNotFoundFallback(app);
 
   prisma = app.get(PrismaService);
-  sales = app.get(SalesService);
   products = app.get(ProductCacheConsumer);
   businesses = app.get(BusinessCacheConsumer);
   http = request(app.getHttpServer());
