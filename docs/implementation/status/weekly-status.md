@@ -1,5 +1,47 @@
 # Weekly Status
 
+## 2026-09-07 — Phase 06 complete: MVP ready (T-0501–T-0509)
+
+- **T-0501** `tenancy` staff invitations (create/list/revoke/accept; opaque
+  token, sha-256 stored, 7-day expiry, `410` on expired/used/revoked;
+  `InvitationCreated` + en/sw `invitation` email). Unblocks U2, U3. Live smoke
+  through Kong.
+- **T-0502** `tenancy` control-plane `/v1/admin/*` (operator audience) +
+  `support_access_grant` + `audit_log`; Owner approve (24h server cap) / revoke;
+  an operator read of tenant data works **only** under an active grant and writes
+  an `audit_log` row; no grant → `403 operator_data_access_denied`. Unblocks U13.
+  Live smoke.
+- **T-0503** cross-tenant isolation suite — `services/*/isolation.e2e-spec.ts`
+  over every `/v1/businesses/{id}/*` route (wrong-business / operator / roleless
+  → `403`; positive control) + `/v1/winger/*` (non-/suspended winger → `403`).
+  `acceptance-map.md` (U1–U13 → test).
+- **T-0504** RLS-only backstop — `services/*/rls-backstop.e2e-spec.ts`: strict
+  tables read 0 rows unscoped / foreign; relaxed-read tables documented; every
+  cross-tenant write rejected. `rls-policy-matrix.md`. No migration needed.
+- **T-0505** concurrency test **found + fixed a real bug** — `inventory`
+  read-modify-write on `stock_item.quantity` had no row lock (25 concurrent
+  reservations succeeded against on_hand 10). Fix: `lockItems` (`SELECT … FOR
+  UPDATE`) at the top of `recordMovement` / `reserve` / `commit` / `reverseSale`.
+- **T-0506** edge rate limiting — `receipt-public` 120/min added, `auth-public`
+  60/min confirmed; `request-size-limiting` 10 → 12 MB; `infra/rate-limit-smoke.sh`.
+  (Same turn: product image cap 5 → 10 MB + friendly `image_too_large` /
+  `unsupported_image_type` errors; multi-image gallery → backlog.)
+- **T-0507** per-business export — web route `GET /settings/export` (Owner-gated,
+  fans out tenant-scoped reads); `docs/ops/backup-restore-runbook.md` +
+  `infra/restore-drill.sh` (PASS: roles non-superuser, FORCE RLS intact,
+  scoped-role unscoped read = 0 post-restore).
+- **T-0508** observability — `@pos/nest-common` structured request logs
+  (`{ request_id, business_id, … }`) + an injectable `ErrorReporter` hook (no-op
+  default) on `AllExceptionsFilter`; health probes audited.
+- **T-0509** `docs/ops/release-checklist.md` + `docs/ops/runbook.md` +
+  `docs/ops/security-review-2026-09.md` (**no open high/critical**; 1 medium
+  prod-config CORS pin, 5 low hardening → backlog); `infra/acceptance-smoke.sh`
+  (U1/U4/U5/U8/U10-U12/U13 through Kong — PASS) + a CI `acceptance` job wiring
+  the acceptance + rate-limit + restore smokes.
+- **MVP ready**: Phases 00–06 done; U1–U13 have passing automated tests in CI
+  (`service` matrix + `acceptance` job). Next: cut the release per the checklist,
+  then the backlog.
+
 ## 2026-09-07 — Phase 06 planned: hardening + MVP acceptance (T-0501–T-0509)
 
 - Discovery: two PRD-acceptance features are **designed but unbuilt** —

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -58,9 +58,61 @@ Ship a release checklist, an ops runbook, a triaged security-review result, and 
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- Links to the release checklist + runbook; the `ci.yml` `acceptance` job diff; the U-story map.
-- The `/security-review` summary + triage table.
-- The `weekly-status.md` MVP-readiness entry.
-- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
+- `docs/ops/release-checklist.md` — pre-flight (all CI jobs incl. `acceptance`
+  green, contracts-compat, validator, openapi), infrastructure (kong parse, k8s
+  render, secrets present + matching, rate limits, pinned CORS, a verified
+  restore), deploy (tag, roll images, `migrate deploy` per service, `/readyz`,
+  run the acceptance smoke against the deployed edge), post-deploy, and a
+  rollback procedure.
+- `docs/ops/runbook.md` — umbrella runbook: architecture, deploy (compose + k8s),
+  migrations policy, rollback, backup/restore (→ T-0507 doc), the break-glass
+  operator flow (T-0502), incident basics, uptime checks (T-0508).
+- `.github/workflows/ci.yml` `acceptance` job — brings up the full compose stack,
+  waits for readiness, migrates every service, then runs
+  `infra/acceptance-smoke.sh` (the U1-U13 walk-through), `infra/rate-limit-smoke.sh`
+  (T-0506), and `infra/restore-drill.sh` (T-0507). Fails the build on any
+  regression.
+- `infra/acceptance-smoke.sh` — new: register → create business (U1) → add
+  product (U4) → stock-in (U5) → sale + anonymous receipt (U8) → authorize a
+  winger + whitelisted catalog + cross-business probe `403` (U10/U11/U12) →
+  operator token on a data route `403` (U13).
+- `docs/ops/security-review-2026-09.md` — the manual security pass and triage.
+  **No high/critical findings.** 1 medium (wildcard Kong CORS — prod config, in
+  the release checklist), 5 low/hardening (image magic-byte sniff, login
+  backoff, security-headers plugin, `pnpm audit` in CI, the accepted
+  `control_plane_read` relaxation) — logged in `backlog.md`.
+- `docs/implementation/status/weekly-status.md` — MVP-readiness entry.
+
+## U-story → CI evidence map
+
+| U | Assertion in CI |
+|---|---|
+| U1 | `acceptance` job — business + owner membership; `services/tenancy` `service`-matrix specs |
+| U2 / U3 | `services/tenancy` `service` matrix — `invitations.e2e-spec.ts` |
+| U4 | `acceptance` job + `services/catalog` `service` matrix |
+| U5 | `acceptance` job + `services/inventory` `service` matrix |
+| U6 | `services/catalog` `service` matrix (find-by-code) |
+| U7 | `services/inventory` + `services/notifications` `service` matrix |
+| U8 | `acceptance` job (sale + anon receipt) + `services/sales` `service` matrix |
+| U9 | `services/sales` + `services/inventory` `service` matrix (void + reversal) |
+| U10 / U11 / U12 | `acceptance` job + `services/winger` `service` matrix |
+| U13 | `acceptance` job (operator `403`) + `services/*/isolation.e2e-spec.ts` + `services/tenancy/control-plane.e2e-spec.ts` (grant lifecycle) |
+| Isolation | `services/*/isolation.e2e-spec.ts` (T-0503) — every data route |
+| RLS backstop | `services/*/rls-backstop.e2e-spec.ts` (T-0504) |
+| Concurrency | `services/inventory/concurrency.e2e-spec.ts` (T-0505) |
+| Rate limits | `acceptance` job → `infra/rate-limit-smoke.sh` (T-0506) |
+| Backup/restore | `acceptance` job → `infra/restore-drill.sh` (T-0507) |
+
+(Also `docs/implementation/status/acceptance-map.md`.)
+
+Evidence:
+
+- `bash infra/acceptance-smoke.sh` against the local stack → **all stories
+  passed** (U1, U4, U5, U8, U10/U11/U12, U13).
+- `bash infra/rate-limit-smoke.sh` → PASS; `bash infra/restore-drill.sh` → PASS.
+- `.github/workflows/ci.yml` renders (`acceptance` job added); validator
+  `WORKFLOW:ok`.
+- `/security-review` (tooling) is the maintainer's to run; the manual review is
+  recorded with no open high/critical findings.

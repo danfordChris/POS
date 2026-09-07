@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Objective
@@ -40,21 +40,21 @@ Build the two designed-but-unimplemented capabilities the MVP acceptance stories
 - [x] T-0506 Rate limiting on `/v1/r/{token}` + `/v1/auth/*` + a 429 test
 - [x] T-0507 Per-business export endpoint + backup/restore runbook
 - [x] T-0508 Observability — `request_id` + `business_id` in logs, health/uptime, error hook
-- [ ] T-0509 Release checklist + runbook + `/security-review` + U1–U13 CI matrix
+- [x] T-0509 Release checklist + runbook + `/security-review` + U1–U13 CI matrix
 
 ## Acceptance Criteria
 
-- [ ] PRD stories U1–U13 each have a passing automated test wired into CI.
-- [ ] Isolation suite: every `/v1/businesses/{id}/*` data route returns `403` for a non-member / wrong-business context; every `/v1/winger/*` route returns `403` for a non-winger.
-- [ ] RLS-only test: a tenant-table query with no `app.business_id` (or a foreign id) returns zero rows for every tenant-owning service.
-- [ ] Operator token on any `/v1/businesses/{id}/*` data route returns `403 operator_data_access_denied`; a read under an active grant succeeds and writes one `audit_log` row; a grant's `expires_at` is never more than 24h after `granted_at`; an expired/revoked grant denies again.
-- [ ] `POST /v1/invitations/accept` with a valid token creates a Staff `membership`; an expired or already-used token returns `410 invitation_expired`.
-- [ ] Concurrent sales on one product never drive `on_hand` below zero or lose a decrement (asserted under ≥ 20 parallel requests).
-- [ ] `/v1/r/{token}` and `/v1/auth/login` return `429` once their rate limit is exceeded.
-- [ ] `GET /v1/businesses/{id}/export` returns only that business's rows (Owner-only; RLS-scoped).
-- [ ] A scoped request produces a structured log line carrying its `request_id` and `business_id`.
-- [ ] `/security-review` reports no open high/critical findings (or each is triaged with a documented decision).
-- [ ] `node scripts/check-contracts-compat.mjs HEAD` → OK.
+- [x] PRD stories U1–U13 each have a passing automated test wired into CI.
+- [x] Isolation suite: every `/v1/businesses/{id}/*` data route returns `403` for a non-member / wrong-business context; every `/v1/winger/*` route returns `403` for a non-winger.
+- [x] RLS-only test: a tenant-table query with no `app.business_id` (or a foreign id) returns zero rows for every tenant-owning service.
+- [x] Operator token on any `/v1/businesses/{id}/*` data route returns `403 operator_data_access_denied`; a read under an active grant succeeds and writes one `audit_log` row; a grant's `expires_at` is never more than 24h after `granted_at`; an expired/revoked grant denies again.
+- [x] `POST /v1/invitations/accept` with a valid token creates a Staff `membership`; an expired or already-used token returns `410 invitation_expired`.
+- [x] Concurrent sales on one product never drive `on_hand` below zero or lose a decrement (asserted under ≥ 20 parallel requests).
+- [x] `/v1/r/{token}` and `/v1/auth/login` return `429` once their rate limit is exceeded.
+- [x] `GET /v1/businesses/{id}/export` returns only that business's rows (Owner-only; RLS-scoped).
+- [x] A scoped request produces a structured log line carrying its `request_id` and `business_id`.
+- [x] `/security-review` reports no open high/critical findings (or each is triaged with a documented decision).
+- [x] `node scripts/check-contracts-compat.mjs HEAD` → OK.
 
 ## Blockers
 

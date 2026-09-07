@@ -56,4 +56,9 @@ Hold work not yet scheduled into a phase or written as a full task doc.
       `pnpm --workspace-concurrency=1 test`. Fix: a per-service test DB or a
       pooled-connection cap in the vitest setup.
 - [ ] CI coverage gates
+- [ ] Security hardening follow-ups from `docs/ops/security-review-2026-09.md`:
+      pin Kong `cors` origins for prod (finding 1); magic-byte sniff on image
+      upload (2); progressive login backoff / account lock (3); Kong
+      security-headers plugin for the prod edge (4); `pnpm audit` / Dependabot in
+      CI (5).
 - [ ] Post-MVP: NextSMS adapter, PDF invoicing, payments/mobile money, multi-location, EFD/VFD, offline sync, push notifications, `reporting`/`media` services

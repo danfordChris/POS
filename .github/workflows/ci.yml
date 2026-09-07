@@ -167,3 +167,45 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web lint && pnpm --filter web build
+
+  # MVP acceptance: the full compose stack + the U1-U13 walk-through and the two
+  # edge / DR smokes. Per-story unit coverage lives in the `service` matrix
+  # (isolation / rls-backstop / concurrency specs); this is the end-to-end gate.
+  acceptance:
+    name: acceptance (U1-U13 e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: build shared + identity (the smoke hashes an operator password)
+        run: |
+          pnpm --filter @pos/contracts --filter @pos/nest-common build
+          pnpm --filter @pos/identity exec prisma generate
+          pnpm --filter @pos/identity build
+      - name: bring up the stack
+        run: |
+          cp .env.example .env
+          docker compose -f infra/docker-compose.yml up -d --build
+      - name: wait for readiness
+        run: |
+          for svc in identity tenancy catalog inventory sales winger notifications; do
+            for i in $(seq 1 60); do
+              docker compose -f infra/docker-compose.yml exec -T "$svc" wget -q -O - http://localhost:3000/readyz >/dev/null 2>&1 && break
+              sleep 3
+            done
+          done
+          for i in $(seq 1 30); do curl -sf http://localhost:8001/status >/dev/null && break; sleep 2; done
+      - name: migrate every service
+        run: |
+          for d in identity tenancy catalog inventory sales winger notifications; do
+            docker compose -f infra/docker-compose.yml exec -T "$d" pnpm exec prisma migrate deploy
+          done
+      - run: bash infra/acceptance-smoke.sh
+      - run: bash infra/rate-limit-smoke.sh
+      - run: bash infra/restore-drill.sh
+      - if: always()
+        run: docker compose -f infra/docker-compose.yml logs --tail 100

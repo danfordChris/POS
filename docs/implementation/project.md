@@ -8,15 +8,15 @@
 
 ## Current Priorities
 
-1. Phase 06 — Hardening and MVP acceptance. Task docs T-0501–T-0509 written
-   (2026-09-07). It carries two designed-but-unbuilt feature builds — staff
-   invitations (T-0501, U2/U3) and the operator control-plane + break-glass
-   (T-0502, U13) — ahead of the isolation / RLS / concurrency / rate-limit /
-   export / observability / release tasks.
-2. Backlog: mobile offline banner/connectivity provider; `tenancy` event
-   enrichment for `notification_contact`; low-stock email product-name;
-   winger shell-user claim/set-password flow (a provisioned winger cannot yet
-   sign in); winger authorized-by-phone has no notification path.
+- **MVP complete.** Phases 00–06 done; PRD stories U1–U13 have passing automated
+  tests wired into CI (the `service` matrix + the `acceptance` job). Security
+  review recorded with no open high/critical findings
+  (`docs/ops/security-review-2026-09.md`).
+- Next: cut the release per `docs/ops/release-checklist.md`, then work the
+  backlog — security hardening follow-ups (CORS pin, image magic-byte sniff,
+  login backoff, Kong security headers, `pnpm audit` in CI); winger shell-user
+  claim/set-password flow; `tenancy` event enrichment for `notification_contact`;
+  mobile offline banner; the `pnpm -r test` local-flake fix (per-service test DB).
 
 ## Active Phases
 
@@ -26,7 +26,7 @@
 - [x] Phase 03 — Reorder alerts (`inventory` `alert_config` + `low_stock_alert_state` + `AlertConfigChanged`; `notifications` service — projections, low-stock consumer, digest flush, en/sw templates; web `/alerts`; T-0201–T-0207 done 2026-09-06)
 - [x] Phase 04 — Sales and digital receipts (`sales` service — reserve→write→commit saga, `422` path, void + `inventory` `SaleVoided` reversal, public `/v1/r/{token}`, list/detail; mobile sell + receipt; web sales screens; T-0301–T-0309 done 2026-09-07)
 - [x] Phase 05 — Winger portal (`winger` service — `winger_account` + `winger_catalog_projection`; Owner authorize/suspend; whitelisted `/v1/winger/*` catalog with scope enforcement; web `/wingers`; mobile winger-only app; `winger_authorized` en/sw email; T-0401–T-0407 done 2026-09-07)
-- [ ] Phase 06 — Hardening and MVP acceptance
+- [x] Phase 06 — Hardening and MVP acceptance (`tenancy` invitations + control-plane/break-glass; cross-tenant isolation suite; RLS-only backstop; `inventory` concurrency lock fix; edge rate limiting; per-business export + backup/restore runbook; structured logs + error hook; release checklist + ops runbook + security review + `acceptance` CI job; T-0501–T-0509 done 2026-09-07)
 
 ## Deferred Phases
 
