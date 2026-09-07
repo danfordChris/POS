@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -54,8 +54,39 @@ An Owner can export their business's data through the tenant boundary, and there
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- The export response shape for a seeded business; the non-owner `403`.
-- The restore-drill transcript showing the post-restore RLS + roles check passing.
+- **Export host: a web route handler** (`web/app/(shell)/settings/export/route.ts`,
+  `GET /settings/export`) — not a `/v1/...` API path. Rationale: no single
+  service owns products + stock + sales + wingers; the web app already fans out
+  tenant-scoped reads through Kong with the caller's own token (the existing
+  `stock/export/route.ts` uses the same pattern), so RLS + membership scope the
+  result to the caller's business with no cross-schema access and no forged
+  internal context.
+- Owner-gated: `getSession().role !== 'owner'` → `403`. Sections: `products`,
+  `categories`, `stock`, `sales` (full detail incl. `lines`, fetched per sale),
+  `winger_accounts`. Bounded at 2000 products / 1000 sales with a `truncated`
+  flag in the payload; a `Content-Disposition: attachment` JSON download.
+- `web/app/(shell)/settings/page.tsx` — replaces the stub with a real Settings
+  page carrying an Owner-only "Export business data" card linking to the route.
+- `docs/ops/backup-restore-runbook.md` — `pg_dumpall --roles-only` + `pg_dump -Fc`
+  for the whole DB (policies + `FORCE RLS` + ownership are all included);
+  retention / storage guidance; `pg_restore` steps (ownership **preserved**);
+  and the post-restore verification (roles non-superuser, `FORCE RLS` on tenant
+  tables, a scoped role reads 0 rows unscoped, `/readyz` green).
+- `infra/restore-drill.sh` — dumps the live compose DB, restores into a
+  throwaway `pos_restore_drill`, runs the three checks, drops it.
+
+Evidence:
+
+- `bash infra/restore-drill.sh` → **PASS**: 8 `*_app` roles present and
+  `rolsuper = false`; `FORCE RLS` on every sampled tenant table
+  (`product`, `stock_item`, `sale`, `winger_catalog_projection`, `membership`,
+  `notification_contact`); `catalog_app` unscoped `SELECT count(*) FROM product`
+  = 0 after the restore.
+- `pnpm --filter web lint` clean; `pnpm --filter web build` — `/settings` and
+  `/settings/export` compile (dynamic, server-rendered).
+- Export isolation rides on `getSession()` (Owner gate) + `tenantGet` (Kong +
+  the Owner's token + RLS) — the same boundary the T-0503 isolation suite
+  proves; no cross-tenant read path exists in the route.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

@@ -38,7 +38,7 @@ Build the two designed-but-unimplemented capabilities the MVP acceptance stories
 - [x] T-0504 RLS-only backstop test (app tenant filter bypassed)
 - [x] T-0505 Concurrency / no-lost-update test on `on_hand`
 - [x] T-0506 Rate limiting on `/v1/r/{token}` + `/v1/auth/*` + a 429 test
-- [ ] T-0507 Per-business export endpoint + backup/restore runbook
+- [x] T-0507 Per-business export endpoint + backup/restore runbook
 - [ ] T-0508 Observability — `request_id` + `business_id` in logs, health/uptime, error hook
 - [ ] T-0509 Release checklist + runbook + `/security-review` + U1–U13 CI matrix
 
