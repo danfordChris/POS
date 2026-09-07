@@ -99,7 +99,25 @@ export async function uploadProductImage(
 ): Promise<FormState> {
   const file = fd.get('image');
   if (!(file instanceof File) || file.size === 0) {
-    return { error: { code: 'validation_error', message: 'Choose an image file' } };
+    return { error: { code: 'validation_error', message: 'Choose an image to upload.' } };
+  }
+  const MAX_BYTES = 10_000_000;
+  if (file.size > MAX_BYTES) {
+    const gotMb = (file.size / 1_000_000).toFixed(1);
+    return {
+      error: {
+        code: 'image_too_large',
+        message: `That image is ${gotMb} MB. Please use one under 10 MB — try compressing it or taking a smaller photo.`,
+      },
+    };
+  }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    return {
+      error: {
+        code: 'unsupported_image_type',
+        message: 'That file type is not supported. Please upload a JPEG, PNG, or WebP image.',
+      },
+    };
   }
   const forward = new FormData();
   forward.set('image', file);

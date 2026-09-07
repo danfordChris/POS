@@ -23,8 +23,8 @@ export const envSchema = z.object({
     .transform((v) => v === 'true'),
   // Base URL a stored object is publicly served from (bucket is download-anon in dev).
   S3_PUBLIC_URL: z.string().min(1).default('http://localhost:9000/pos-media'),
-  // Max product image size accepted by the upload endpoint.
-  IMAGE_MAX_BYTES: z.coerce.number().int().positive().default(5_000_000),
+  // Max product image size accepted by the upload endpoint (10 MB).
+  IMAGE_MAX_BYTES: z.coerce.number().int().positive().default(10_000_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

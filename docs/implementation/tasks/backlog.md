@@ -48,5 +48,8 @@ Hold work not yet scheduled into a phase or written as a full task doc.
 - [ ] Inline-editable low-stock / reorder thresholds on the product detail
       (currently read-only chips) — needs a PATCH round-trip + optimistic update.
 - [ ] Mobile: product image upload; a Stock / movements list screen.
+- [ ] Product image gallery — up to 10 images per product (new `product_image`
+      table + count/size limits + web/mobile gallery UI). Requested 2026-09-07;
+      only the single-image 10 MB size cap + friendly errors shipped in T-0506.
 - [ ] CI coverage gates
 - [ ] Post-MVP: NextSMS adapter, PDF invoicing, payments/mobile money, multi-location, EFD/VFD, offline sync, push notifications, `reporting`/`media` services

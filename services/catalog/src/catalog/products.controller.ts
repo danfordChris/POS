@@ -129,23 +129,26 @@ export class ProductsController {
     if (!file) {
       throw new BadRequestException({
         code: 'validation_error',
-        message: 'Attach an image file in the `image` field',
+        message: 'Choose an image to upload.',
         details: [{ field: 'image', issue: 'required' }],
       });
     }
-    const maxBytes = this.config.get<number>('IMAGE_MAX_BYTES') ?? 5_000_000;
+    const maxBytes = this.config.get<number>('IMAGE_MAX_BYTES') ?? 10_000_000;
+    const maxMb = Math.round(maxBytes / 1_000_000);
     if (file.size > maxBytes) {
+      const gotMb = (file.size / 1_000_000).toFixed(1);
       throw new BadRequestException({
-        code: 'validation_error',
-        message: 'Image is too large',
+        code: 'image_too_large',
+        message: `That image is ${gotMb} MB. Please use one under ${maxMb} MB — try compressing it or taking a smaller photo.`,
         devMessage: `image ${file.size} bytes exceeds IMAGE_MAX_BYTES=${maxBytes}`,
         details: [{ field: 'image', issue: 'too_large' }],
       });
     }
     if (!MediaService.isSupportedMime(file.mimetype)) {
       throw new BadRequestException({
-        code: 'validation_error',
-        message: 'Image must be a JPEG, PNG, or WebP',
+        code: 'unsupported_image_type',
+        message:
+          'That file type is not supported. Please upload a JPEG, PNG, or WebP image.',
         details: [
           { field: 'image', issue: `unsupported type ${file.mimetype}` },
         ],
