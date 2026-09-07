@@ -26,7 +26,7 @@
 - [x] Phase 03 — Reorder alerts (`inventory` `alert_config` + `low_stock_alert_state` + `AlertConfigChanged`; `notifications` service — projections, low-stock consumer, digest flush, en/sw templates; web `/alerts`; T-0201–T-0207 done 2026-09-06)
 - [x] Phase 04 — Sales and digital receipts (`sales` service — reserve→write→commit saga, `422` path, void + `inventory` `SaleVoided` reversal, public `/v1/r/{token}`, list/detail; mobile sell + receipt; web sales screens; T-0301–T-0309 done 2026-09-07)
 - [x] Phase 05 — Winger portal (`winger` service — `winger_account` + `winger_catalog_projection`; Owner authorize/suspend; whitelisted `/v1/winger/*` catalog with scope enforcement; web `/wingers`; mobile winger-only app; `winger_authorized` en/sw email; T-0401–T-0407 done 2026-09-07)
-- [x] Phase 06 — Hardening and MVP acceptance (`tenancy` invitations + control-plane/break-glass; cross-tenant isolation suite; RLS-only backstop; `inventory` concurrency lock fix; edge rate limiting; per-business export + backup/restore runbook; structured logs + error hook; release checklist + ops runbook + security review + `acceptance` CI job; T-0501–T-0509 done 2026-09-07)
+- [x] Phase 06 — Hardening and MVP acceptance (`tenancy` invitations + control-plane/break-glass; cross-tenant isolation suite; RLS-only backstop; `inventory` concurrency lock fix; edge rate limiting; per-business export + backup/restore runbook; structured logs + error hook; release checklist + ops runbook + security review + `acceptance` CI job; T-0501–T-0509 done 2026-09-07; acceptance verified 2026-09-07)
 
 ## Deferred Phases
 

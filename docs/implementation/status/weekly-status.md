@@ -1,5 +1,29 @@
 # Weekly Status
 
+## 2026-09-07 — Phase 06 acceptance verified: MVP green
+
+Full acceptance gate re-run on `main` at `6451933`, all pass:
+
+- Backend test sweep (per service, serial): identity 8, tenancy 33, catalog 46,
+  inventory 62, sales 48, winger 37, notifications 37, contracts 13,
+  nest-common 22, testing 5 — all green. (`pnpm -r test` on the shared local
+  Postgres still shows the documented pool-contention flake when the compose
+  stack is also attached to `pos_dev`; each suite is green in isolation and the
+  CI `service` matrix runs a dedicated DB per service.)
+- `node scripts/check-contracts-compat.mjs HEAD` → OK.
+- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` →
+  `WORKFLOW:ok`.
+- `kong config parse infra/kong/kong.yml` (with the `pos-internal-context`
+  plugin mounted, as CI does) → `parse successful`.
+- `kubectl kustomize infra/k8s/base` → renders clean.
+- Live smokes through the local Kong edge: `infra/acceptance-smoke.sh` → all
+  stories passed (U1/U4/U5/U8/U10–U12/U13); `infra/rate-limit-smoke.sh` → PASS;
+  `infra/restore-drill.sh` → PASS.
+- `pnpm --filter web lint` + `build` → clean. `flutter analyze` → no issues;
+  `flutter test` → 15/15 pass.
+
+Next: cut the release per `docs/ops/release-checklist.md`, then work the backlog.
+
 ## 2026-09-07 — Phase 06 complete: MVP ready (T-0501–T-0509)
 
 - **T-0501** `tenancy` staff invitations (create/list/revoke/accept; opaque
