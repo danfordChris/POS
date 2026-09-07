@@ -18,6 +18,7 @@
 | `pos.rpc.inventory.reserveStock` | sales | `{ business_id, reservation_id, lines: [{ product_id, quantity }] }` | `{ ok }` or `{ ok:false, shortfalls: [...] }` | idempotent on `reservation_id` |
 | `pos.rpc.inventory.commitReservation` | sales | `{ business_id, reservation_id, sale_id }` | `{ ok }` | also driven by `SaleCompleted` as backstop |
 | `pos.rpc.inventory.releaseReservation` | sales | `{ business_id, reservation_id }` | `{ ok }` | saga compensation; idempotent |
+| `pos.rpc.media.renderInvoice` | sales | `{ business_id, invoice_id }` | `{ url, bytes, sha256 }` or `not_found` | on-demand PDF regeneration; the normal path is the `InvoiceIssued` event, so callers tolerate `503` and fall back to the async result |
 
 ### Internal context
 

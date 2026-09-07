@@ -16,9 +16,10 @@
 | `tenancy` | `business`, `membership`, `invitation`, `support_access_grant`, `audit_log` | `/v1/businesses/*`, `/v1/invitations/*`, control-plane `/v1/admin/businesses` + `/v1/admin/support-grants` (audience `operator`), Owner `/v1/businesses/{id}/support-grants/*`; internal `GET /internal/membership` (Kong only, shared-secret) | `BusinessCreated`, `MembershipCreated`, `MembershipSuspended`, `InvitationCreated`, `InvitationAccepted` | `UserRegistered` (optional link) | `identity.getUser` |
 | `catalog` | `category`, `product` | `/v1/businesses/{id}/categories`, `/v1/businesses/{id}/products` | `ProductUpserted`, `ProductDeactivated`, `PriceChanged`, `CategoryUpserted` | `BusinessCreated` | — |
 | `inventory` | `stock_item`, `stock_movement`, `alert_config`, `low_stock_alert_state` | `/v1/businesses/{id}/stock/*`, `/v1/businesses/{id}/alert-config` | `StockLevelChanged`, `StockMovementRecorded`, `StockFellBelowThreshold`, `StockRecovered`, `AlertConfigChanged` | `ProductUpserted` (seed `stock_item`), `ProductDeactivated`, `SaleVoided` (write `void_reversal` movements) | serves `reserveStock`, `commitReservation`, `releaseReservation` |
-| `sales` | `sale`, `sale_line`, `receipt`, `product_cache` | `/v1/businesses/{id}/sales/*`, `/v1/r/{token}` | `SaleCompleted`, `SaleVoided` | `ProductUpserted` (name cache), `PriceChanged` (price cache), `BusinessCreated` (name/currency for the receipt) | `inventory.reserveStock` / `commitReservation` / `releaseReservation` |
+| `sales` | `sale`, `sale_line`, `receipt`, `product_cache`, `sale_number_counter`, `customer`, `invoice`, `invoice_line`, `payment`, `invoice_number_counter` | `/v1/businesses/{id}/sales/*`, `/v1/businesses/{id}/customers/*`, `/v1/businesses/{id}/invoices/*`, `/v1/r/{token}`, `/v1/i/{token}` (+ `/pdf`) | `SaleCompleted`, `SaleVoided`, `CustomerCreated`, `CustomerUpdated`, `InvoiceIssued`, `InvoicePaymentRecorded`, `InvoiceVoided` | `ProductUpserted` (name cache), `PriceChanged` (price cache), `BusinessCreated` (name/currency for the receipt), `InvoiceDocumentReady` (copy `document_url`) | `inventory.reserveStock` / `commitReservation` / `releaseReservation`, `media.renderInvoice` (regen, optional) |
 | `winger` | `winger_account`, `winger_catalog_projection` | `/v1/businesses/{id}/winger-accounts`, `/v1/winger/*` | `WingerAuthorized`, `WingerSuspended` | `ProductUpserted`, `PriceChanged`, `ProductDeactivated`, `StockLevelChanged` | `identity.getUser` (resolve/create winger by email/phone), `tenancy.resolveMembership` (member/winger mutual exclusion) |
-| `notifications` | `notification`, `notification_contact`, `digest_config`, `notification_business` | — | `NotificationSent`, `NotificationFailed` | `InvitationCreated`, `WingerAuthorized`, `StockFellBelowThreshold`, `StockRecovered`, `AlertConfigChanged`, `BusinessCreated`, `MembershipCreated`, `MembershipSuspended` | — |
+| `media` | `document` | `/v1/businesses/{id}/invoices/{id}/pdf` + `/v1/i/{token}/pdf` (proxied) | `InvoiceDocumentReady` | `InvoiceIssued` | serves `pos.rpc.media.renderInvoice`; object storage = MinIO (local) / S3 (prod) |
+| `notifications` | `notification`, `notification_contact`, `digest_config`, `notification_business` | — | `NotificationSent`, `NotificationFailed` | `InvitationCreated`, `WingerAuthorized`, `StockFellBelowThreshold`, `StockRecovered`, `AlertConfigChanged`, `BusinessCreated`, `MembershipCreated`, `MembershipSuspended`, `InvoiceIssued`, `InvoicePaymentRecorded` | — |
 
 ### Transport rules
 
@@ -26,6 +27,8 @@
 - **Request/reply** only when a caller needs data it cannot own a copy of, and staleness is unacceptable:
   - Kong `pos-internal-context` → `tenancy` internal membership HTTP (per data-plane request; cached 30–60s in the plugin). `tenancy` also exposes `pos.rpc.tenancy.resolveMembership` for service-to-service use.
   - `sales → inventory.reserve/commit/release` (saga steps).
+  - `sales → media.renderInvoice` (on-demand PDF regeneration only; the normal
+    path is the `InvoiceIssued` event).
   - `tenancy/winger → identity.getUser` (resolve/create a user by email/phone).
   - `winger → tenancy.resolveMembership` (reject authorizing a user who is already a `membership` in that business).
 - **No** service calls another service's database. **No** shared ORM models across services.
@@ -33,7 +36,7 @@
 
 ### Data ownership
 
-- **One shared PostgreSQL instance**, one schema per service: `identity`, `tenancy`, `catalog`, `inventory`, `sales`, `winger`, `notifications`.
+- **One shared PostgreSQL instance**, one schema per service: `identity`, `tenancy`, `catalog`, `inventory`, `sales`, `winger`, `media`, `notifications`.
 - Each service connects as a non-superuser role (`<svc>_app`) that is granted usage/DDL **only on its own schema** and has `search_path` pinned to it. No `GRANT` across schemas → a service physically cannot read another's tables.
 - Each service runs its own Prisma schema + migrations against its schema, and calls `enable_tenant_rls()` on its tenant tables.
 - Denormalized copies are allowed and expected (e.g. `sales` caches product name + price; `winger` builds a projection). The copy's owner is the emitting service; the holder treats it as a read-only cache rebuilt from events.
@@ -63,7 +66,7 @@
 
 ### Deployment
 
-- **Local**: `infra/docker-compose.yml` — Kong (DB-less, `:8000` proxy) + NATS (JetStream) + one Postgres (schema + role per service) + MinIO + Mailpit + each service.
+- **Local**: `infra/docker-compose.yml` — Kong (DB-less, `:8000` proxy) + NATS (JetStream) + one Postgres (schema + role per service) + MinIO (object storage for `media`) + Mailpit + each service.
 - **Production**: Kubernetes. Kong via the official Helm chart (DB-less, declarative `kong.yml` + the `pos-internal-context` plugin mounted). Per service: `Deployment`, `Service` (ClusterIP), `HorizontalPodAutoscaler`, `PodDisruptionBudget`; config via `ConfigMap`/`Secret`; NATS as a StatefulSet cluster (Helm); one managed Postgres instance (schema + role per service); ingress → Kong only; `NetworkPolicy` denying ingress to non-Kong-reachable services from outside the namespace.
 - Each service: multi-stage Dockerfile, `/healthz` (liveness) + `/readyz` (readiness incl. DB + NATS), graceful shutdown draining NATS subscriptions.
 
@@ -81,7 +84,12 @@
 ## Decisions
 
 - Kong at the edge + 7 domain services at MVP. No further splitting until load data says otherwise.
-- `reporting` and `media` are future services, not MVP.
+- `media` became a real service in Phase 07 (invoice PDF rendering + object
+  storage; consumes `InvoiceIssued`, serves `renderInvoice`). `reporting` is
+  still future.
+- Invoicing + credit sales are owned by `sales` (a sale artifact — same number
+  counter, product cache, and void path), not a separate `billing` service. See
+  `docs/design/product/invoicing-and-credit.md`.
 - No service mesh in MVP; Kubernetes `NetworkPolicy` + internal-context signing. Mesh (mTLS) revisited in Phase 06.
 
 ## Contracts
@@ -94,6 +102,6 @@
 
 - Each service builds, tests, and containerises on its own; CI runs per-service jobs plus a contracts compatibility check.
 - A consumer receiving the same event twice produces one state change (idempotency test per consumer).
-- Removing `notifications` or `winger` from `local` leaves all other endpoints working.
+- Removing `notifications`, `winger`, or `media` from `local` leaves all other endpoints working (invoice `/pdf` routes degrade to `202`).
 - No service's Prisma schema references another service's tables (static check).
 - The sale saga leaves no partial writes on stock-reservation failure.

@@ -31,10 +31,16 @@
 | `product` | id, business_id, sku, name, description, category_id, unit, image_url, cost_price, sell_price, winger_price (nullable), reorder_threshold (default 0), code (QR/barcode, nullable), is_active, created_at, updated_at | unique (business_id, sku); unique (business_id, code) |
 | `stock_item` | id, business_id, product_id, location_id (nullable), quantity | one row per product in MVP; cached on-hand |
 | `stock_movement` | id, business_id, product_id, type (`stock_in`\|`adjustment`\|`sale`\|`return`\|`void_reversal`), quantity_delta (signed), reason, reference_type, reference_id, created_by, created_at | append-only ledger |
-| `sale` | id, business_id, number (per-business sequence — allocated from `sale_number_counter` in the sale txn), status (`completed`\|`voided`), subtotal, discount_total, total, currency, sold_by, customer_label (nullable), created_at, voided_at | |
+| `sale` | id, business_id, number (per-business sequence — allocated from `sale_number_counter` in the sale txn), status (`completed`\|`voided`), payment_terms (`cash`\|`credit`, default `cash`), customer_id (nullable; required when `credit`), subtotal, discount_total, total, currency, sold_by, customer_label (nullable), created_at, voided_at | |
 | `sale_number_counter` | business_id (pk), next_number | `sales` schema; row-locked (`SELECT … FOR UPDATE`) inside the sale transaction |
 | `sale_line` | id, sale_id, business_id, product_id, name_snapshot, unit_price_snapshot, quantity, discount, line_total | |
 | `receipt` | id, business_id, sale_id, public_token (unique), business_name_snapshot, currency, status (`issued`\|`void`), issued_at | token is unguessable (≥128-bit); `/r/{token}` needs no auth so the name is snapshotted, not joined |
+| `customer` | id, business_id, name, phone (nullable), email (nullable), address (nullable), tax_id (nullable), outstanding_balance (default 0), disabled_at (nullable), created_at, updated_at | `sales` schema; `outstanding_balance` = `sum(invoice.balance_due)` over non-void invoices, cached in-txn |
+| `invoice` | id, business_id, number (per-business sequence — `invoice_number_counter`), sale_id (nullable), customer_id, status (`draft`\|`issued`\|`partially_paid`\|`paid`\|`void`), currency, subtotal_minor, discount_minor, tax_minor, total_minor, amount_paid_minor, balance_due_minor, issue_date, due_date, public_token (unique), business_name_snapshot, void_reason (nullable), document_url (nullable), document_generated_at (nullable), created_at | `sales` schema; `/i/{token}` needs no auth → name + lines snapshotted |
+| `invoice_number_counter` | business_id (pk), next_number | `sales` schema; row-locked inside the issue transaction |
+| `invoice_line` | id, invoice_id, business_id, product_id (nullable), description, quantity, unit_price_minor, discount_minor, line_total_minor | snapshot at issue time |
+| `payment` | id, business_id, invoice_id, amount_minor, method (`cash`\|`bank_transfer`\|`mobile_money`\|`other`), reference (nullable), received_at, created_by, created_at | `sales` schema; label only, no gateway |
+| `document` | id, business_id, kind (`invoice`), ref_id, url, bytes, sha256, created_at | `media` schema; object stored in MinIO/S3; one current row per `(kind, ref_id)` |
 | `product_cache` | business_id, product_id, name, sell_price, currency | `sales` schema; read-only projection from `ProductUpserted` / `PriceChanged`; fills line snapshots when the client omits `unit_price` |
 | `winger_account` | id, business_id, user_id, status (`active`\|`suspended`), authorized_by, created_at | unique (business_id, user_id); a user row here has no `membership` |
 | `winger_catalog_projection` | business_id, product_id, name, image_url (nullable), sell_price, winger_price (nullable), currency, on_hand (default 0), is_active, updated_at | `winger` schema; read-only projection from `ProductUpserted` / `PriceChanged` / `ProductDeactivated` / `StockLevelChanged`; unique (business_id, product_id); serves the winger catalog read |
@@ -49,9 +55,11 @@
 
 ### Relationships
 
-- `business` 1–N `membership`, `product`, `sale`, `winger_account`, ...
+- `business` 1–N `membership`, `product`, `sale`, `winger_account`, `customer`, `invoice`, ...
 - `product` 1–1 `stock_item` (MVP), 1–N `stock_movement`, 1–N `sale_line`.
-- `sale` 1–N `sale_line`, 1–1 `receipt`.
+- `sale` 1–N `sale_line`, 1–1 `receipt`, 0–1 `invoice`.
+- `customer` 1–N `invoice`; `invoice` 1–N `invoice_line`, 1–N `payment`.
+- `invoice` 0–1 `document` (kind `invoice`) in the `media` schema, referenced by id only.
 - `user` N–N `business` via `membership`; `user` 1–N `winger_account`.
 - `business` 1–N `winger_catalog_projection` (one row per active product; rebuilt from catalog + inventory events; read fields are a fixed whitelist).
 
@@ -61,6 +69,11 @@
 - A completed `sale` has ≥1 `sale_line`; `total == sum(line_total) - discount_total` and `total >= 0`.
 - Voiding a `sale`: insert `void_reversal` movements equal and opposite to the sale movements; set `receipt.status = void`.
 - `winger_price` when null resolves to `sell_price` at read time.
+- `invoice.balance_due_minor == total_minor - amount_paid_minor` and `0 <= balance_due_minor <= total_minor`, always, enforced in-transaction.
+- `invoice.amount_paid_minor == sum(payment.amount_minor)` for that invoice.
+- `customer.outstanding_balance == sum(invoice.balance_due_minor)` over that customer's non-`void` invoices, maintained in the same transaction as any invoice/payment write.
+- A completed `sale` with `payment_terms = credit` has a non-null `customer_id` and exactly one `invoice` with `balance_due_minor == total_minor` at issue.
+- Voiding a `sale` voids its `invoice` (`status = void`, `balance_due_minor = 0`) and decrements the customer balance by the pre-void `balance_due_minor`.
 - A `user` cannot have both a `membership` and a `winger_account` in the same `business`.
 - `low_stock_alert_state.is_open` flips true when on-hand ≤ threshold, false when on-hand > threshold; email sent only on the false→true edge.
 
@@ -70,6 +83,8 @@
 - `stock_movement (business_id, product_id, created_at)`.
 - `sale (business_id, created_at)`, `receipt (public_token)`.
 - `membership (user_id)`, `winger_account (user_id)`.
+- `invoice (business_id, status, due_date)`, `invoice (public_token)`, `invoice (business_id, customer_id)`.
+- `payment (business_id, invoice_id)`, `customer (business_id, name)`, `document (business_id, kind, ref_id)`.
 
 ## Decisions
 
@@ -82,6 +97,13 @@
   `notification_contact` projection (default `low_stock` recipients = active owners)
   unless `alert_config.recipients` is set, in which case `inventory` passes the
   explicit list on the event.
+- Invoicing lives in the `sales` schema (invoices are a sale artifact — same number
+  counter, product cache, and void path). Receivable balance is derived + cached,
+  never hand-entered; the invoice ledger is the source of truth. See
+  `docs/design/product/invoicing-and-credit.md` (adopted 2026-09-07, Phase 07).
+- `media` owns `document` and stores the rendered object in MinIO/S3; other services
+  reference a document by id only. `invoice.document_url` is a convenience copy
+  written from `InvoiceDocumentReady`.
 
 ## Contracts
 

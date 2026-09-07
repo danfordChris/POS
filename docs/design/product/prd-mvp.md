@@ -45,7 +45,9 @@
 
 ### Out of scope (deferred)
 
-- SMS notifications; PDF invoices; credit sales / payment tracking; payment gateway / mobile money.
+- SMS notifications; payment gateway / mobile money.
+  (PDF invoices + credit sales / payment tracking were adopted post-MVP —
+  see `docs/design/product/invoicing-and-credit.md`, built in Phase 07.)
 - Multi-location, stock transfers; barcode label printing.
 - Fiscal / EFD / VFD receipt compliance.
 - Winger ordering; winger self-signup.

@@ -33,13 +33,13 @@
 
 | HTTP | `code` examples |
 |---|---|
-| 400 | `validation_error`, `image_too_large`, `unsupported_image_type` |
+| 400 | `validation_error`, `image_too_large`, `unsupported_image_type`, `customer_required` |
 | 401 | `unauthenticated`, `wrong_token_audience` |
 | 403 | `not_a_member`, `role_forbidden`, `winger_scope_denied`, `operator_data_access_denied` |
 | 404 | `not_found` (body echoes the looked-up key, e.g. scanned `code`) |
-| 409 | `conflict` (duplicate SKU/code, version conflict) |
+| 409 | `conflict` (duplicate SKU/code, version conflict), `invoice_not_payable` |
 | 410 | `invitation_expired` |
-| 422 | `insufficient_stock` |
+| 422 | `insufficient_stock`, `overpayment` |
 | 429 | `rate_limited` |
 
 ### Endpoints
@@ -94,11 +94,34 @@
 
 | Method | Path | Role |
 |---|---|---|
-| POST | `/businesses/{businessId}/sales` | Owner, Staff (lines: product_id, quantity, unit_price?, discount?) → 422 `insufficient_stock` if short |
+| POST | `/businesses/{businessId}/sales` | Owner, Staff (lines: product_id, quantity, unit_price?, discount?; `payment_terms: cash\|credit` default `cash`; `customer_id` required when `credit` → else 400 `customer_required`) → 422 `insufficient_stock` if short; a `credit` sale issues an `issued` invoice |
 | GET | `/businesses/{businessId}/sales` | Owner (all); Staff (own) |
 | GET | `/businesses/{businessId}/sales/{id}` | Owner; Staff (own) |
-| POST | `/businesses/{businessId}/sales/{id}/void` | Owner |
+| POST | `/businesses/{businessId}/sales/{id}/void` | Owner (also voids the sale's invoice, if any) |
 | GET | `/r/{public_token}` | public, no auth — receipt view payload |
+
+#### Invoicing & credit
+
+| Method | Path | Role |
+|---|---|---|
+| GET | `/businesses/{businessId}/customers` | member; `?q=` `?has_balance=true` |
+| POST | `/businesses/{businessId}/customers` | Owner, Staff (name; optional phone/email/address/tax_id) |
+| GET | `/businesses/{businessId}/customers/{id}` | member (includes derived `outstanding_balance`) |
+| PATCH | `/businesses/{businessId}/customers/{id}` | Owner, Staff (fields; `disabled_at` to deactivate) |
+| GET | `/businesses/{businessId}/invoices` | Owner (all); Staff (own); `?status=` `?customer_id=` `?overdue=true` |
+| POST | `/businesses/{businessId}/invoices` | Owner, Staff (customer_id + lines, or `sale_id` to attach; issues an `issued` invoice; no stock movement) |
+| GET | `/businesses/{businessId}/invoices/{id}` | Owner; Staff (own) |
+| POST | `/businesses/{businessId}/invoices/{id}/payments` | Owner, Staff (amount_minor, method, reference?, received_at?) → 422 `overpayment`, 409 `invoice_not_payable`; `Idempotency-Key` |
+| POST | `/businesses/{businessId}/invoices/{id}/void` | Owner (409 `invoice_not_payable` if already `paid`) |
+| GET | `/businesses/{businessId}/invoices/{id}/pdf` | member — streams the rendered PDF; `202` + `Retry-After` if not rendered yet |
+| GET | `/i/{public_token}` | public, no auth — invoice view payload (snapshot shape) |
+| GET | `/i/{public_token}/pdf` | public, no auth — the rendered PDF; `202` if not ready |
+
+`/i/{token}` mirrors `/r/{token}`: unauthenticated, business name + lines + balances
+snapshotted onto the `invoice` row, `404` for unknown or `void`. The public payload
+is a fixed whitelist — no `cost_price`, member, or cross-customer fields; a schema
+test asserts it. `due_date` defaults to `issue_date + INVOICE_NET_DAYS` (env,
+default 14).
 
 #### Winger
 
@@ -148,7 +171,14 @@ business → `409 conflict`.
 
 - Path-scoped tenancy, not header-scoped, so tenancy is visible in logs and routing.
 - Price fields on product write are silently dropped for Staff, not a 400, to keep the mobile form simple; server is the authority.
-- Receipt route lives at `/v1/r/{token}` (short) and is unauthenticated.
+- Receipt route lives at `/v1/r/{token}` (short) and is unauthenticated; the
+  invoice route mirrors it at `/v1/i/{token}` (+ `/pdf`).
+- Credit is a payment term on `POST /sales`, not a separate endpoint — one sale
+  model, one saga; the invoice is a side effect of completing a `credit` sale.
+  Standalone `POST /invoices` exists for invoicing without a stock movement.
+- Invoice PDFs are rendered by the `media` service asynchronously off
+  `InvoiceIssued`; the `/pdf` routes return `202` until the document exists. See
+  `docs/design/product/invoicing-and-credit.md`.
 - Edge rate limits (Kong `rate-limiting`, `policy: local`, `limit_by: ip`): the public auth routes (`/v1/auth/{register,login,refresh}`, `/v1/auth/operator/login`) at 60/min; the public receipt route (`/v1/r/{token}`) at 120/min. Exceeding either returns `429`.
 
 ## Contracts
@@ -161,3 +191,5 @@ business → `409 conflict`.
 - Every endpoint above has a contract test for the happy path and its documented error codes.
 - `GET /winger/.../products` response validated against the whitelist schema.
 - `GET /r/{token}` returns 200 without an `Authorization` header and 404 for an unknown/void token.
+- `GET /i/{token}` returns 200 without an `Authorization` header and 404 for an unknown/void token; its payload is validated against the fixed snapshot whitelist.
+- A `credit` sale with no `customer_id` returns 400 `customer_required`; payments summing past `balance_due` return 422 `overpayment`.

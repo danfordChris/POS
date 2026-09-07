@@ -18,6 +18,7 @@
 | `INVENTORY` | `pos.evt.inventory.>` | limits, 30d |
 | `SALES` | `pos.evt.sales.>` | limits, 90d |
 | `WINGER` | `pos.evt.winger.>` | limits, 30d |
+| `MEDIA` | `pos.evt.media.>` | limits, 30d |
 | `NOTIFICATIONS` | `pos.evt.notifications.>` | limits, 7d |
 
 Consumers are durable, per (service, event). Ack policy explicit; max-deliver with a dead-letter subject `pos.dlq.<context>.<EventName>`.
@@ -43,6 +44,12 @@ Consumers are durable, per (service, event). Ack policy explicit; max-deliver wi
 | `StockRecovered` | inventory | `business_id`, `product_id`, `on_hand`, `opened_at` (value from the matching open edge) | notifications (closes digest state) |
 | `SaleCompleted` | sales | `business_id`, `sale_id`, `reservation_id`, `lines[]` (`product_id`, `quantity`), `total`, `currency` | inventory (commit reservation — backstop for the direct RPC) |
 | `SaleVoided` | sales | `business_id`, `sale_id`, `lines[]` (`product_id`, `quantity`) | inventory (write `void_reversal` movements equal-and-opposite) |
+| `CustomerCreated` | sales | `business_id`, `customer_id`, `name`, `email?`, `phone?` | — |
+| `CustomerUpdated` | sales | `business_id`, `customer_id`, `name`, `email?`, `phone?`, `disabled` | — |
+| `InvoiceIssued` | sales | `business_id`, `invoice_id`, `sale_id?`, `customer_id`, `customer_name`, `customer_email?`, `number`, `currency`, `total_minor`, `balance_due_minor`, `issue_date`, `due_date`, `public_token`, `locale` | media (render PDF), notifications (`invoice_issued` email) |
+| `InvoicePaymentRecorded` | sales | `business_id`, `invoice_id`, `payment_id`, `amount_minor`, `method`, `balance_due_minor`, `paid_in_full`, `customer_email?`, `locale` | notifications (`payment_received` email) |
+| `InvoiceVoided` | sales | `business_id`, `invoice_id`, `reason?` | — |
+| `InvoiceDocumentReady` | media | `business_id`, `invoice_id`, `url`, `bytes`, `sha256` | sales (copy `document_url` onto the invoice) |
 | `WingerAuthorized` | winger | `business_id`, `winger_account_id`, `user_id`, `portal_url`, `email`, `locale` | notifications |
 | `WingerSuspended` | winger | `business_id`, `winger_account_id` | edge membership-cache bust |
 | `NotificationSent` / `NotificationFailed` | notifications | `business_id`, `notification_id`, `type`, `channel` | — |
@@ -50,6 +57,9 @@ Consumers are durable, per (service, event). Ack policy explicit; max-deliver wi
 ## Decisions
 
 - Events describe facts that already happened; names are past tense.
+- `notifications` also runs an internal daily sweep for the `invoice_overdue`
+  digest (no event source — it reads its own projection); cadence reuses
+  `digest_config`.
 - Additive schema changes bump `schema_version` minor; breaking changes use a new subject `…V2` with a deprecation window.
 - Streams are not partitioned per tenant; handlers scope by `business_id`.
 
