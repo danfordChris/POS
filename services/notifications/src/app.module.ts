@@ -11,6 +11,7 @@ import { LowStockModule } from './low-stock/low-stock.module.js';
 import { DigestModule } from './digest/digest.module.js';
 import { WingerModule } from './winger/winger.module.js';
 import { InvitationsModule } from './invitations/invitations.module.js';
+import { InvoicesModule } from './invoices/invoices.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { InvitationsModule } from './invitations/invitations.module.js';
     DigestModule,
     WingerModule,
     InvitationsModule,
+    InvoicesModule,
     HealthModule.forRootAsync({
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => ({

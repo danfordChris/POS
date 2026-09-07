@@ -72,6 +72,28 @@ model DigestConfig {
   @@map("digest_config")
 }
 
+/// Open-invoice projection for the overdue sweep, fed from `sales`
+/// `InvoiceIssued` / `InvoicePaymentRecorded` / `InvoiceVoided`. `notifications`
+/// cannot read `sales`, so this is how the sweep knows what is outstanding.
+/// Internal worker state — no RLS, no HTTP surface. Rows are removed once the
+/// invoice is paid in full or voided.
+model OverdueInvoice {
+  invoiceId       String   @id @map("invoice_id") @db.Uuid
+  businessId      String   @map("business_id") @db.Uuid
+  customerId      String   @map("customer_id") @db.Uuid
+  customerEmail   String?  @map("customer_email")
+  number          Int
+  currency        String
+  balanceDueMinor Int      @map("balance_due_minor")
+  dueDate         DateTime @map("due_date") @db.Timestamptz(6)
+  locale          String   @default("en")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([businessId, dueDate])
+  @@index([businessId, customerId])
+  @@map("overdue_invoice")
+}
+
 model OutboxMessage {
   id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   subject   String

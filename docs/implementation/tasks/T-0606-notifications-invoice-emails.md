@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -91,11 +91,53 @@ digest to the customer and the business owners.
 
 ## Verification
 
-_Planned — to be filled on completion:_
+Delivered:
 
-- `pnpm --filter @pos/notifications test` (new invoice email + overdue-sweep
-  specs) + `build` + `lint`.
-- Live smoke: issue a credit sale → Mailpit shows the `invoice_issued` mail with
-  the `/v1/i/{token}` link; record a payment → `payment_received` mail.
-- `node scripts/check-contracts-compat.mjs HEAD`; `validate_workflow.py` →
+- `templates/invoice-vars.ts` + en/sw for `invoice_issued`, `payment_received`,
+  `invoice_overdue`; `TemplateRegistry` gains `renderInvoiceIssued` /
+  `renderPaymentReceived` / `renderInvoiceOverdue` (unknown locale → en). The
+  overdue template renders both a `customer` digest and an `owner` summary.
+- `prisma` — `OverdueInvoice` model + migration `20260908170000_overdue_invoice`
+  (internal, no RLS — worker state like `digest_config`).
+- `invoices/invoice-email.service.ts`:
+  - `recordIssued` — upserts the `overdue_invoice` projection and, when the
+    event carries a `customer_email`, sends a localized `invoice_issued` email
+    (link `${WEB_BASE_URL}/i/{public_token}`) via a `notification` row deduped
+    on `invoice_issued:{invoice_id}`.
+  - `recordPayment` — updates / (on `paid_in_full`) deletes the projection row
+    and sends `payment_received` (remaining balance, paid-in-full line), deduped
+    on `payment_received:{payment_id}`.
+  - `onVoided` — drops the projection row.
+- `invoices/invoice.consumers.ts` — `NotifInvoiceIssuedConsumer` /
+  `NotifInvoicePaymentConsumer` / `NotifInvoiceVoidedConsumer`
+  (`subscribeWithDlq`, idempotent on `event_id`).
+- `invoices/overdue-sweep.job.ts` — `OverdueSweepJob.tick(now)`: groups
+  `overdue_invoice` (`due_date < now && balance_due > 0`) by business; per
+  business whose last `invoice_overdue` notification is older than
+  `digest_config.min_interval_hours` (env fallback
+  `OVERDUE_DEFAULT_INTERVAL_HOURS`, default 24), emails each customer with a
+  billing email and one owner summary (owners from `notification_contact`);
+  deduped per `(business, customer|owner, day)` via `notification.dedupe_key`.
+- `app.module.ts` wires `InvoicesModule`; env gains `OVERDUE_POLL_MS` +
+  `OVERDUE_DEFAULT_INTERVAL_HOURS`.
+
+Evidence:
+
+- `services/notifications/test/invoice-emails.e2e-spec.ts` — **7 passing**:
+  `InvoiceIssued` → one localized `invoice_issued` email + one `overdue_invoice`
+  row, dup `event_id` no-op; unknown locale → English; no `customer_email` → no
+  email but the projection is kept; `InvoicePaymentRecorded` partial →
+  `payment_received` with remaining balance, `paid_in_full` → subject line +
+  projection row removed; `InvoiceVoided` → projection row removed; overdue
+  sweep → one customer digest + one owner summary (current invoice excluded),
+  re-run inside the interval sends nothing; a customer with no email is skipped
+  but the owner summary still goes.
+- `template-registry.spec.ts` +3 (invoice_issued en/sw/fallback,
+  payment_received partial/full, invoice_overdue customer/owner).
+- `pnpm --filter @pos/notifications build test lint` → **47 tests** green;
+  `node scripts/check-contracts-compat.mjs HEAD` → OK (no contract change).
+- Live smoke through the local Kong edge (notifications rebuilt): a credit sale
+  → Mailpit shows "Invoice #1 from Mail Co"; a full payment → "Invoice #1 paid
+  in full".
+- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` →
   `WORKFLOW:ok`.

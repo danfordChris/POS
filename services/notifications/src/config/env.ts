@@ -25,6 +25,14 @@ export const envSchema = z.object({
   DIGEST_POLL_MS: z.coerce.number().int().positive().default(60000),
   // Fallback window length when a business has no `digest_config` row yet.
   DIGEST_DEFAULT_INTERVAL_HOURS: z.coerce.number().int().positive().default(24),
+  // Overdue-invoice sweep poll interval (ms) and its default cadence (hours),
+  // used when a business has no `digest_config` row.
+  OVERDUE_POLL_MS: z.coerce.number().int().positive().default(3_600_000),
+  OVERDUE_DEFAULT_INTERVAL_HOURS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(24),
 });
 
 export type Env = z.infer<typeof envSchema>;

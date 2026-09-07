@@ -15,6 +15,20 @@ import { swWingerAuthorized } from './winger_authorized/sw.js';
 import type { InvitationTemplate, InvitationVars } from './invitation-vars.js';
 import { enInvitation } from './invitation/en.js';
 import { swInvitation } from './invitation/sw.js';
+import type {
+  InvoiceIssuedTemplate,
+  InvoiceIssuedVars,
+  InvoiceOverdueTemplate,
+  InvoiceOverdueVars,
+  PaymentReceivedTemplate,
+  PaymentReceivedVars,
+} from './invoice-vars.js';
+import { enInvoiceIssued } from './invoice_issued/en.js';
+import { swInvoiceIssued } from './invoice_issued/sw.js';
+import { enPaymentReceived } from './payment_received/en.js';
+import { swPaymentReceived } from './payment_received/sw.js';
+import { enInvoiceOverdue } from './invoice_overdue/en.js';
+import { swInvoiceOverdue } from './invoice_overdue/sw.js';
 
 const LOW_STOCK: Record<string, LowStockTemplate> = {
   en: enLowStock,
@@ -29,6 +43,21 @@ const WINGER_AUTHORIZED: Record<string, WingerAuthorizedTemplate> = {
 const INVITATION: Record<string, InvitationTemplate> = {
   en: enInvitation,
   sw: swInvitation,
+};
+
+const INVOICE_ISSUED: Record<string, InvoiceIssuedTemplate> = {
+  en: enInvoiceIssued,
+  sw: swInvoiceIssued,
+};
+
+const PAYMENT_RECEIVED: Record<string, PaymentReceivedTemplate> = {
+  en: enPaymentReceived,
+  sw: swPaymentReceived,
+};
+
+const INVOICE_OVERDUE: Record<string, InvoiceOverdueTemplate> = {
+  en: enInvoiceOverdue,
+  sw: swInvoiceOverdue,
 };
 
 /** Renders localized email bodies. Copy lives in the per-locale template
@@ -68,6 +97,42 @@ export class TemplateRegistry {
     vars: InvitationVars,
   ): RenderedEmail {
     const tpl = INVITATION[locale ?? ''] ?? INVITATION.en;
+    return {
+      subject: tpl.subject(vars),
+      text: tpl.text(vars),
+      html: tpl.html(vars),
+    };
+  }
+
+  renderInvoiceIssued(
+    locale: string | null | undefined,
+    vars: InvoiceIssuedVars,
+  ): RenderedEmail {
+    const tpl = INVOICE_ISSUED[locale ?? ''] ?? INVOICE_ISSUED.en;
+    return {
+      subject: tpl.subject(vars),
+      text: tpl.text(vars),
+      html: tpl.html(vars),
+    };
+  }
+
+  renderPaymentReceived(
+    locale: string | null | undefined,
+    vars: PaymentReceivedVars,
+  ): RenderedEmail {
+    const tpl = PAYMENT_RECEIVED[locale ?? ''] ?? PAYMENT_RECEIVED.en;
+    return {
+      subject: tpl.subject(vars),
+      text: tpl.text(vars),
+      html: tpl.html(vars),
+    };
+  }
+
+  renderInvoiceOverdue(
+    locale: string | null | undefined,
+    vars: InvoiceOverdueVars,
+  ): RenderedEmail {
+    const tpl = INVOICE_OVERDUE[locale ?? ''] ?? INVOICE_OVERDUE.en;
     return {
       subject: tpl.subject(vars),
       text: tpl.text(vars),
