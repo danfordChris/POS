@@ -7,6 +7,7 @@ import {
   messageEnvelopeSchema,
   getUserRequest,
   resolveMembershipResponse,
+  renderInvoiceResponse,
   rpcSubject,
 } from './index.js';
 
@@ -216,5 +217,79 @@ describe('@pos/contracts', () => {
     expect(EVENT_PAYLOADS.NotificationSent.parse(sent)).toEqual(sent);
     const failed = { ...sent, error: 'smtp timeout' };
     expect(EVENT_PAYLOADS.NotificationFailed.parse(failed)).toEqual(failed);
+  });
+
+  it('builds invoicing subjects and round-trips customer + invoice payloads', () => {
+    expect(SUBJECTS.sales.customerCreated).toBe('pos.evt.sales.CustomerCreated');
+    expect(SUBJECTS.sales.invoiceIssued).toBe('pos.evt.sales.InvoiceIssued');
+    expect(SUBJECTS.sales.invoicePaymentRecorded).toBe('pos.evt.sales.InvoicePaymentRecorded');
+    expect(SUBJECTS.sales.invoiceVoided).toBe('pos.evt.sales.InvoiceVoided');
+
+    const businessId = '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f';
+    const customerId = '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d70';
+    const invoiceId = '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d71';
+
+    const customer = { business_id: businessId, customer_id: customerId, name: 'Asha Traders' };
+    expect(EVENT_PAYLOADS.CustomerCreated.parse(customer)).toEqual(customer);
+    const withContact = { ...customer, email: 'asha@example.com', phone: '+255700000000' };
+    expect(EVENT_PAYLOADS.CustomerCreated.parse(withContact)).toEqual(withContact);
+
+    const updated = { ...withContact, disabled: false };
+    expect(EVENT_PAYLOADS.CustomerUpdated.parse(updated)).toEqual(updated);
+
+    const issued = {
+      business_id: businessId,
+      invoice_id: invoiceId,
+      customer_id: customerId,
+      customer_name: 'Asha Traders',
+      number: 1,
+      currency: 'TZS',
+      total_minor: 30000,
+      balance_due_minor: 30000,
+      issue_date: '2026-09-07T00:00:00.000Z',
+      due_date: '2026-09-21T00:00:00.000Z',
+      public_token: 'tok_abc123',
+      locale: 'sw',
+    };
+    expect(EVENT_PAYLOADS.InvoiceIssued.parse(issued)).toEqual(issued);
+    const fromSale = {
+      ...issued,
+      sale_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d72',
+      customer_email: 'asha@example.com',
+    };
+    expect(EVENT_PAYLOADS.InvoiceIssued.parse(fromSale)).toEqual(fromSale);
+
+    const paid = {
+      business_id: businessId,
+      invoice_id: invoiceId,
+      payment_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d73',
+      amount_minor: 30000,
+      method: 'mobile_money' as const,
+      balance_due_minor: 0,
+      paid_in_full: true,
+      locale: 'sw',
+    };
+    expect(EVENT_PAYLOADS.InvoicePaymentRecorded.parse(paid)).toEqual(paid);
+
+    const voided = { business_id: businessId, invoice_id: invoiceId, reason: 'entered twice' };
+    expect(EVENT_PAYLOADS.InvoiceVoided.parse(voided)).toEqual(voided);
+  });
+
+  it('builds the media subject + RPC and round-trips InvoiceDocumentReady', () => {
+    expect(SUBJECTS.media.invoiceDocumentReady).toBe('pos.evt.media.InvoiceDocumentReady');
+    expect(SUBJECTS.media.renderInvoice).toBe('pos.rpc.media.renderInvoice');
+
+    const ready = {
+      business_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f',
+      invoice_id: '018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d71',
+      url: 's3://pos-media/invoices/b/i.pdf',
+      bytes: 20480,
+      sha256: 'a'.repeat(64),
+    };
+    expect(EVENT_PAYLOADS.InvoiceDocumentReady.parse(ready)).toEqual(ready);
+
+    expect(renderInvoiceResponse.parse({ found: false })).toEqual({ found: false });
+    const hit = { found: true as const, url: ready.url, bytes: ready.bytes, sha256: ready.sha256 };
+    expect(renderInvoiceResponse.parse(hit)).toEqual(hit);
   });
 });

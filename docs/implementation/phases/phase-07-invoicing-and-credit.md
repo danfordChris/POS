@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `in-progress`
 - Last updated: 2026-09-07
 
 ## Objective
@@ -80,7 +80,7 @@ into design; the proposal file was removed per the workflow lifecycle. Deltas:
 
 ## Tasks
 
-- [ ] T-0601 `@pos/contracts` + `sales` schema — customer / invoice / invoice_line / payment / counter models, migrations, forced RLS, events, `SCHEMA_VERSION` bump (no endpoints)
+- [x] T-0601 `@pos/contracts` + `sales` schema — customer / invoice / invoice_line / payment / counter models, migrations, forced RLS, events, `SCHEMA_VERSION` bump (no endpoints)
 - [ ] T-0602 `sales` customers CRUD + accounts-receivable rollup endpoints
 - [ ] T-0603 `sales` credit sale → invoice issuance (`payment_terms` on `POST /sales`, per-business numbering, `InvoiceIssued`, public `GET /v1/i/{token}`)
 - [ ] T-0604 `sales` standalone invoices + payments + void (balance math, `InvoicePaymentRecorded` / `InvoiceVoided`, customer-balance maintenance, idempotency, sale-void → invoice-void)

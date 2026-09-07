@@ -75,3 +75,21 @@ export const releaseReservationRequest = z.object({
   reservation_id: z.string().uuid(),
 });
 export const releaseReservationResponse = z.object({ ok: z.boolean() });
+
+/**
+ * On-demand invoice PDF (re)generation. The normal path is the `InvoiceIssued`
+ * event; callers use this only to force a rebuild and tolerate a `503`.
+ */
+export const renderInvoiceRequest = z.object({
+  business_id: z.string().uuid(),
+  invoice_id: z.string().uuid(),
+});
+export const renderInvoiceResponse = z.union([
+  z.object({
+    found: z.literal(true),
+    url: z.string().min(1),
+    bytes: z.number().int().nonnegative(),
+    sha256: z.string().min(1),
+  }),
+  z.object({ found: z.literal(false) }),
+]);

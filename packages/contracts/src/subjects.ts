@@ -1,7 +1,7 @@
 /** NATS subject builders. Events: `pos.evt.<context>.<Event>`. RPC: `pos.rpc.<context>.<Method>`. */
 
 export type Context =
-  'identity' | 'tenancy' | 'catalog' | 'inventory' | 'sales' | 'winger' | 'notifications';
+  'identity' | 'tenancy' | 'catalog' | 'inventory' | 'sales' | 'winger' | 'media' | 'notifications';
 
 export const evtSubject = (context: Context, event: string): string =>
   `pos.evt.${context}.${event}`;
@@ -45,10 +45,19 @@ export const SUBJECTS = {
   sales: {
     saleCompleted: evtSubject('sales', 'SaleCompleted'),
     saleVoided: evtSubject('sales', 'SaleVoided'),
+    customerCreated: evtSubject('sales', 'CustomerCreated'),
+    customerUpdated: evtSubject('sales', 'CustomerUpdated'),
+    invoiceIssued: evtSubject('sales', 'InvoiceIssued'),
+    invoicePaymentRecorded: evtSubject('sales', 'InvoicePaymentRecorded'),
+    invoiceVoided: evtSubject('sales', 'InvoiceVoided'),
   },
   winger: {
     wingerAuthorized: evtSubject('winger', 'WingerAuthorized'),
     wingerSuspended: evtSubject('winger', 'WingerSuspended'),
+  },
+  media: {
+    invoiceDocumentReady: evtSubject('media', 'InvoiceDocumentReady'),
+    renderInvoice: rpcSubject('media', 'renderInvoice'),
   },
   notifications: {
     notificationSent: evtSubject('notifications', 'NotificationSent'),

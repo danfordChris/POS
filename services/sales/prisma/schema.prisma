@@ -1,7 +1,8 @@
-// sales service — owns sale, sale_line, receipt, sale_number_counter, and the
-// product_cache projection in the `sales` schema. Plus the transactional outbox
-// + idempotency tables. Stock movements are NOT written here — inventory writes
-// them on commitReservation / on the SaleVoided consumer.
+// sales service — owns sale, sale_line, receipt, sale_number_counter, the
+// product_cache projection, and (Phase 07) customer / invoice / invoice_line /
+// payment / invoice_number_counter — all in the `sales` schema. Plus the
+// transactional outbox + idempotency tables. Stock movements are NOT written
+// here — inventory writes them on commitReservation / on the SaleVoided consumer.
 
 generator client {
   provider = "prisma-client-js"
@@ -26,6 +27,10 @@ model Sale {
   currency       String
   soldBy         String    @map("sold_by") @db.Uuid
   customerLabel  String?   @map("customer_label")
+  /// `cash` (default) or `credit`. A completed `credit` sale issues an invoice.
+  paymentTerms   String    @default("cash") @map("payment_terms")
+  /// Required when `payment_terms = credit`; references `customer.id`.
+  customerId     String?   @map("customer_id") @db.Uuid
   idempotencyKey String?   @map("idempotency_key")
   reservationId  String?   @map("reservation_id") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -33,6 +38,7 @@ model Sale {
 
   lines   SaleLine[]
   receipt Receipt?
+  invoice Invoice?
 
   @@unique([businessId, number])
   @@unique([businessId, idempotencyKey])
@@ -84,6 +90,113 @@ model SaleNumberCounter {
   nextNumber Int    @default(1) @map("next_number")
 
   @@map("sale_number_counter")
+}
+
+/// A named trade customer of one business. `outstanding_balance` is derived —
+/// `sum(invoice.balance_due_minor)` over that customer's non-void invoices —
+/// and cached here, maintained in the same transaction as any invoice/payment
+/// write. RLS: strict `business_id = current_setting('app.business_id')`.
+model Customer {
+  id                 String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId         String    @map("business_id") @db.Uuid
+  name               String
+  phone              String?
+  email              String?
+  address            String?
+  taxId              String?   @map("tax_id")
+  outstandingBalance Int       @default(0) @map("outstanding_balance")
+  disabledAt         DateTime? @map("disabled_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  invoices Invoice[]
+
+  @@index([businessId, name])
+  @@map("customer")
+}
+
+/// A formal invoice — issued from a completed `credit` sale or entered
+/// standalone. Business name + line snapshots live on the row/lines because
+/// `/v1/i/{public_token}` is served without auth (relaxed-read RLS, like
+/// `receipt`). Money fields are integer minor units.
+model Invoice {
+  id                   String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId           String    @map("business_id") @db.Uuid
+  number               Int
+  saleId               String?   @unique @map("sale_id") @db.Uuid
+  customerId           String    @map("customer_id") @db.Uuid
+  status               String    @default("issued") // draft | issued | partially_paid | paid | void
+  currency             String
+  subtotalMinor        Int       @map("subtotal_minor")
+  discountMinor        Int       @default(0) @map("discount_minor")
+  taxMinor             Int       @default(0) @map("tax_minor")
+  totalMinor           Int       @map("total_minor")
+  amountPaidMinor      Int       @default(0) @map("amount_paid_minor")
+  balanceDueMinor      Int       @map("balance_due_minor")
+  issueDate            DateTime  @map("issue_date") @db.Timestamptz(6)
+  dueDate              DateTime  @map("due_date") @db.Timestamptz(6)
+  publicToken          String    @unique @map("public_token")
+  businessNameSnapshot String    @map("business_name_snapshot")
+  voidReason           String?   @map("void_reason")
+  documentUrl          String?   @map("document_url")
+  documentGeneratedAt  DateTime? @map("document_generated_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  sale     Sale?         @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  customer Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  lines    InvoiceLine[]
+  payments Payment[]
+
+  @@unique([businessId, number])
+  @@index([businessId, status, dueDate])
+  @@index([businessId, customerId])
+  @@map("invoice")
+}
+
+/// Immutable snapshot of one invoice line, fixed at issue time.
+model InvoiceLine {
+  id             String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  invoiceId      String  @map("invoice_id") @db.Uuid
+  businessId     String  @map("business_id") @db.Uuid
+  productId      String? @map("product_id") @db.Uuid
+  description    String
+  quantity       Int
+  unitPriceMinor Int     @map("unit_price_minor")
+  discountMinor  Int     @default(0) @map("discount_minor")
+  lineTotalMinor Int     @map("line_total_minor")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, invoiceId])
+  @@map("invoice_line")
+}
+
+/// A settlement recorded against an invoice. `method` is a label only — no
+/// payment-gateway integration in Phase 07.
+model Payment {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId  String   @map("business_id") @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.Uuid
+  amountMinor Int      @map("amount_minor")
+  method      String // cash | bank_transfer | mobile_money | other
+  reference   String?
+  receivedAt  DateTime @map("received_at") @db.Timestamptz(6)
+  createdBy   String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, invoiceId])
+  @@map("payment")
+}
+
+/// Per-business monotonic invoice number. Row-locked (`FOR UPDATE`) inside the
+/// issue transaction, exactly like `sale_number_counter`.
+model InvoiceNumberCounter {
+  businessId String @id @map("business_id") @db.Uuid
+  nextNumber Int    @default(1) @map("next_number")
+
+  @@map("invoice_number_counter")
 }
 
 /// Read-only projection from `tenancy.BusinessCreated`. Supplies the business

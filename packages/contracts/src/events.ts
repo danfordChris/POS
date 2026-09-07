@@ -150,6 +150,72 @@ export const saleVoidedPayload = z.object({
   lines: z.array(saleLineRef).min(1),
 });
 
+/** Payment method label on an invoice payment. No gateway integration — a note only. */
+export const invoicePaymentMethod = z.enum(['cash', 'bank_transfer', 'mobile_money', 'other']);
+
+export const customerCreatedPayload = z.object({
+  business_id: z.string().uuid(),
+  customer_id: z.string().uuid(),
+  name: z.string(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+});
+
+export const customerUpdatedPayload = z.object({
+  business_id: z.string().uuid(),
+  customer_id: z.string().uuid(),
+  name: z.string(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  disabled: z.boolean(),
+});
+
+export const invoiceIssuedPayload = z.object({
+  business_id: z.string().uuid(),
+  invoice_id: z.string().uuid(),
+  /** Set when the invoice was issued from a completed sale. */
+  sale_id: z.string().uuid().optional(),
+  customer_id: z.string().uuid(),
+  customer_name: z.string(),
+  /** Absent when the customer has no email on file. */
+  customer_email: z.string().email().optional(),
+  number: z.number().int().positive(),
+  currency: z.string(),
+  total_minor: z.number().int().nonnegative(),
+  balance_due_minor: z.number().int().nonnegative(),
+  issue_date: z.string().datetime(),
+  due_date: z.string().datetime(),
+  public_token: z.string().min(1),
+  locale: z.string(),
+});
+
+export const invoicePaymentRecordedPayload = z.object({
+  business_id: z.string().uuid(),
+  invoice_id: z.string().uuid(),
+  payment_id: z.string().uuid(),
+  amount_minor: z.number().int().positive(),
+  method: invoicePaymentMethod,
+  balance_due_minor: z.number().int().nonnegative(),
+  paid_in_full: z.boolean(),
+  customer_email: z.string().email().optional(),
+  locale: z.string(),
+});
+
+export const invoiceVoidedPayload = z.object({
+  business_id: z.string().uuid(),
+  invoice_id: z.string().uuid(),
+  reason: z.string().optional(),
+});
+
+export const invoiceDocumentReadyPayload = z.object({
+  business_id: z.string().uuid(),
+  invoice_id: z.string().uuid(),
+  /** Object URL in MinIO / S3. */
+  url: z.string().min(1),
+  bytes: z.number().int().nonnegative(),
+  sha256: z.string().min(1),
+});
+
 export const wingerAuthorizedPayload = z.object({
   business_id: z.string().uuid(),
   winger_account_id: z.string().uuid(),
@@ -199,6 +265,12 @@ export const EVENT_PAYLOADS = {
   StockRecovered: stockRecoveredPayload,
   SaleCompleted: saleCompletedPayload,
   SaleVoided: saleVoidedPayload,
+  CustomerCreated: customerCreatedPayload,
+  CustomerUpdated: customerUpdatedPayload,
+  InvoiceIssued: invoiceIssuedPayload,
+  InvoicePaymentRecorded: invoicePaymentRecordedPayload,
+  InvoiceVoided: invoiceVoidedPayload,
+  InvoiceDocumentReady: invoiceDocumentReadyPayload,
   WingerAuthorized: wingerAuthorizedPayload,
   WingerSuspended: wingerSuspendedPayload,
   NotificationSent: notificationSentPayload,
