@@ -186,24 +186,49 @@ jobs:
           pnpm --filter @pos/contracts --filter @pos/nest-common build
           pnpm --filter @pos/identity exec prisma generate
           pnpm --filter @pos/identity build
-      - name: bring up the stack
+      - name: build stack images
         run: |
           cp .env.example .env
-          docker compose -f infra/docker-compose.yml up -d --build
-      - name: wait for readiness
+          docker compose -f infra/docker-compose.yml build
+      - name: start backing services
         run: |
-          for svc in identity tenancy catalog inventory sales winger notifications; do
-            for i in $(seq 1 60); do
-              docker compose -f infra/docker-compose.yml exec -T "$svc" wget -q -O - http://localhost:3000/readyz >/dev/null 2>&1 && break
-              sleep 3
-            done
+          docker compose -f infra/docker-compose.yml up -d postgres nats redis minio
+          for i in $(seq 1 30); do
+            docker compose -f infra/docker-compose.yml exec -T postgres pg_isready -U pos -d pos_dev >/dev/null 2>&1 && break
+            sleep 2
           done
-          for i in $(seq 1 30); do curl -sf http://localhost:8001/status >/dev/null && break; sleep 2; done
-      - name: migrate every service
+      - name: migrate every service schema
+        # Run from the host against the mapped Postgres port (initdb has already
+        # provisioned the per-service schema + role), before the long-lived app
+        # containers boot — so nothing races a crash-loop restart backoff.
+        env:
+          IDENTITY_DATABASE_URL: postgresql://identity_app:identity_app@localhost:5432/pos_dev?schema=identity
+          TENANCY_DATABASE_URL: postgresql://tenancy_app:tenancy_app@localhost:5432/pos_dev?schema=tenancy
+          CATALOG_DATABASE_URL: postgresql://catalog_app:catalog_app@localhost:5432/pos_dev?schema=catalog
+          INVENTORY_DATABASE_URL: postgresql://inventory_app:inventory_app@localhost:5432/pos_dev?schema=inventory
+          SALES_DATABASE_URL: postgresql://sales_app:sales_app@localhost:5432/pos_dev?schema=sales
+          WINGER_DATABASE_URL: postgresql://winger_app:winger_app@localhost:5432/pos_dev?schema=winger
+          NOTIFICATIONS_DATABASE_URL: postgresql://notifications_app:notifications_app@localhost:5432/pos_dev?schema=notifications
         run: |
           for d in identity tenancy catalog inventory sales winger notifications; do
-            docker compose -f infra/docker-compose.yml exec -T "$d" pnpm exec prisma migrate deploy
+            echo "== migrate $d =="
+            pnpm --filter "@pos/$d" exec prisma migrate deploy
           done
+      - name: start services + edge
+        run: docker compose -f infra/docker-compose.yml up -d
+      - name: wait for readiness
+        run: |
+          ok=1
+          for svc in identity tenancy catalog inventory sales winger notifications; do
+            ready=0
+            for i in $(seq 1 60); do
+              docker compose -f infra/docker-compose.yml exec -T "$svc" wget -q -O - http://localhost:3000/readyz >/dev/null 2>&1 && { ready=1; break; }
+              sleep 3
+            done
+            [ "$ready" = 1 ] && echo "$svc ready" || { echo "$svc NOT ready"; ok=0; }
+          done
+          for i in $(seq 1 30); do curl -sf http://localhost:8001/status >/dev/null && break; sleep 2; done
+          if [ "$ok" != 1 ]; then docker compose -f infra/docker-compose.yml ps; exit 1; fi
       - run: bash infra/acceptance-smoke.sh
       - run: bash infra/rate-limit-smoke.sh
       - run: bash infra/restore-drill.sh

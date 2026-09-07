@@ -145,12 +145,22 @@ describe('inventory — concurrency / no lost update', () => {
     const K = 25;
     const q = 3;
 
+    // One HTTP call proves the route is wired; the concurrency barrage goes
+    // through the service layer (like the reservation tests) so the assertion
+    // exercises the row lock, not supertest's ephemeral-socket backlog.
+    await http
+      .post(movementsUrl)
+      .set(owner())
+      .send({ product_id: productId, type: 'stock_in', quantity_delta: q })
+      .expect(201);
+
     await Promise.all(
-      Array.from({ length: K }, () =>
-        http
-          .post(movementsUrl)
-          .set(owner())
-          .send({ product_id: productId, type: 'stock_in', quantity_delta: q }),
+      Array.from({ length: K - 1 }, () =>
+        stock.recordMovement(biz, ownerId, {
+          product_id: productId,
+          type: 'stock_in',
+          quantity_delta: q,
+        }),
       ),
     );
 
