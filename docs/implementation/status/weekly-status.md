@@ -1,5 +1,32 @@
 # Weekly Status
 
+## 2026-09-07 — Phase 06 planned: hardening + MVP acceptance (T-0501–T-0509)
+
+- Discovery: two PRD-acceptance features are **designed but unbuilt** —
+  staff invitations (`tenancy`, U2/U3) and the operator control-plane +
+  break-glass (`/v1/admin/*`, `support_access_grant`, `audit_log`, U13). Their
+  HTTP shapes + data-model columns were already in `docs/design/`; only a
+  service-owner gap-fill was needed.
+- **Design gap-fill** (`docs(design):`): `tenancy` owns `support_access_grant` +
+  `audit_log`, serves `/v1/admin/*` (audience `operator`) + the Owner
+  support-grant routes, caps grants at 24h, and writes the `audit_log` row on
+  each operator read under a grant (`service-decomposition.md`,
+  `multi-tenancy.md`).
+- **`phase-06-hardening.md`** re-scoped (Last updated 2026-09-07): 9 tasks, an
+  expanded acceptance list, gap-fill notes.
+- **Task docs**: T-0501 `tenancy` staff invitations (+ `invitation` email);
+  T-0502 control-plane `/v1/admin/*` + `support_access_grant` + `audit_log` +
+  Owner approve/revoke + 24h cap; T-0503 cross-tenant isolation suite over every
+  data-plane route (CI); T-0504 RLS-only backstop test (app filter bypassed);
+  T-0505 concurrency / no-lost-update test on `on_hand`; T-0506 rate limiting on
+  `/v1/r/{token}` + `/v1/auth/*` + a 429 test; T-0507 per-business export
+  endpoint + backup/restore runbook; T-0508 observability (`request_id` +
+  `business_id` in logs, health/uptime, error hook); T-0509 release checklist +
+  ops runbook + `/security-review` + U1–U13 CI matrix.
+- `backlog.md`: invitations + operator control-plane marked scheduled into
+  Phase 06; "expand phase checklists into task docs" closed.
+- Validator `WORKFLOW:ok`. No code yet — build starts at T-0501.
+
 ## 2026-09-07 — Phase 05 complete: winger portal (T-0401–T-0407)
 
 - **T-0401** `services/winger` scaffolded from `sales` (schema `winger`, role

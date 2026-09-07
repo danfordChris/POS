@@ -8,7 +8,11 @@
 
 ## Current Priorities
 
-1. Phase 06 — Hardening and MVP acceptance.
+1. Phase 06 — Hardening and MVP acceptance. Task docs T-0501–T-0509 written
+   (2026-09-07). It carries two designed-but-unbuilt feature builds — staff
+   invitations (T-0501, U2/U3) and the operator control-plane + break-glass
+   (T-0502, U13) — ahead of the isolation / RLS / concurrency / rate-limit /
+   export / observability / release tasks.
 2. Backlog: mobile offline banner/connectivity provider; `tenancy` event
    enrichment for `notification_contact`; low-stock email product-name;
    winger shell-user claim/set-password flow (a provisioned winger cannot yet

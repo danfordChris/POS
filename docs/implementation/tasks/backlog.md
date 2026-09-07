@@ -18,16 +18,19 @@ Hold work not yet scheduled into a phase or written as a full task doc.
       SECURITY DEFINER function or an identity→tenancy composition.
 - [ ] `GET /v1/auth/me` should compose `memberships` / `wingerAccounts` (identity calls
       tenancy `resolveMembership` / a new list RPC). Currently returns empty arrays.
-- [ ] Invitations capability in `services/tenancy` (ex T-0005) — schedule after T-0113
+- [~] Invitations capability in `services/tenancy` (ex T-0005) — scheduled into Phase 06 as T-0501.
+- [~] Operator control-plane `/v1/admin/*` + `support_access_grant` + `audit_log`
+      (designed in api-contract / data-model / multi-tenancy, unbuilt) — scheduled
+      into Phase 06 as T-0502.
 - [ ] `tenancy` should enrich `BusinessCreated` / `MembershipCreated` with the
       owner/member `email` + `locale` (via `identity.getUser`). The
       `@pos/contracts` fields are optional as of v1.1 (T-0203); until tenancy
       populates them, `notification_contact.email` is null and `low_stock`
       emails have no owner recipients unless `alert_config.recipients` is set.
-- [~] Expand Phase 02–06 checklist items into full task docs when each phase is
-      scheduled — Phase 02 done; Phase 03 done (T-0201–T-0207); Phase 04 task
-      docs written (T-0301–T-0309, 2026-09-07); Phases 05–06 pending
-- [ ] Service mesh (mTLS) evaluation — Phase 06
+- [x] Expand Phase 02–06 checklist items into full task docs when each phase is
+      scheduled — Phase 02 done; Phase 03 (T-0201–T-0207); Phase 04 (T-0301–T-0309);
+      Phase 05 (T-0401–T-0407) done; Phase 06 task docs written (T-0501–T-0509, 2026-09-07)
+- [ ] Service mesh (mTLS) evaluation — Phase 06 (proposal 0002, on-hold)
 - [ ] Invitation resend endpoint
 - [ ] Mobile camera scanning (`mobile_scanner` + camera permission config) — the
       Scan screen (T-0107) does manual code entry today; the lookup/prefill flow is
