@@ -23,6 +23,7 @@ export class IdentityClient {
     user_id?: string;
     email?: string;
     phone?: string;
+    create?: boolean;
   }): Promise<z.infer<typeof getUserResponse>> {
     const raw = await this.bus.request(SUBJECTS.identity.getUser, query, 2000);
     return getUserResponse.parse(raw);

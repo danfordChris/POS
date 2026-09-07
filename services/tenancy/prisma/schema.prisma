@@ -64,6 +64,45 @@ model Invitation {
   @@map("invitation")
 }
 
+/// Break-glass: a time-boxed operator access grant, requested by an operator and
+/// approved by an Owner. `expires_at` is capped server-side at `granted_at + 24h`.
+/// RLS: strict on `business_id` (an Owner sees only their business's grants).
+model SupportAccessGrant {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String    @map("business_id") @db.Uuid
+  operatorId String    @map("operator_id") @db.Uuid
+  reason     String
+  status     String    @default("pending") // pending | approved | revoked
+  approvedBy String?   @map("approved_by") @db.Uuid
+  grantedAt  DateTime? @map("granted_at") @db.Timestamptz(6)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([businessId, status])
+  @@index([operatorId])
+  @@map("support_access_grant")
+}
+
+/// Append-only audit trail. Every operator read of tenant data under a grant
+/// writes a row here, visible to the Owner. `business_id` may be null for
+/// control-plane actions. RLS read is relaxed (a null-scoped reader sees rows);
+/// WITH CHECK stays strict when `business_id` is set.
+model AuditLog {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  businessId String?  @map("business_id") @db.Uuid
+  actorId    String   @map("actor_id") @db.Uuid
+  actorType  String   @map("actor_type") // user | operator | system
+  action     String
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id")
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([businessId, createdAt])
+  @@map("audit_log")
+}
+
 model OutboxMessage {
   id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   subject   String

@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -57,9 +57,55 @@ An operator can run the control-plane (`/v1/admin/*`) and request break-glass; a
 
 ## Verification
 
-Run and capture:
+Delivered:
 
-- `pnpm --filter @pos/tenancy test` — control-plane list/patch; grant request → approve (24h cap) → operator read succeeds + `audit_log` row → expire/revoke → `403`; no-grant read → `403`.
-- `kong config parse`; `kubectl kustomize infra/k8s/base`; `node scripts/check-contracts-compat.mjs HEAD` → OK.
-- Live smoke: operator login; request a grant; Owner approves; operator read writes an `audit_log` row the Owner can see; Owner revokes; operator read → `403`.
+- `services/tenancy` migration `20260908150000_control_plane`:
+  `support_access_grant` (relaxed read: an Owner reads scoped, an operator lists
+  their own across businesses unscoped; `WITH CHECK` strict) + `audit_log`
+  (relaxed read; `WITH CHECK` allows null `business_id` for control-plane rows) +
+  a SELECT-only `control_plane_read` PERMISSIVE policy on `business` +
+  `membership` so `GET /v1/admin/businesses` can list id/name/status/counts with
+  no business context. The strict `tenant_isolation` policies are untouched;
+  every WRITE stays strict.
+- `OperatorGuard` — `/v1/admin/*` requires `token_kind: 'operator'`.
+- `SupportGrantsService` — `request` (operator → `pending`), `listForOperator`
+  (own, cross-business), `listForBusiness` (Owner, scoped), `approve`
+  (`expires_at = min(requested, granted_at + 24h)`), `revoke`, `hasActiveGrant`.
+- `AdminService` — `provisionBusiness` (resolve/create the owner via
+  `identity.getUser { create: true }`, then `BusinessesService.create`);
+  `listBusinesses` (counts, no row contents); `setSubscriptionStatus`;
+  `businessDetailUnderGrant` (`403 operator_data_access_denied` without an active
+  grant; on success returns members **and** writes one `audit_log` row);
+  `auditForBusiness`.
+- `AdminController` (`/v1/admin`, `OperatorGuard`): `POST/GET /businesses`,
+  `PATCH /businesses/:id`, `GET /businesses/:id/detail`, `POST/GET /support-grants`.
+  `SupportGrantsController` (`/v1/businesses/:id`, Owner): `GET /support-grants`,
+  `POST /support-grants/:id/approve`, `POST /support-grants/:id/revoke`,
+  `GET /audit-log`. `AdminModule` wired into `app.module.ts`.
+- `tenancy` `IdentityClient.getUser` gains `create?`.
+- Kong: `admin-control-plane` route (`/v1/admin`, `require_business_scope: false`)
+  in `infra/kong/kong.yml` + `infra/k8s/base/kong-config.yaml`. The
+  `/v1/businesses/:id/support-grants` + `audit-log` routes ride the existing
+  `businesses` prefix route.
+- The tenancy RLS-backstop spec was updated to document the `control_plane_read`
+  relaxation (unscoped WRITE still rejected; app-level tenant-context assertion
+  still fires).
+
+Evidence:
+
+- `pnpm --filter @pos/tenancy test` → 20 (`control-plane.e2e` +5: user token on
+  `/v1/admin/*` → `403`; provision + list shows counts not contents;
+  `PATCH subscription_status`; full grant lifecycle — no grant `403` → request →
+  Owner approve with a 48h request capped to ≤ 24h → operator detail `200` +
+  `business.detail.read` audit row → revoke → `403`; expired grant → `403`).
+- Backend suites green: contracts 13, nest-common 16, testing 5, identity 8,
+  tenancy 20, catalog 11, inventory 24, sales 20, winger 24, notifications 31.
+- `node scripts/check-contracts-compat.mjs HEAD` → OK; `kubectl kustomize
+  infra/k8s/base` renders; `docker compose config` valid; `kong config parse` →
+  `parse successful`.
+- Live smoke through Kong (rebuilt `tenancy`, seeded an operator): operator login
+  → provision a business (owner = a real user) → `GET /v1/admin/businesses`
+  counts-only → user token on `/v1/admin/*` `403` → operator detail without a
+  grant `403` → request + Owner approve (48h → ~24h window) → operator detail
+  `200` + audit row visible to the Owner → Owner revoke → operator detail `403`.
 - `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.

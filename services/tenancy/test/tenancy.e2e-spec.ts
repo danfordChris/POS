@@ -198,17 +198,20 @@ describe('tenancy — GET/PATCH /v1/businesses/:id', () => {
 });
 
 describe('tenancy — RLS backstop', () => {
-  it('raw reads return nothing and raw writes are rejected with no app.business_id', async () => {
-    const b = await prisma.$queryRawUnsafe<{ n: number }[]>(
-      'SELECT COUNT(*)::int AS n FROM business',
-    );
-    const m = await prisma.$queryRawUnsafe<{ n: number }[]>(
-      'SELECT COUNT(*)::int AS n FROM membership',
-    );
-    expect(b[0].n).toBe(0);
-    expect(m[0].n).toBe(0);
+  it('unscoped writes are rejected and the tenant-context assertion fires', async () => {
+    // `business` / `membership` carry a SELECT-only `control_plane_read`
+    // PERMISSIVE policy (migration 20260908150000) so the operator
+    // `/v1/admin/businesses` list can read id/name/status/counts with no
+    // business context. The security-critical invariants are unchanged: an
+    // unscoped WRITE is still rejected, and the app layer still refuses tenant
+    // model access without a context.
     await expect(
       prisma.$executeRawUnsafe(`INSERT INTO business (name) VALUES ('sneaky')`),
+    ).rejects.toThrow();
+    await expect(
+      prisma.$executeRawUnsafe(
+        `INSERT INTO membership (business_id, user_id, role) VALUES ('018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d5f','018f4e2b-6c1a-7a3e-9c2d-0f1a2b3c4d60','staff')`,
+      ),
     ).rejects.toThrow();
     expect(() => prisma.assertTenantContext()).toThrow();
   });
