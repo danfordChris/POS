@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -76,10 +76,39 @@ see a read-only receivables summary.
 
 ## Verification
 
-_Planned — to be filled on completion:_
+Delivered:
 
-- `/Users/danfordchris/development/flutter/bin/flutter analyze` +
-  `flutter test`.
-- Manual: credit sale on a simulator/emulator → invoice detail → share link →
-  open PDF.
-- `validate_workflow.py` → `WORKFLOW:ok`.
+- `models/invoice_models.dart` — `Customer`, `Invoice`, `InvoiceLine`,
+  `InvoicePayment`, `InvoiceSummary`, `SaleInvoiceRef`; `Sale` gains an
+  embedded `invoice` ref (parsed from `sale.invoice`).
+- `core/invoice_url.dart` — `invoiceUrl` / `invoicePdfUrl` for the public
+  `/v1/i/{token}` (+ `/pdf`).
+- `data/services/customer_service.dart` (`list` w/ `q` + `hasBalance`, `create`)
+  and `data/services/invoice_service.dart` (`get`, `list` w/ `overdue`).
+- `SalesService.createSale` + `SellProvider` gain `paymentTerms` (`cash` |
+  `credit`) + `customerId`; `SellProvider.setCredit(id, name)` / `setCash()`,
+  `canSubmit` (a credit cart needs a customer), reset on `clear()`.
+- Sell screen — a `SegmentedNeu` **Cash / Credit** toggle above the total bar;
+  choosing Credit opens `_CustomerPickerSheet` (search `/customers`, an inline
+  "Add & choose" form); the CTA reads "Complete credit sale" and is disabled
+  until a customer is picked.
+- Receipt screen — when the sale carries an invoice, an "Invoice #N" block with
+  the balance due + **Share invoice** / **Share PDF** (both `share_plus`,
+  matching the existing receipt-link share — no new dependency).
+- `features/receivables/` — `ReceivablesProvider` (loads
+  `customers?has_balance=true` + `invoices?overdue=true`) + `ReceivablesScreen`
+  (total owed, customer/overdue counts, owing-customers list). Route
+  `AppRoute.receivables('/receivables')`; an Owner-only "Receivables" tile in
+  the More menu. Provider registered in `shared/providers/providers.dart`.
+
+Evidence:
+
+- `flutter analyze` → **No issues found**.
+- `flutter test` → **22 passing** (15 existing + `invoice_models_test.dart` 3 +
+  `sell_credit_test.dart` 4): invoice/customer/embedded-ref parsing; credit
+  toggle state (`setCredit` records the customer, `setCash` clears, `canSubmit`
+  gating, `clear()` resets to cash).
+- `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` →
+  `WORKFLOW:ok`.
+- On-device walk-through (credit sale → receipt invoice block → share) is part
+  of the Phase 07 acceptance step.

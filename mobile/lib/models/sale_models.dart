@@ -1,5 +1,7 @@
 // Shapes for the `sales` service (`/v1/businesses/{id}/sales`).
 
+import 'package:pos_mobile/models/invoice_models.dart' show SaleInvoiceRef;
+
 /// One cart line submitted to `POST /sales`.
 class SaleLineInput {
   const SaleLineInput({
@@ -78,6 +80,7 @@ class Sale {
     this.voidedAt,
     this.lines = const [],
     this.receipt,
+    this.invoice,
   });
 
   final String id;
@@ -92,6 +95,9 @@ class Sale {
   final DateTime? voidedAt;
   final List<SaleLine> lines;
   final Receipt? receipt;
+
+  /// Present when the sale was rung up on `credit` terms (T-0603).
+  final SaleInvoiceRef? invoice;
 
   factory Sale.fromJson(Map<String, dynamic> j) => Sale(
     id: j['id'] as String,
@@ -112,6 +118,9 @@ class Sale {
         .toList(),
     receipt: (j['receipt'] as Map<String, dynamic>?) != null
         ? Receipt.fromJson(j['receipt'] as Map<String, dynamic>)
+        : null,
+    invoice: (j['invoice'] as Map<String, dynamic>?) != null
+        ? SaleInvoiceRef.fromJson(j['invoice'] as Map<String, dynamic>)
         : null,
   );
 }

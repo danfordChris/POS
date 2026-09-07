@@ -24,8 +24,37 @@ class SellProvider extends BaseProvider {
   Set<String> _insufficient = {};
   Sale? _lastSale;
 
+  String _paymentTerms = 'cash';
+  String? _customerId;
+  String? _customerName;
+
   List<CartLine> get lines => List.unmodifiable(_lines);
   bool get isEmpty => _lines.isEmpty;
+
+  /// `cash` or `credit`. A `credit` sale issues an invoice for [customerId].
+  String get paymentTerms => _paymentTerms;
+  bool get isCredit => _paymentTerms == 'credit';
+  String? get customerId => _customerId;
+  String? get customerName => _customerName;
+
+  /// Whether the cart can be submitted right now — a credit sale needs a customer.
+  bool get canSubmit =>
+      _lines.isNotEmpty && !isBusy && (!isCredit || _customerId != null);
+
+  void setCash() {
+    if (_paymentTerms == 'cash') return;
+    _paymentTerms = 'cash';
+    _customerId = null;
+    _customerName = null;
+    _touch();
+  }
+
+  void setCredit(String customerId, String customerName) {
+    _paymentTerms = 'credit';
+    _customerId = customerId;
+    _customerName = customerName;
+    _touch();
+  }
 
   int get subtotal => _lines.fold(0, (a, l) => a + l.gross);
   int get discountTotal => _lines.fold(0, (a, l) => a + l.discount);
@@ -84,6 +113,9 @@ class SellProvider extends BaseProvider {
     _lines.clear();
     _insufficient = {};
     _lastSale = null;
+    _paymentTerms = 'cash';
+    _customerId = null;
+    _customerName = null;
     _idempotencyKey = _freshKey();
     notifyListeners();
   }
@@ -93,6 +125,7 @@ class SellProvider extends BaseProvider {
   /// `insufficient_stock`, [insufficientProductIds] names the short lines.
   Future<Sale?> submit(String businessId, {String? customerLabel}) async {
     if (_lines.isEmpty) return null;
+    if (isCredit && _customerId == null) return null;
     _insufficient = {};
     final sale = await guard(
       () => SalesService.createSale(
@@ -108,6 +141,8 @@ class SellProvider extends BaseProvider {
             .toList(),
         customerLabel: customerLabel,
         idempotencyKey: _idempotencyKey,
+        paymentTerms: _paymentTerms,
+        customerId: _customerId,
       ),
     );
     if (sale == null) {

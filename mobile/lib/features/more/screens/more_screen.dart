@@ -78,6 +78,15 @@ class MoreScreen extends StatelessWidget {
         const SizedBox(height: DukaSpacing.s5),
         const _GroupLabel('Manage'),
         const SizedBox(height: DukaSpacing.s2),
+        if (session.isOwner) ...[
+          _Tile(
+            icon: Icons.request_quote_outlined,
+            label: 'Receivables',
+            subtitle: 'Who owes you, and overdue invoices',
+            onTap: () => context.push(AppRoute.receivables.path),
+          ),
+          const SizedBox(height: DukaSpacing.s3),
+        ],
         _Tile(
           icon: Icons.settings_outlined,
           label: 'Business settings',

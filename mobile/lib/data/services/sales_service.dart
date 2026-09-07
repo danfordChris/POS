@@ -14,6 +14,8 @@ class SalesService {
     required List<SaleLineInput> lines,
     String? customerLabel,
     String? idempotencyKey,
+    String paymentTerms = 'cash',
+    String? customerId,
   }) async {
     final data = await ApiClient.instance.post<Map<String, dynamic>>(
       _sales(businessId),
@@ -21,6 +23,9 @@ class SalesService {
         'lines': lines.map((l) => l.toJson()).toList(),
         if (customerLabel != null && customerLabel.isNotEmpty)
           'customer_label': customerLabel,
+        if (paymentTerms == 'credit') 'payment_terms': 'credit',
+        if (paymentTerms == 'credit' && customerId != null)
+          'customer_id': customerId,
       },
       headers: idempotencyKey != null
           ? {'Idempotency-Key': idempotencyKey}

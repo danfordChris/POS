@@ -10,6 +10,7 @@ import 'package:pos_mobile/features/catalog/screens/product_form_screen.dart';
 import 'package:pos_mobile/features/dev/screens/gallery_screen.dart';
 import 'package:pos_mobile/features/home/screens/home_screen.dart';
 import 'package:pos_mobile/features/more/screens/more_screen.dart';
+import 'package:pos_mobile/features/receivables/screens/receivables_screen.dart';
 import 'package:pos_mobile/features/scan/screens/scan_screen.dart';
 import 'package:pos_mobile/features/sell/screens/receipt_screen.dart';
 import 'package:pos_mobile/features/sell/screens/sell_screen.dart';
@@ -40,6 +41,7 @@ enum AppRoute {
   productEdit('/catalog/edit'),
   recordMovement('/stock/record'),
   receipt('/sell/receipt'),
+  receivables('/receivables'),
   gallery('/more/gallery');
 
   const AppRoute(this.path);
@@ -112,6 +114,11 @@ GoRouter createRouter(SessionProvider session) {
       GoRoute(
         path: AppRoute.gallery.path,
         builder: (_, _) => const GalleryScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.receivables.path,
+        parentNavigatorKey: NavigationKeys.root,
+        builder: (_, _) => const ReceivablesScreen(),
       ),
       GoRoute(
         path: AppRoute.wingerCatalog.path,

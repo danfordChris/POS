@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'package:pos_mobile/core/invoice_url.dart';
 import 'package:pos_mobile/core/receipt_url.dart';
 import 'package:pos_mobile/core/router/router.dart';
 import 'package:pos_mobile/core/theme/duka_colors.dart';
@@ -123,6 +124,59 @@ class _Body extends StatelessWidget {
           formatMoney(sale.total, sale.currency),
           const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
         ),
+        if (sale.invoice != null) ...[
+          const SizedBox(height: DukaSpacing.s6),
+          Container(
+            padding: const EdgeInsets.all(DukaSpacing.s4),
+            decoration: BoxDecoration(
+              color: t.surfaceSunken,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Invoice #${sale.invoice!.number}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Balance due ${formatMoney(sale.invoice!.balanceDueMinor, sale.currency)}',
+                  style: label,
+                ),
+                const SizedBox(height: DukaSpacing.s3),
+                Row(
+                  children: [
+                    Expanded(
+                      child: NeuButton(
+                        label: 'Share invoice',
+                        variant: NeuButtonVariant.secondary,
+                        onPressed: () => Share.share(
+                          invoiceUrl(sale.invoice!.publicToken),
+                          subject: 'Invoice #${sale.invoice!.number}',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: DukaSpacing.s2),
+                    Expanded(
+                      child: NeuButton(
+                        label: 'Share PDF',
+                        variant: NeuButtonVariant.secondary,
+                        onPressed: () => Share.share(
+                          invoicePdfUrl(sale.invoice!.publicToken),
+                          subject: 'Invoice #${sale.invoice!.number} (PDF)',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
         if (url != null) ...[
           const SizedBox(height: DukaSpacing.s6),
           Center(
