@@ -6,7 +6,8 @@
 #
 # Covers: U1 (sign up a business), U4 (add a product), U5 (stock-in), U8
 # (complete a sale + anonymous receipt), U10/U11/U12 (winger authorize + catalog
-# + cross-business probe), U13 (operator denied on a data route).
+# + cross-business probe), U13 (operator denied on a data route), U14 (credit
+# sale issues an invoice + public view + PDF), U15 (payments settle the balance).
 set -euo pipefail
 BASE="${1:-http://localhost:8000}"
 TS=$(date +%s)
@@ -92,6 +93,60 @@ OPTOK=$(curl -s -X POST "$BASE/v1/auth/operator/login" -H 'content-type: applica
 rc=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/v1/businesses/$BID/products" -H "authorization: Bearer $OPTOK")
 [ "$rc" = "403" ] || die "operator token on /products returned $rc, expected 403"
 ok "operator token on a data route → 403"
+
+echo "== U14: credit sale → invoice + public view + PDF =="
+CID=$(curl -s -X POST "$BASE/v1/businesses/$BID/customers" -H "authorization: Bearer $OTOK" \
+  -H 'content-type: application/json' -d "{\"name\":\"Acc Customer\",\"email\":\"acc-cust-$TS@example.com\"}" | J "['id']")
+[ -n "$CID" ] || die "no customer id"
+# retry: product_cache in sales is fed async
+CSALE=""
+for _ in $(seq 1 20); do
+  CSALE=$(curl -s -X POST "$BASE/v1/businesses/$BID/sales" -H "authorization: Bearer $OTOK" \
+    -H 'content-type: application/json' \
+    -d "{\"lines\":[{\"product_id\":\"$PID\",\"quantity\":2}],\"payment_terms\":\"credit\",\"customer_id\":\"$CID\"}")
+  echo "$CSALE" | grep -q '"invoice"' && break
+  sleep 1
+done
+IID=$(printf '%s' "$CSALE" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('invoice') or {}).get('id',''))")
+ITOK=$(printf '%s' "$CSALE" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('invoice') or {}).get('public_token',''))")
+[ -n "$IID" ] || die "credit sale issued no invoice: $CSALE"
+bal=$(curl -s "$BASE/v1/businesses/$BID/invoices/$IID" -H "authorization: Bearer $OTOK" | J "['balance_due_minor']")
+tot=$(printf '%s' "$CSALE" | J "['total']")
+[ "$bal" = "$tot" ] || die "invoice balance_due ($bal) != sale total ($tot)"
+rc=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/v1/i/$ITOK")
+[ "$rc" = "200" ] || die "public invoice GET returned $rc, expected 200"
+custbal=$(curl -s "$BASE/v1/businesses/$BID/customers/$CID" -H "authorization: Bearer $OTOK" | J "['outstanding_balance']")
+[ "$custbal" = "$tot" ] || die "customer outstanding_balance ($custbal) != invoice total ($tot)"
+# the media service renders the PDF off InvoiceIssued — poll the public /pdf
+pdfrc=0
+for _ in $(seq 1 20); do
+  pdfrc=$(curl -s -o /dev/null -w '%{http_code}' -L "$BASE/v1/i/$ITOK/pdf")
+  [ "$pdfrc" = "200" ] && break
+  sleep 1
+done
+[ "$pdfrc" = "200" ] || die "invoice PDF never became ready (last $pdfrc)"
+ok "credit sale issued invoice $IID; balance == total; public view 200; PDF 200"
+
+echo "== U15: payments settle the invoice =="
+half=$(( tot / 2 ))
+curl -s -X POST "$BASE/v1/businesses/$BID/invoices/$IID/payments" -H "authorization: Bearer $OTOK" \
+  -H 'content-type: application/json' -d "{\"amount_minor\":$half,\"method\":\"cash\"}" >/dev/null
+st=$(curl -s "$BASE/v1/businesses/$BID/invoices/$IID" -H "authorization: Bearer $OTOK" | J "['status']")
+[ "$st" = "partially_paid" ] || die "invoice status after part payment is $st, expected partially_paid"
+rest=$(( tot - half ))
+curl -s -X POST "$BASE/v1/businesses/$BID/invoices/$IID/payments" -H "authorization: Bearer $OTOK" \
+  -H 'content-type: application/json' -d "{\"amount_minor\":$rest,\"method\":\"mobile_money\"}" >/dev/null
+final=$(curl -s "$BASE/v1/businesses/$BID/invoices/$IID" -H "authorization: Bearer $OTOK")
+st=$(printf '%s' "$final" | J "['status']")
+fb=$(printf '%s' "$final" | J "['balance_due_minor']")
+[ "$st" = "paid" ] && [ "$fb" = "0" ] || die "invoice not fully paid (status $st, balance $fb)"
+custbal=$(curl -s "$BASE/v1/businesses/$BID/customers/$CID" -H "authorization: Bearer $OTOK" | J "['outstanding_balance']")
+[ "$custbal" = "0" ] || die "customer balance after full payment is $custbal, expected 0"
+# a payment past the balance is rejected
+rc=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/v1/businesses/$BID/invoices/$IID/payments" \
+  -H "authorization: Bearer $OTOK" -H 'content-type: application/json' -d '{"amount_minor":1,"method":"cash"}')
+[ "$rc" = "409" ] || die "payment on a paid invoice returned $rc, expected 409"
+ok "invoice paid in full; customer balance 0; payment on paid invoice → 409"
 
 echo
 echo "acceptance smoke: all stories passed"

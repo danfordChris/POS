@@ -15,12 +15,15 @@
   (`docs/ops/security-review-2026-09.md`). The target-environment steps in
   `docs/ops/release-checklist.md` (secrets, CORS pin, image roll, migrate,
   smoke against the deployed edge) are the deploy operator's to run.
-- **Phase 07 — Invoicing and Credit Sales** planned (task docs T-0601–T-0609,
-  2026-09-07). Adds named customers, invoices (from a credit sale or standalone),
-  payments against a balance, a public invoice link, a new `media` service for
-  PDF rendering, and an accounts-receivable view. Design adopted from proposal
+- **Phase 07 — Invoicing and Credit Sales** complete (T-0601–T-0609,
+  2026-09-07). Named customers, invoices (from a credit sale or standalone),
+  payments against a balance, a public invoice link + PDF (new `media`
+  service), invoice/overdue emails, web + mobile UI, and an accounts-receivable
+  view. `infra/acceptance-smoke.sh` U14/U15 pass. Design adopted from proposal
   `0004` into `docs/design/product/invoicing-and-credit.md` + the data / API /
   events / RPC / decomposition docs.
+- Next: cut `v0.2.0` per `docs/ops/release-checklist.md` once CI is green on the
+  Phase 07 tip.
 - Also on the backlog — security hardening follow-ups (CORS pin, image
   magic-byte sniff, login backoff, Kong security headers, `pnpm audit` in CI);
   winger shell-user claim/set-password flow; `tenancy` event enrichment for
@@ -36,7 +39,7 @@
 - [x] Phase 04 — Sales and digital receipts (`sales` service — reserve→write→commit saga, `422` path, void + `inventory` `SaleVoided` reversal, public `/v1/r/{token}`, list/detail; mobile sell + receipt; web sales screens; T-0301–T-0309 done 2026-09-07)
 - [x] Phase 05 — Winger portal (`winger` service — `winger_account` + `winger_catalog_projection`; Owner authorize/suspend; whitelisted `/v1/winger/*` catalog with scope enforcement; web `/wingers`; mobile winger-only app; `winger_authorized` en/sw email; T-0401–T-0407 done 2026-09-07)
 - [x] Phase 06 — Hardening and MVP acceptance (`tenancy` invitations + control-plane/break-glass; cross-tenant isolation suite; RLS-only backstop; `inventory` concurrency lock fix; edge rate limiting; per-business export + backup/restore runbook; structured logs + error hook; release checklist + ops runbook + security review + `acceptance` CI job; T-0501–T-0509 done 2026-09-07; acceptance verified 2026-09-07; `v0.1.0` tagged 2026-09-07)
-- [ ] Phase 07 — Invoicing and credit sales (`sales` gains `customer` / `invoice` / `invoice_line` / `payment`; credit is a payment term on `POST /sales` that issues an invoice; standalone invoices + payments + void; public `/v1/i/{token}`; new `media` service for invoice PDFs; `notifications` invoice/overdue emails; web + mobile; isolation + RLS-backstop + U14/U15 acceptance; task docs T-0601–T-0609 written 2026-09-07)
+- [x] Phase 07 — Invoicing and credit sales (`sales` `customer` / `invoice` / `invoice_line` / `payment`; credit payment term on `POST /sales` → invoice; standalone invoices + payments + void; public `/v1/i/{token}`; new `media` service for invoice PDFs; `notifications` invoice/overdue emails; web + mobile; isolation + RLS-backstop + acceptance U14/U15; T-0601–T-0609 done 2026-09-07)
 
 ## Deferred Phases
 

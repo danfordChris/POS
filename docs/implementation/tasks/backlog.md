@@ -62,8 +62,8 @@ Hold work not yet scheduled into a phase or written as a full task doc.
       upload (2); progressive login backoff / account lock (3); Kong
       security-headers plugin for the prod edge (4); `pnpm audit` / Dependabot in
       CI (5).
-- [~] PDF invoicing + credit sales + a `media` service — scheduled as Phase 07
-      (T-0601–T-0609); design in `docs/design/product/invoicing-and-credit.md`.
+- [x] PDF invoicing + credit sales + a `media` service — Phase 07 done
+      (T-0601–T-0609, 2026-09-07); design in `docs/design/product/invoicing-and-credit.md`.
 - [ ] Invoicing follow-ups (deferred out of Phase 07): credit limits /
       block-on-overdue; credit notes / refunds on a `paid` invoice; `draft`
       invoice editing; statement-of-account PDFs; receipt PDFs; SMS delivery of

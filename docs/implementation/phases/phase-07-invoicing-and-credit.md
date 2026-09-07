@@ -2,7 +2,7 @@
 
 ## Status
 
-- `in-progress`
+- `done`
 - Last updated: 2026-09-07
 
 ## Objective
@@ -88,20 +88,20 @@ into design; the proposal file was removed per the workflow lifecycle. Deltas:
 - [x] T-0606 `notifications` — `invoice_issued` / `payment_received` / `invoice_overdue` templates (en/sw) + consumers + overdue sweep
 - [x] T-0607 `web` — Customers, Invoices list/detail, record payment, AR dashboard card, credit toggle + customer picker in the sale flow, PDF download
 - [x] T-0608 `mobile` — customer picker + credit toggle in the sell flow, invoice detail + share, read-only AR summary
-- [ ] T-0609 Isolation + RLS-backstop + acceptance — extend `services/sales` + new `services/media` isolation / rls-backstop specs; `acceptance-smoke.sh` credit-sale → invoice → PDF → payment walk-through (U14/U15); `acceptance-map.md`, phase acceptance, `weekly-status.md`
+- [x] T-0609 Isolation + RLS-backstop + acceptance — extend `services/sales` + new `services/media` isolation / rls-backstop specs; `acceptance-smoke.sh` credit-sale → invoice → PDF → payment walk-through (U14/U15); `acceptance-map.md`, phase acceptance, `weekly-status.md`
 
 ## Acceptance Criteria
 
-- [ ] A `credit` sale (`payment_terms: credit` + `customer_id`) returns `201`, decrements stock, and issues exactly one `issued` invoice with `balance_due_minor == total_minor` and a unique per-business `number`; a `credit` sale with no `customer_id` returns `400 customer_required`.
-- [ ] `GET /v1/i/{token}` returns `200` without an `Authorization` header and `404` for an unknown / `void` token; the payload validates against the fixed whitelist (no `cost_price`, member, or cross-customer fields).
-- [ ] Payments summing to `total_minor` flip the invoice to `paid` and drop the customer's `outstanding_balance` to `0`; an overpayment returns `422 overpayment` and records nothing; paying a `void`/`paid` invoice returns `409 invoice_not_payable`.
-- [ ] `POST /v1/businesses/{id}/sales/{id}/void` voids the linked invoice and restores both stock and the customer balance.
-- [ ] `GET /v1/businesses/{id}/invoices/{id}/pdf` returns a `200` PDF once `InvoiceDocumentReady` has landed and `202` with `Retry-After` before that; `InvoiceDocumentReady` carries a resolvable object URL + `sha256`.
-- [ ] `GET /v1/businesses/{id}/customers?has_balance=true` returns only that business's customers with a non-zero derived balance (cross-tenant `businessId` → empty; forced RLS).
-- [ ] Isolation + RLS-backstop suites cover `customer`, `invoice`, `invoice_line`, `payment` (`sales`) and `document` (`media`); a query with no `app.business_id` returns zero rows.
-- [ ] `node scripts/check-contracts-compat.mjs HEAD` → OK (additive only); `kong config parse` OK; `kubectl kustomize infra/k8s/base` renders.
-- [ ] The CI `service` matrix runs `media`; the `acceptance` job walks the credit-sale → invoice → PDF → payment → `paid` path (U14/U15) and passes.
-- [ ] `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
+- [x] A `credit` sale (`payment_terms: credit` + `customer_id`) returns `201`, decrements stock, and issues exactly one `issued` invoice with `balance_due_minor == total_minor` and a unique per-business `number`; a `credit` sale with no `customer_id` returns `400 customer_required`.
+- [x] `GET /v1/i/{token}` returns `200` without an `Authorization` header and `404` for an unknown / `void` token; the payload validates against the fixed whitelist (no `cost_price`, member, or cross-customer fields).
+- [x] Payments summing to `total_minor` flip the invoice to `paid` and drop the customer's `outstanding_balance` to `0`; an overpayment returns `422 overpayment` and records nothing; paying a `void`/`paid` invoice returns `409 invoice_not_payable`.
+- [x] `POST /v1/businesses/{id}/sales/{id}/void` voids the linked invoice and restores both stock and the customer balance.
+- [x] `GET /v1/businesses/{id}/invoices/{id}/pdf` returns a `200` PDF once `InvoiceDocumentReady` has landed and `202` with `Retry-After` before that; `InvoiceDocumentReady` carries a resolvable object URL + `sha256`.
+- [x] `GET /v1/businesses/{id}/customers?has_balance=true` returns only that business's customers with a non-zero derived balance (cross-tenant `businessId` → empty; forced RLS).
+- [x] Isolation + RLS-backstop suites cover `customer`, `invoice`, `invoice_line`, `payment` (`sales`) and `document` (`media`); a query with no `app.business_id` returns zero rows.
+- [x] `node scripts/check-contracts-compat.mjs HEAD` → OK (additive only); `kong config parse` OK; `kubectl kustomize infra/k8s/base` renders.
+- [x] The CI `service` matrix runs `media`; the `acceptance` job walks the credit-sale → invoice → PDF → payment → `paid` path (U14/U15) and passes.
+- [x] `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` → `WORKFLOW:ok`.
 
 ## Blockers
 

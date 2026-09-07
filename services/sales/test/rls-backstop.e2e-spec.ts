@@ -12,6 +12,8 @@ let prisma: PrismaService;
 const bizA = uuidv7();
 const bizB = uuidv7();
 const saleA = uuidv7();
+const custA = uuidv7();
+const invA = uuidv7();
 
 // business_id + every NOT NULL / no-default column. `sale_line` / `receipt` FK to `sale`.
 const STRICT: [string, (b: string) => string][] = [
@@ -24,11 +26,18 @@ const STRICT: [string, (b: string) => string][] = [
     (b) =>
       `INSERT INTO product_cache (business_id, product_id, name) VALUES ('${b}', '${uuidv7()}', 'X')`,
   ],
+  [
+    'customer',
+    (b) =>
+      `INSERT INTO customer (id, business_id, name, updated_at) VALUES ('${custA}', '${b}', 'X', now())`,
+  ],
 ];
 
 // `sale` / `sale_line` / `receipt` have a relaxed read policy — the public
 // `GET /v1/r/{token}` handler renders a receipt with no tenant context
-// (migration 20260907140000). WITH CHECK stays strict.
+// (migration 20260907140000). `invoice` / `invoice_line` are relaxed for the
+// same reason on `GET /v1/i/{token}` (migrations 20260907160000 /
+// 20260907170000). WITH CHECK stays strict on all of them.
 const RELAXED: [string, (b: string) => string][] = [
   [
     'sale',
@@ -44,6 +53,25 @@ const RELAXED: [string, (b: string) => string][] = [
     'receipt',
     (b) =>
       `INSERT INTO receipt (business_id, sale_id, public_token, business_name_snapshot, currency) VALUES ('${b}', '${saleA}', 'tok-${uuidv7()}', 'Shop', 'TZS')`,
+  ],
+  [
+    'invoice',
+    (b) =>
+      `INSERT INTO invoice (id, business_id, number, customer_id, currency, subtotal_minor, total_minor, balance_due_minor, issue_date, due_date, public_token, business_name_snapshot, customer_name_snapshot) VALUES ('${invA}', '${b}', 1, '${custA}', 'TZS', 100, 100, 100, now(), now(), 'itok-${uuidv7()}', 'Shop', 'X')`,
+  ],
+  [
+    'invoice_line',
+    (b) =>
+      `INSERT INTO invoice_line (invoice_id, business_id, description, quantity, unit_price_minor, line_total_minor) VALUES ('${invA}', '${b}', 'X', 1, 100, 100)`,
+  ],
+];
+
+// `payment` FKs to `invoice`, so it is seeded after RELAXED. Strict policy.
+const STRICT_AFTER: [string, (b: string) => string][] = [
+  [
+    'payment',
+    (b) =>
+      `INSERT INTO payment (business_id, invoice_id, amount_minor, method, received_at, created_by) VALUES ('${b}', '${invA}', 100, 'cash', now(), '${uuidv7()}')`,
   ],
 ];
 
@@ -74,7 +102,7 @@ beforeAll(async () => {
   await app.init();
   prisma = app.get(PrismaService);
 
-  for (const [, insert] of [...STRICT, ...RELAXED]) {
+  for (const [, insert] of [...STRICT, ...RELAXED, ...STRICT_AFTER]) {
     await prisma.runInTenantContext(bizA, (tx) =>
       tx.$executeRawUnsafe(insert(bizA)),
     );
@@ -82,7 +110,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const [table] of [...RELAXED, ...[...STRICT].reverse()]) {
+  for (const [table] of [
+    ...STRICT_AFTER,
+    ...[...RELAXED].reverse(),
+    ...[...STRICT].reverse(),
+  ]) {
     await prisma.runInTenantContext(bizA, (tx) =>
       tx.$executeRawUnsafe(`DELETE FROM ${table}`),
     );
@@ -91,7 +123,7 @@ afterAll(async () => {
 });
 
 describe('sales — RLS-only backstop', () => {
-  for (const [table, insert] of STRICT) {
+  for (const [table, insert] of [...STRICT, ...STRICT_AFTER]) {
     it(`${table} (strict): unset app.business_id → 0 rows`, async () => {
       expect(await unscopedCount(table)).toBe(0);
     });

@@ -1,5 +1,45 @@
 # Weekly Status
 
+## 2026-09-07 — Phase 07 complete: invoicing + credit sales (T-0601–T-0609)
+
+- **`sales`** gained `customer` / `invoice` / `invoice_line` / `payment` (+
+  counters). Credit is a payment term on `POST /sales` that issues an `issued`
+  invoice in the sale transaction (per-business number, `InvoiceIssued`);
+  standalone `POST /invoices` (from lines or a cash sale); payments with
+  minor-unit balance maths (`partially_paid` → `paid`, `422 overpayment`,
+  `409 invoice_not_payable`, idempotent); Owner-only void; voiding a sale voids
+  its invoice. Public snapshot at `GET /v1/i/{token}`.
+- **New `media` service** — renders each `InvoiceIssued` to a PDF (`pdf-lib`,
+  no headless browser), stores it in MinIO/S3, emits `InvoiceDocumentReady`;
+  serves `GET /v1/businesses/{id}/invoices/{id}/pdf` + public `GET /v1/i/{token}/pdf`
+  (`302` once rendered, `202` before). `pos.rpc.media.renderInvoice` re-renders.
+  In the CI `service` matrix + the `acceptance` job.
+- **`notifications`** — `invoice_issued` / `payment_received` transactional
+  emails + a daily `invoice_overdue` sweep (customer digests + owner summary),
+  all en/sw; an `overdue_invoice` projection fed from the sales events.
+- **`web`** — Customers + Invoices screens, record-payment, Owner-only void,
+  PDF download (polls the `202`), an "Owed to you" dashboard card.
+- **`mobile`** — Cash/Credit toggle + customer picker in the sell flow, an
+  invoice block on the receipt (share link / PDF), an Owner-only Receivables
+  screen.
+- **`@pos/contracts`** — `CustomerCreated`, `CustomerUpdated`, `InvoiceIssued`
+  (+ line snapshot for the PDF), `InvoicePaymentRecorded`, `InvoiceVoided`,
+  `InvoiceDocumentReady`, `pos.rpc.media.renderInvoice`; `SCHEMA_VERSION`
+  1.2.0 → 1.4.0, all additive (compat green).
+- **Acceptance** — `services/sales` isolation + RLS-backstop specs extended
+  (`customer`/`payment` strict, `invoice`/`invoice_line` relaxed-read); new
+  `services/media` isolation + RLS-backstop specs (`document` relaxed-read);
+  `infra/acceptance-smoke.sh` gains **U14** (credit sale → invoice → public
+  view → PDF `200`) and **U15** (payments → `paid`, customer balance `0`,
+  overpay → `409`). `bash infra/acceptance-smoke.sh` → all stories pass.
+- Design adopted from proposal `0004` into
+  `docs/design/product/invoicing-and-credit.md` + the data / API / events / RPC
+  / decomposition docs. `docs/design/product/prd-mvp.md` no longer defers PDF
+  invoices / credit sales.
+
+Next: cut a `v0.2.0` release per `docs/ops/release-checklist.md` once CI is
+green on the Phase 07 tip, then work the backlog.
+
 ## 2026-09-07 — v0.1.0 tagged (MVP release)
 
 - `v0.1.0` annotated tag + GitHub Release cut on `main` @ `df65152` with full

@@ -22,11 +22,17 @@ a cross-tenant INSERT is rejected.
 | inventory | `stock_reservation` | strict | — |
 | inventory | `alert_config` | strict | — |
 | sales | `sale_number_counter` | strict | — |
+| sales | `invoice_number_counter` | strict | — |
 | sales | `product_cache` | strict | — |
+| sales | `customer` | strict | — |
+| sales | `payment` | strict | — |
 | sales | `sale` | relaxed-read | public `GET /v1/r/{token}` renders a receipt with no tenant context (migration `20260907140000`) |
 | sales | `sale_line` | relaxed-read | same public receipt path |
 | sales | `receipt` | relaxed-read | same public receipt path |
+| sales | `invoice` | relaxed-read | public `GET /v1/i/{token}` renders an invoice with no tenant context (migration `20260907160000`) |
+| sales | `invoice_line` | relaxed-read | same public invoice path (migration `20260907170000`) |
 | sales | `sales_business` | none | projection; no `business_id` scoping |
+| media | `document` | relaxed-read | public `GET /v1/i/{token}/pdf` looks the row up by `public_token` with no tenant context (migration `20260908160000`) |
 | winger | `winger_catalog_projection` | strict | — |
 | winger | `winger_account` | relaxed-read | `GET /v1/winger/businesses` lists a user's grants cross-business (migration `20260908130000`) |
 | winger | `winger_business` | none | projection |
@@ -39,5 +45,6 @@ a cross-tenant INSERT is rejected.
 | notifications | `notification` | relaxed-read | the send worker scans `queued` rows across all tenants (migration `20260906150000`) |
 | notifications | `notification_business` | none | projection |
 | notifications | `digest_config` | none | internal worker config |
+| notifications | `overdue_invoice` | none | internal worker projection for the overdue sweep (migration `20260908170000`) |
 
 Every service also has `outbox` + `processed_events` — internal, no tenant column.

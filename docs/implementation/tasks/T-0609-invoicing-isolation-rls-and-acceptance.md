@@ -2,7 +2,7 @@
 
 ## Status
 
-- `pending`
+- `done`
 - Last updated: 2026-09-07
 
 ## Linked Phase
@@ -101,10 +101,46 @@ route, and add a credit-sale → invoice → PDF → payment → `paid` walk-thr
 
 ## Verification
 
-_Planned — to be filled on completion:_
+Delivered:
 
-- `pnpm --filter @pos/sales --filter @pos/media test` (isolation + rls-backstop).
-- `bash infra/acceptance-smoke.sh` → all stories incl. U14/U15.
-- CI run green (`service (media)` + `acceptance`).
-- `node scripts/check-contracts-compat.mjs HEAD`; `validate_workflow.py` →
+- `services/sales/test/isolation.e2e-spec.ts` — enumerates
+  `/v1/businesses/{id}/customers*` (POST/GET/GET-id/PATCH) and
+  `/v1/businesses/{id}/invoices*` (POST/GET/GET-id/`/payments`/`/void`) alongside
+  the sale routes; each asserts wrong-business / operator / roleless → `403`
+  plus the positive-control not-`403`.
+- `services/sales/test/rls-backstop.e2e-spec.ts` — adds `customer` (STRICT) and
+  `payment` (STRICT, seeded after `invoice`), `invoice` + `invoice_line`
+  (RELAXED read — public `/v1/i/{token}`); strict → 0 unscoped / 0 foreign,
+  relaxed → visible unscoped / 0 foreign, every cross-tenant INSERT rejected.
+- New `services/media/test/isolation.e2e-spec.ts` — the member
+  `/v1/businesses/{id}/invoices/{id}/pdf` route → `403` for wrong-business /
+  operator / roleless, `202` for the correct member (no doc yet).
+- New `services/media/test/rls-backstop.e2e-spec.ts` — `document` RELAXED read
+  (visible unscoped by token, 0 for a foreign id, cross-tenant INSERT rejected).
+- `infra/acceptance-smoke.sh` — **U14** (create a customer → credit sale → one
+  `issued` invoice with `balance_due == total`, `GET /v1/i/{token}` `200`,
+  customer `outstanding_balance == total`, poll `/v1/i/{token}/pdf` to `200`)
+  and **U15** (half payment → `partially_paid`, rest → `paid` + balance `0` +
+  customer balance `0`, a further payment → `409`).
+- `docs/implementation/status/acceptance-map.md` — U14/U15 rows; the isolation
+  suite line now lists `media`. `rls-policy-matrix.md` — `customer`, `payment`,
+  `invoice_number_counter` (strict), `invoice`, `invoice_line`, `document`
+  (relaxed), `overdue_invoice` (none).
+- `docs/implementation/phases/phase-07-invoicing-and-credit.md` — Status `done`,
+  every Task + Acceptance box `[x]`. `weekly-status.md` + `project.md` record
+  the Phase 07 outcome.
+- CI: `media` was added to the `service` matrix + the acceptance job's
+  migrate/readiness loops in T-0605 — no further change here.
+
+Evidence:
+
+- `pnpm --filter @pos/sales exec vitest run test/isolation.e2e-spec.ts
+  test/rls-backstop.e2e-spec.ts` → **67 passing**.
+- `pnpm --filter @pos/media exec vitest run test/isolation.e2e-spec.ts
+  test/rls-backstop.e2e-spec.ts` → **7 passing**; full `services/media` suite
+  green.
+- `bash infra/acceptance-smoke.sh` against the local stack → **all stories
+  passed** (U1, U4, U5, U8, U10–U12, U13, **U14**, **U15**).
+- `node scripts/check-contracts-compat.mjs HEAD` → OK;
+  `python3 .agents/workflows/workflow-contract/scripts/validate_workflow.py` →
   `WORKFLOW:ok`.

@@ -56,11 +56,23 @@ const memberA = () =>
   hdr({ user_id: userA, business_id: bizA, role: 'owner', token_kind: 'user' });
 
 const s = uuidv7();
+const c = uuidv7();
+const inv = uuidv7();
 const ROUTES: [string, string][] = [
   ['post', `/v1/businesses/${bizA}/sales`],
   ['get', `/v1/businesses/${bizA}/sales`],
   ['get', `/v1/businesses/${bizA}/sales/${s}`],
   ['post', `/v1/businesses/${bizA}/sales/${s}/void`],
+  // Phase 07 — customers + invoices.
+  ['post', `/v1/businesses/${bizA}/customers`],
+  ['get', `/v1/businesses/${bizA}/customers`],
+  ['get', `/v1/businesses/${bizA}/customers/${c}`],
+  ['patch', `/v1/businesses/${bizA}/customers/${c}`],
+  ['post', `/v1/businesses/${bizA}/invoices`],
+  ['get', `/v1/businesses/${bizA}/invoices`],
+  ['get', `/v1/businesses/${bizA}/invoices/${inv}`],
+  ['post', `/v1/businesses/${bizA}/invoices/${inv}/payments`],
+  ['post', `/v1/businesses/${bizA}/invoices/${inv}/void`],
 ];
 
 beforeAll(async () => {
